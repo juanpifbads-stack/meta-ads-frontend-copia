@@ -9,10 +9,109 @@ const formatCurrency = (value) => {
   }).format(value)}`;
 };
 
-const WINDOWS = ['7d', '14d', '30d'];
+function MetricCell({ label, value, color }) {
+  return (
+    <div style={{ marginBottom: '6px' }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '1px' }}>
+        {label}
+      </div>
+      <div style={{ fontFamily: 'var(--font-mono)', fontWeight: '700', fontSize: '14px', color: color || 'var(--color-text-primary)' }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function AdMetricWindows({ metrics_7d, metrics_14d, metrics_30d }) {
+  const windows = [
+    { label: '7D', m: metrics_7d },
+    { label: '14D', m: metrics_14d },
+    { label: '30D', m: metrics_30d },
+  ];
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginTop: '8px' }}>
+      {windows.map(({ label, m }) => (
+        <div
+          key={label}
+          style={{
+            backgroundColor: 'var(--color-gray-light)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '8px 10px',
+          }}
+        >
+          <div style={{ fontFamily: 'var(--font-mono)', fontWeight: '700', fontSize: '9px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>
+            {label}
+          </div>
+          <MetricCell label="Gasto"      value={m?.spend != null ? formatCurrency(m.spend) : '—'} />
+          <MetricCell label="Convs."     value={m?.conversions != null ? m.conversions : '—'} />
+          <MetricCell label="Costo/Conv" value={m?.cost_per_conversion != null ? formatCurrency(m.cost_per_conversion) : '—'} color="var(--color-brand-blue)" />
+          <MetricCell label="ROAS"       value={m?.roas != null ? `${Number(m.roas).toFixed(2)}x` : '—'} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AdPreview({ ad, onExpand }) {
+  if (ad.video_url) {
+    return (
+      <video
+        src={ad.video_url}
+        poster={ad.thumbnail_url || undefined}
+        controls
+        style={{
+          width: '64px',
+          height: '64px',
+          objectFit: 'cover',
+          borderRadius: '6px',
+          border: '0.5px solid var(--color-gray-mid)',
+          cursor: 'pointer',
+          flexShrink: 0,
+        }}
+      />
+    );
+  }
+  if (ad.thumbnail_url) {
+    return (
+      <img
+        src={ad.thumbnail_url}
+        alt=""
+        style={{
+          width: '64px',
+          height: '64px',
+          objectFit: 'cover',
+          borderRadius: '6px',
+          border: '0.5px solid var(--color-gray-mid)',
+          cursor: 'zoom-in',
+          flexShrink: 0,
+          display: 'block',
+        }}
+        onClick={() => onExpand(ad.thumbnail_url)}
+      />
+    );
+  }
+  return (
+    <div
+      style={{
+        width: '64px',
+        height: '64px',
+        borderRadius: '6px',
+        backgroundColor: 'var(--color-gray-light)',
+        border: '0.5px solid var(--color-gray-mid)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '20px',
+        color: 'var(--color-text-muted)',
+        flexShrink: 0,
+      }}
+    >
+      ◻
+    </div>
+  );
+}
 
 export default function AdDetailModal({ adsetId, adsetName, accountId, onClose }) {
-  const [activeWindow, setActiveWindow] = useState('7d');
   const [adsData, setAdsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,9 +125,7 @@ export default function AdDetailModal({ adsetId, adsetName, accountId, onClose }
       setLoading(true);
       setError(null);
       try {
-        const response = await apiClient.get(
-          `/accounts/${accountId}/adsets/${adsetId}/ads`
-        );
+        const response = await apiClient.get(`/accounts/${accountId}/adsets/${adsetId}/ads`);
         setAdsData(response.data);
       } catch (err) {
         setError(err.message || 'Error al cargar los anuncios.');
@@ -74,71 +171,41 @@ export default function AdDetailModal({ adsetId, adsetName, accountId, onClose }
   };
 
   const ads = Array.isArray(adsData) ? adsData : [];
-  const windowKey = `metrics_${activeWindow}`;
 
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
-      {/* Lightbox */}
+      {/* Image lightbox */}
       {lightboxUrl && (
         <div
           style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 2000,
-            backgroundColor: 'rgba(0,0,0,0.85)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-            cursor: 'zoom-out',
+            position: 'fixed', inset: 0, zIndex: 2000,
+            backgroundColor: 'rgba(0,0,0,0.88)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '20px', cursor: 'zoom-out',
           }}
           onClick={() => setLightboxUrl(null)}
         >
           <img
             src={lightboxUrl}
-            alt="Vista previa del anuncio"
+            alt=""
             style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: '8px', objectFit: 'contain' }}
             onClick={(e) => e.stopPropagation()}
           />
         </div>
       )}
 
-      <div className="modal" role="dialog" aria-modal="true" aria-label={adsetName} style={{ maxWidth: '720px' }}>
+      <div className="modal" role="dialog" aria-modal="true" style={{ maxWidth: '800px' }}>
         <div className="modal-header">
           <div>
             <div className="modal-title">{adsetName}</div>
-            <div
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '10px',
-                color: 'var(--color-text-muted)',
-                marginTop: '2px',
-              }}
-            >
-              Anuncios activos del conjunto
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+              Anuncios activos — comparativa 7D / 14D / 30D
             </div>
           </div>
-          <button className="modal-close" onClick={onClose} aria-label="Cerrar">
-            ×
-          </button>
+          <button className="modal-close" onClick={onClose} aria-label="Cerrar">×</button>
         </div>
 
         <div className="modal-body">
-          {/* Window tabs */}
-          <div style={{ marginBottom: '16px' }}>
-            <div className="tabs">
-              {WINDOWS.map((w) => (
-                <button
-                  key={w}
-                  className={`tab-btn ${activeWindow === w ? 'active' : ''}`}
-                  onClick={() => setActiveWindow(w)}
-                >
-                  {w.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {loading && (
             <div className="loading-center" style={{ padding: '40px 0' }}>
               <span className="spinner" />
@@ -153,133 +220,77 @@ export default function AdDetailModal({ adsetId, adsetName, accountId, onClose }
           {!loading && !error && ads.length === 0 && (
             <div className="empty-state">
               <div style={{ fontSize: '24px', marginBottom: '8px' }}>⏹</div>
-              <p>No hay anuncios activos en este período.</p>
+              <p>No hay anuncios activos en este conjunto.</p>
             </div>
           )}
 
           {!loading && !error && ads.length > 0 && (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '52px' }}>Prev.</th>
-                    <th>Anuncio</th>
-                    <th style={{ textAlign: 'right' }}>Gasto</th>
-                    <th style={{ textAlign: 'right' }}>Convs.</th>
-                    <th style={{ textAlign: 'right' }}>Costo/Conv</th>
-                    <th style={{ textAlign: 'right' }}>ROAS</th>
-                    <th style={{ textAlign: 'center' }}>Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ads.map((ad) => {
-                    const m = ad[windowKey] || {};
-                    const isPaused = pausedIds.has(ad.id);
-                    const isPausing = pausingId === ad.id;
-                    const pauseErr = pauseErrors[ad.id];
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {ads.map((ad) => {
+                const isPaused = pausedIds.has(ad.id);
+                const isPausing = pausingId === ad.id;
+                const pauseErr = pauseErrors[ad.id];
 
-                    return (
-                      <React.Fragment key={ad.id}>
-                        <tr style={{ opacity: isPaused ? 0.45 : 1 }}>
-                          {/* Thumbnail */}
-                          <td style={{ padding: '6px 8px' }}>
-                            {ad.thumbnail_url ? (
-                              <img
-                                src={ad.thumbnail_url}
-                                alt=""
-                                style={{
-                                  width: '40px',
-                                  height: '40px',
-                                  objectFit: 'cover',
-                                  borderRadius: '4px',
-                                  cursor: 'zoom-in',
-                                  display: 'block',
-                                  border: '0.5px solid var(--color-gray-mid)',
-                                }}
-                                onClick={() => setLightboxUrl(ad.thumbnail_url)}
-                              />
-                            ) : (
-                              <div
-                                style={{
-                                  width: '40px',
-                                  height: '40px',
-                                  borderRadius: '4px',
-                                  backgroundColor: 'var(--color-gray-light)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontSize: '16px',
-                                  color: 'var(--color-text-muted)',
-                                }}
-                              >
-                                ◻
-                              </div>
-                            )}
-                          </td>
-
-                          {/* Name */}
-                          <td>
-                            <div
-                              style={{
-                                fontWeight: '400',
-                                maxWidth: '180px',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                textDecoration: isPaused ? 'line-through' : 'none',
-                              }}
-                              title={ad.name}
+                return (
+                  <div
+                    key={ad.id}
+                    style={{
+                      border: '0.5px solid var(--color-gray-mid)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '14px',
+                      opacity: isPaused ? 0.5 : 1,
+                      backgroundColor: isPaused ? 'var(--color-gray-light)' : 'var(--color-white)',
+                    }}
+                  >
+                    {/* Ad header */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      <AdPreview ad={ad} onExpand={setLightboxUrl} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                          <div
+                            style={{
+                              fontFamily: 'var(--font-mono)',
+                              fontWeight: '700',
+                              fontSize: '13px',
+                              color: isPaused ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
+                              textDecoration: isPaused ? 'line-through' : 'none',
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            {ad.name || '—'}
+                          </div>
+                          {!isPaused ? (
+                            <button
+                              className="btn-pause"
+                              style={{ fontSize: '10px', padding: '3px 10px', flexShrink: 0 }}
+                              onClick={() => handlePauseAd(ad)}
+                              disabled={isPausing}
                             >
-                              {ad.name || '—'}
-                            </div>
-                            {isPaused && (
-                              <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '1px' }}>
-                                Pausado
-                              </div>
-                            )}
-                          </td>
-
-                          <td style={{ textAlign: 'right' }}>{formatCurrency(m.spend)}</td>
-                          <td style={{ textAlign: 'right' }}>{m.conversions != null ? m.conversions : '—'}</td>
-                          <td style={{ textAlign: 'right', color: 'var(--color-brand-blue)', fontWeight: '700' }}>
-                            {m.cost_per_conversion != null ? formatCurrency(m.cost_per_conversion) : '—'}
-                          </td>
-                          <td style={{ textAlign: 'right' }}>
-                            {m.roas != null ? `${Number(m.roas).toFixed(2)}x` : '—'}
-                          </td>
-
-                          {/* Pause action */}
-                          <td style={{ textAlign: 'center' }}>
-                            {!isPaused ? (
-                              <button
-                                className="btn-pause"
-                                style={{ fontSize: '10px', padding: '3px 8px', whiteSpace: 'nowrap' }}
-                                onClick={() => handlePauseAd(ad)}
-                                disabled={isPausing}
-                              >
-                                {isPausing ? '...' : '⏹ pausar'}
-                              </button>
-                            ) : (
-                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--color-text-muted)' }}>
-                                —
-                              </span>
-                            )}
-                          </td>
-                        </tr>
+                              {isPausing ? '...' : '⏹ pausar'}
+                            </button>
+                          ) : (
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                              Pausado
+                            </span>
+                          )}
+                        </div>
                         {pauseErr && (
-                          <tr>
-                            <td colSpan={7} style={{ padding: '4px 8px' }}>
-                              <div className="alert alert-error" style={{ fontSize: '11px', padding: '4px 10px' }}>
-                                {pauseErr}
-                              </div>
-                            </td>
-                          </tr>
+                          <div className="alert alert-error" style={{ fontSize: '11px', padding: '4px 10px', marginTop: '6px' }}>
+                            {pauseErr}
+                          </div>
                         )}
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+
+                    {/* Metric windows 7D / 14D / 30D */}
+                    <AdMetricWindows
+                      metrics_7d={ad.metrics_7d}
+                      metrics_14d={ad.metrics_14d}
+                      metrics_30d={ad.metrics_30d}
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import apiClient from '../api/client.js';
@@ -74,9 +74,44 @@ export default function Dashboard() {
 
   const handleSelectAccount = (accountId) => {
     setSelectedAccount(accountId);
-    if (accountId) localStorage.setItem('selectedAccount', accountId);
-    else localStorage.removeItem('selectedAccount');
+    if (accountId) {
+      localStorage.setItem('selectedAccount', accountId);
+      const account = accounts.find((a) => a.id === accountId);
+      if (account) localStorage.setItem('selectedAccountName', account.name);
+    } else {
+      localStorage.removeItem('selectedAccount');
+      localStorage.removeItem('selectedAccountName');
+    }
   };
+
+  // Group ABO adsets by campaign, sort by budget within each group
+  const groupedAdsets = useMemo(() => {
+    if (!adsets.length) return [];
+    const groups = new Map();
+    for (const adset of adsets) {
+      const key = adset.campaign_id || adset.campaign_name || 'Sin campaña';
+      if (!groups.has(key)) {
+        groups.set(key, {
+          campaignName: adset.campaign_name || 'Sin campaña',
+          campaignId: adset.campaign_id,
+          adsets: [],
+        });
+      }
+      groups.get(key).adsets.push(adset);
+    }
+    // Sort within each group by daily_budget descending
+    for (const group of groups.values()) {
+      group.adsets.sort((a, b) => (b.daily_budget || 0) - (a.daily_budget || 0));
+    }
+    // Sort groups by total 30d spend descending
+    const entries = Array.from(groups.values());
+    entries.sort((a, b) => {
+      const spendA = a.adsets.reduce((s, ad) => s + (ad.metrics_30d?.spend || 0), 0);
+      const spendB = b.adsets.reduce((s, ad) => s + (ad.metrics_30d?.spend || 0), 0);
+      return spendB - spendA;
+    });
+    return entries;
+  }, [adsets]);
 
   const handleAdSetAction = useCallback(
     async ({ type, entityId, entityType }) => {
@@ -174,7 +209,9 @@ export default function Dashboard() {
           {isLoading && selectedAccount && (
             <div className="loading-center">
               <span className="spinner" />
-              <span>Cargando datos de la cuenta...</span>
+              <span>
+                Cargando {localStorage.getItem('selectedAccountName') || 'cuenta'}...
+              </span>
             </div>
           )}
 
@@ -193,13 +230,40 @@ export default function Dashboard() {
                   <div className="section-title">
                     Conjuntos de anuncios (ABO) — {adsets.length}
                   </div>
-                  {adsets.map((adset) => (
-                    <AdSetCard
-                      key={adset.id}
-                      adset={adset}
-                      accountId={selectedAccount}
-                      onAction={handleAdSetAction}
-                    />
+                  {groupedAdsets.map((group) => (
+                    <div key={group.campaignId || group.campaignName}>
+                      {groupedAdsets.length > 1 && (
+                        <div
+                          style={{
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            color: 'var(--color-brand-blue)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.08em',
+                            marginBottom: '8px',
+                            marginTop: '20px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                        >
+                          <span style={{ opacity: 0.5 }}>◆</span>
+                          {group.campaignName}
+                          <span style={{ fontWeight: '400', color: 'var(--color-text-muted)' }}>
+                            — {group.adsets.length} conjunto{group.adsets.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      )}
+                      {group.adsets.map((adset) => (
+                        <AdSetCard
+                          key={adset.id}
+                          adset={adset}
+                          accountId={selectedAccount}
+                          onAction={handleAdSetAction}
+                        />
+                      ))}
+                    </div>
                   ))}
                 </div>
               )}

@@ -1,18 +1,16 @@
 import React from 'react';
 
 export default function AccountSelector({ accounts, selectedAccount, onSelect, loading }) {
+  const storedName = typeof window !== 'undefined' ? localStorage.getItem('selectedAccountName') : null;
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <span className="spinner spinner-sm" />
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '12px',
-            color: 'var(--color-text-muted)',
-          }}
-        >
-          Cargando cuentas...
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+          {selectedAccount && storedName
+            ? `${storedName}`
+            : 'Cargando cuentas...'}
         </span>
       </div>
     );
