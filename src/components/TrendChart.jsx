@@ -20,12 +20,10 @@ const METRIC_OPTIONS = [
 
 const formatCurrency = (value) => {
   if (value == null) return '—';
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'USD',
+  return `$${new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value);
+    maximumFractionDigits: 0,
+  }).format(value)}`;
 };
 
 function formatValue(key, value) {

@@ -12,10 +12,21 @@ const formatCurrency = (value) => {
   }).format(value)}`;
 };
 
+function formatUpdatedTime(isoString) {
+  if (!isoString) return null;
+  try {
+    const d = new Date(isoString);
+    return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return null;
+  }
+}
+
 export default function AdSetCard({ adset, accountId, onAction }) {
   const [actionPanel, setActionPanel] = useState(null); // 'increase' | 'decrease' | null
   const [showPauseConfirm, setShowPauseConfirm] = useState(false);
   const [showSecondaryMetrics, setShowSecondaryMetrics] = useState(false);
+  const [showTrend, setShowTrend] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [pauseLoading, setPauseLoading] = useState(false);
   const [pauseError, setPauseError] = useState(null);
@@ -25,7 +36,6 @@ export default function AdSetCard({ adset, accountId, onAction }) {
   const budgetLabel = adset.daily_budget ? 'diario' : 'total';
 
   const handleCardClick = (e) => {
-    // Don't open modal if clicking buttons or panels
     if (
       e.target.closest('button') ||
       e.target.closest('.action-panel') ||
@@ -68,17 +78,45 @@ export default function AdSetCard({ adset, accountId, onAction }) {
   const metrics_7d = adset.metrics_7d || adset.metrics?.['7d'];
   const metrics_14d = adset.metrics_14d || adset.metrics?.['14d'];
   const metrics_30d = adset.metrics_30d || adset.metrics?.['30d'];
-  const trendData = adset.trend_data || adset.daily_data || [];
+  const trendData = adset.daily_trend || adset.trend_data || adset.daily_data || [];
+  const updatedAt = formatUpdatedTime(adset.updated_time);
 
   return (
     <>
       <div className="card" style={{ cursor: 'pointer' }} onClick={handleCardClick}>
+        {/* Campaign tag */}
+        {adset.campaign_name && (
+          <div style={{ marginBottom: '8px' }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '10px',
+                fontWeight: '700',
+                color: 'var(--color-brand-blue)',
+                backgroundColor: 'var(--color-brand-blue-light)',
+                border: '0.5px solid var(--color-brand-blue-mid)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '2px 8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}
+            >
+              ◆ {adset.campaign_name}
+            </span>
+          </div>
+        )}
+
         {/* Card Header */}
         <div className="card-header">
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="card-title">{adset.name}</div>
-            {adset.campaign_name && (
-              <div className="card-subtitle">{adset.campaign_name}</div>
+            {updatedAt && (
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '3px' }}>
+                editado {updatedAt}
+              </div>
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -90,18 +128,13 @@ export default function AdSetCard({ adset, accountId, onAction }) {
         <div
           style={{
             fontFamily: 'var(--font-mono)',
-            fontSize: '11px',
+            fontSize: '12px',
             color: 'var(--color-text-muted)',
-            marginBottom: '12px',
+            marginBottom: '14px',
           }}
         >
           Presupuesto {budgetLabel}:{' '}
-          <span
-            style={{
-              fontWeight: '700',
-              color: 'var(--color-text-primary)',
-            }}
-          >
+          <span style={{ fontWeight: '700', color: 'var(--color-text-primary)' }}>
             {formatCurrency(budget)}
           </span>
         </div>
@@ -159,8 +192,26 @@ export default function AdSetCard({ adset, accountId, onAction }) {
           </div>
         )}
 
-        {/* Trend Chart */}
-        {trendData.length > 0 && <TrendChart data={trendData} />}
+        {/* Daily trend collapsible */}
+        {trendData.length > 0 && (
+          <>
+            <button
+              className="collapsible-toggle"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowTrend((v) => !v);
+              }}
+            >
+              <span>{showTrend ? '▾' : '▸'}</span>
+              <span>evolución 7 días</span>
+            </button>
+            {showTrend && (
+              <div className="collapsible-content" onClick={(e) => e.stopPropagation()}>
+                <TrendChart data={trendData} />
+              </div>
+            )}
+          </>
+        )}
 
         {/* Action Buttons */}
         {!pauseSuccess && (

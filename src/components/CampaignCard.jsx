@@ -13,9 +13,20 @@ const formatCurrency = (value) => {
   }).format(value)}`;
 };
 
+function formatUpdatedTime(isoString) {
+  if (!isoString) return null;
+  try {
+    const d = new Date(isoString);
+    return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return null;
+  }
+}
+
 export default function CampaignCard({ campaign, accountId, onAction }) {
   const [actionPanel, setActionPanel] = useState(null); // 'increase' | 'decrease' | null
   const [showSecondaryMetrics, setShowSecondaryMetrics] = useState(false);
+  const [showTrend, setShowTrend] = useState(false);
 
   const budget = campaign.campaign_budget || campaign.daily_budget || 0;
   const budgetLabel = (campaign.campaign_budget || campaign.daily_budget) ? 'diario' : 'total';
@@ -23,7 +34,8 @@ export default function CampaignCard({ campaign, accountId, onAction }) {
   const metrics_7d = campaign.metrics_7d || campaign.metrics?.['7d'];
   const metrics_14d = campaign.metrics_14d || campaign.metrics?.['14d'];
   const metrics_30d = campaign.metrics_30d || campaign.metrics?.['30d'];
-  const trendData = campaign.trend_data || campaign.daily_data || [];
+  const trendData = campaign.daily_trend || campaign.trend_data || campaign.daily_data || [];
+  const updatedAt = formatUpdatedTime(campaign.updated_time);
   const adsets = campaign.adsets || [];
 
   const handleActionToggle = (dir) => {
@@ -65,6 +77,11 @@ export default function CampaignCard({ campaign, accountId, onAction }) {
           <div className="card-title">{campaign.campaign_name || campaign.name}</div>
           {campaign.objective && (
             <div className="card-subtitle">{campaign.objective}</div>
+          )}
+          {updatedAt && (
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '3px' }}>
+              editado {updatedAt}
+            </div>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -142,8 +159,23 @@ export default function CampaignCard({ campaign, accountId, onAction }) {
         </div>
       )}
 
-      {/* Trend Chart */}
-      {trendData.length > 0 && <TrendChart data={trendData} />}
+      {/* Daily trend collapsible */}
+      {trendData.length > 0 && (
+        <>
+          <button
+            className="collapsible-toggle"
+            onClick={() => setShowTrend((v) => !v)}
+          >
+            <span>{showTrend ? '▾' : '▸'}</span>
+            <span>evolución 7 días</span>
+          </button>
+          {showTrend && (
+            <div className="collapsible-content">
+              <TrendChart data={trendData} />
+            </div>
+          )}
+        </>
+      )}
 
       {/* AdSet Accordion */}
       <AdSetAccordion adsets={adsets} onPause={handlePauseAdset} />
