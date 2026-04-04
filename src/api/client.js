@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
+  baseURL: import.meta.env.VITE_API_URL || 'https://meta-ads-backend-production-85df.up.railway.app',
   withCredentials: true, // CRITICAL: needed for httpOnly cookies to work
   headers: {
     'Content-Type': 'application/json',
