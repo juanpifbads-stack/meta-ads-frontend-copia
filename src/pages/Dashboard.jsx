@@ -13,7 +13,7 @@ export default function Dashboard() {
   const [accounts, setAccounts] = useState([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [accountsError, setAccountsError] = useState(null);
-  const [selectedAccount, setSelectedAccount] = useState(null);
+  const [selectedAccount, setSelectedAccount] = useState(() => localStorage.getItem('selectedAccount') || null);
 
   // Adsets (ABO)
   const [adsets, setAdsets] = useState([]);
@@ -72,13 +72,19 @@ export default function Dashboard() {
     fetchData();
   }, [selectedAccount]);
 
+  const handleSelectAccount = (accountId) => {
+    setSelectedAccount(accountId);
+    if (accountId) localStorage.setItem('selectedAccount', accountId);
+    else localStorage.removeItem('selectedAccount');
+  };
+
   const handleAdSetAction = useCallback(
     async ({ type, entityId, entityType }) => {
       if (type === 'pause') {
         const response = await apiClient.post('/actions/pause', {
-          entity_id: entityId,
-          entity_type: entityType || 'adset',
-          ad_account_id: selectedAccount,
+          entityId,
+          entityType: entityType || 'adset',
+          adAccountId: selectedAccount,
         });
         return response.data;
       }
@@ -138,7 +144,7 @@ export default function Dashboard() {
             <AccountSelector
               accounts={accounts}
               selectedAccount={selectedAccount}
-              onSelect={setSelectedAccount}
+              onSelect={handleSelectAccount}
               loading={accountsLoading}
             />
           </div>

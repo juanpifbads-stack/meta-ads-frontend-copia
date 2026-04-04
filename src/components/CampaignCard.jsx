@@ -17,8 +17,8 @@ export default function CampaignCard({ campaign, accountId, onAction }) {
   const [actionPanel, setActionPanel] = useState(null); // 'increase' | 'decrease' | null
   const [showSecondaryMetrics, setShowSecondaryMetrics] = useState(false);
 
-  const budget = campaign.daily_budget || campaign.lifetime_budget || 0;
-  const budgetLabel = campaign.daily_budget ? 'diario' : 'total';
+  const budget = campaign.campaign_budget || campaign.daily_budget || 0;
+  const budgetLabel = (campaign.campaign_budget || campaign.daily_budget) ? 'diario' : 'total';
 
   const metrics_7d = campaign.metrics_7d || campaign.metrics?.['7d'];
   const metrics_14d = campaign.metrics_14d || campaign.metrics?.['14d'];
@@ -32,7 +32,7 @@ export default function CampaignCard({ campaign, accountId, onAction }) {
 
   const handleBudgetSuccess = (newBudget) => {
     setActionPanel(null);
-    onAction && onAction({ type: 'budget_updated', entityId: campaign.id, newBudget });
+    onAction && onAction({ type: 'budget_updated', entityId: campaign.campaign_id || campaign.id, newBudget });
   };
 
   const handlePauseAdset = async (adsetId) => {
@@ -62,7 +62,7 @@ export default function CampaignCard({ campaign, accountId, onAction }) {
           >
             CBO — Campaign Budget
           </div>
-          <div className="card-title">{campaign.name}</div>
+          <div className="card-title">{campaign.campaign_name || campaign.name}</div>
           {campaign.objective && (
             <div className="card-subtitle">{campaign.objective}</div>
           )}
@@ -168,7 +168,8 @@ export default function CampaignCard({ campaign, accountId, onAction }) {
       {actionPanel && (
         <BudgetActionPanel
           currentBudget={budget}
-          entityId={campaign.id}
+          entityId={campaign.campaign_id || campaign.id}
+          entityName={campaign.campaign_name || campaign.name}
           entityType="campaign"
           adAccountId={accountId}
           direction={actionPanel}

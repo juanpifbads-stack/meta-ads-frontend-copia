@@ -9,13 +9,16 @@ const formatCurrency = (value) => {
   }).format(value)}`;
 };
 
-function AdSetRow({ adset, onPause }) {
+const WINDOWS = ['7d', '14d', '30d'];
+
+function AdSetRow({ adset, onPause, window }) {
   const [confirming, setConfirming] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [paused, setPaused] = useState(false);
 
-  const m30 = adset.metrics_30d || adset.metrics?.['30d'] || {};
+  const metricsKey = `metrics_${window}`;
+  const m = adset[metricsKey] || adset.metrics_30d || adset.metrics?.['30d'] || {};
 
   const handlePauseConfirm = async () => {
     setLoading(true);
@@ -72,21 +75,21 @@ function AdSetRow({ adset, onPause }) {
           }}
         >
           <div>
-            <div className="metric-label" style={{ fontSize: '9px' }}>Gasto 30D</div>
+            <div className="metric-label" style={{ fontSize: '9px' }}>Gasto {window.toUpperCase()}</div>
             <div style={{ color: 'var(--color-text-primary)', fontWeight: '700' }}>
-              {formatCurrency(m30.spend)}
+              {formatCurrency(m.spend)}
             </div>
           </div>
           <div>
-            <div className="metric-label" style={{ fontSize: '9px' }}>Convs 30D</div>
+            <div className="metric-label" style={{ fontSize: '9px' }}>Convs {window.toUpperCase()}</div>
             <div style={{ color: 'var(--color-text-primary)', fontWeight: '700' }}>
-              {m30.conversions != null ? m30.conversions : '—'}
+              {m.conversions != null ? m.conversions : '—'}
             </div>
           </div>
           <div>
-            <div className="metric-label" style={{ fontSize: '9px' }}>ROAS 30D</div>
+            <div className="metric-label" style={{ fontSize: '9px' }}>ROAS {window.toUpperCase()}</div>
             <div style={{ color: 'var(--color-text-primary)', fontWeight: '700' }}>
-              {m30.roas != null ? `${Number(m30.roas).toFixed(2)}x` : '—'}
+              {m.roas != null ? `${Number(m.roas).toFixed(2)}x` : '—'}
             </div>
           </div>
         </div>
@@ -170,6 +173,7 @@ function AdSetRow({ adset, onPause }) {
 
 export default function AdSetAccordion({ adsets, onPause }) {
   const [open, setOpen] = useState(false);
+  const [activeWindow, setActiveWindow] = useState('30d');
 
   if (!adsets || adsets.length === 0) return null;
 
@@ -190,8 +194,31 @@ export default function AdSetAccordion({ adsets, onPause }) {
 
       {open && (
         <div style={{ marginTop: '12px' }}>
+          {/* Window selector tabs */}
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
+            {WINDOWS.map((w) => (
+              <button
+                key={w}
+                onClick={() => setActiveWindow(w)}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '10px',
+                  padding: '2px 8px',
+                  border: '0.5px solid var(--color-gray-mid)',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer',
+                  backgroundColor: activeWindow === w ? 'var(--color-brand-blue)' : 'transparent',
+                  color: activeWindow === w ? '#fff' : 'var(--color-text-muted)',
+                  fontWeight: activeWindow === w ? '700' : '400',
+                }}
+              >
+                {w.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
           {adsets.map((adset) => (
-            <AdSetRow key={adset.id} adset={adset} onPause={onPause} />
+            <AdSetRow key={adset.id} adset={adset} onPause={onPause} window={activeWindow} />
           ))}
         </div>
       )}
