@@ -7,15 +7,13 @@ import apiClient from '../api/client.js';
 
 const formatCurrency = (value) => {
   if (value == null || isNaN(value)) return '—';
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'USD',
+  return `$${new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(value)}`;
 };
 
-export default function CampaignCard({ campaign, onAction }) {
+export default function CampaignCard({ campaign, accountId, onAction }) {
   const [actionPanel, setActionPanel] = useState(null); // 'increase' | 'decrease' | null
   const [showSecondaryMetrics, setShowSecondaryMetrics] = useState(false);
 
@@ -39,9 +37,9 @@ export default function CampaignCard({ campaign, onAction }) {
 
   const handlePauseAdset = async (adsetId) => {
     const response = await apiClient.post('/actions/pause', {
-      entity_id: adsetId,
-      entity_type: 'adset',
-      ad_account_id: campaign.account_id || campaign.ad_account_id,
+      entityId: adsetId,
+      entityType: 'adset',
+      adAccountId: accountId,
     });
     return response.data;
   };
@@ -172,7 +170,7 @@ export default function CampaignCard({ campaign, onAction }) {
           currentBudget={budget}
           entityId={campaign.id}
           entityType="campaign"
-          adAccountId={campaign.account_id || campaign.ad_account_id}
+          adAccountId={accountId}
           direction={actionPanel}
           onSuccess={handleBudgetSuccess}
           onCancel={() => setActionPanel(null)}

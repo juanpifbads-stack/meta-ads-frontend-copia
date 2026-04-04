@@ -3,12 +3,10 @@ import apiClient from '../api/client.js';
 
 const formatCurrency = (value) => {
   if (value == null || isNaN(value)) return '—';
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'USD',
+  return `$${new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(value)}`;
 };
 
 const PERCENTAGE_STEPS = [10, 15, 20, 25, 30, 35];
@@ -36,8 +34,8 @@ export default function BudgetActionPanel({
       return currentBudget * factor;
     } else {
       const amt = parseFloat(fixedAmount);
-      if (isNaN(amt)) return null;
-      return direction === 'increase' ? currentBudget + amt : currentBudget - amt;
+      if (isNaN(amt) || amt <= 0) return null;
+      return amt; // fixed mode = presupuesto final directo
     }
   }, [mode, percentage, fixedAmount, currentBudget, direction]);
 
@@ -53,14 +51,12 @@ export default function BudgetActionPanel({
     setError(null);
     try {
       await apiClient.post('/actions/budget', {
-        entity_id: entityId,
-        entity_type: entityType,
-        ad_account_id: adAccountId,
-        new_budget: Math.round(newBudget * 100) / 100,
+        entityId,
+        entityType,
+        adAccountId,
         direction,
         mode,
-        value: mode === 'percentage' ? percentage : parseFloat(fixedAmount),
-        previous_budget: currentBudget,
+        value: mode === 'percentage' ? percentage : Math.round(newBudget * 100) / 100,
       });
       setSuccess(true);
       setTimeout(() => {
@@ -170,7 +166,7 @@ export default function BudgetActionPanel({
               <input
                 type="number"
                 className="input"
-                placeholder="Ingresá el monto (USD)"
+                placeholder="Nuevo presupuesto total"
                 value={fixedAmount}
                 onChange={(e) => setFixedAmount(e.target.value)}
                 min={0}

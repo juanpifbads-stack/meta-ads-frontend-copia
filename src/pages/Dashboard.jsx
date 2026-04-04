@@ -191,6 +191,7 @@ export default function Dashboard() {
                     <AdSetCard
                       key={adset.id}
                       adset={adset}
+                      accountId={selectedAccount}
                       onAction={handleAdSetAction}
                     />
                   ))}
@@ -224,8 +225,9 @@ export default function Dashboard() {
                   </div>
                   {campaigns.map((campaign) => (
                     <CampaignCard
-                      key={campaign.id}
+                      key={campaign.campaign_id || campaign.id}
                       campaign={campaign}
+                      accountId={selectedAccount}
                       onAction={() => {}}
                     />
                   ))}

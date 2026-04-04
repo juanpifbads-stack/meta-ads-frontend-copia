@@ -2,12 +2,10 @@ import React from 'react';
 
 const formatCurrency = (value) => {
   if (value == null || isNaN(value)) return '—';
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'USD',
+  return `$${new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(value)}`;
 };
 
 function MetricCell({ label, value, isCost }) {

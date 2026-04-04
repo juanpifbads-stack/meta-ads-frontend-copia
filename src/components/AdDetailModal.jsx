@@ -3,12 +3,10 @@ import apiClient from '../api/client.js';
 
 const formatCurrency = (value) => {
   if (value == null || isNaN(value)) return '—';
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'USD',
+  return `$${new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(value)}`;
 };
 
 const WINDOWS = ['7d', '14d', '30d'];
@@ -53,12 +51,9 @@ export default function AdDetailModal({ adsetId, adsetName, accountId, onClose }
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
-  const getAdsForWindow = () => {
-    if (!adsData) return [];
-    return adsData[activeWindow] || adsData.ads || [];
-  };
-
-  const ads = getAdsForWindow();
+  // Backend returns a flat array; pick metrics for the active window per ad
+  const ads = Array.isArray(adsData) ? adsData : [];
+  const windowKey = `metrics_${activeWindow.replace('d', 'd')}`;  // metrics_7d, metrics_14d, metrics_30d
 
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
@@ -129,55 +124,40 @@ export default function AdDetailModal({ adsetId, adsetName, accountId, onClose }
                   </tr>
                 </thead>
                 <tbody>
-                  {ads.map((ad) => (
-                    <tr key={ad.id || ad.ad_id}>
-                      <td>
-                        <div
-                          style={{
-                            fontWeight: '400',
-                            maxWidth: '220px',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                          title={ad.name || ad.ad_name}
-                        >
-                          {ad.name || ad.ad_name || '—'}
-                        </div>
-                        {ad.status && (
+                  {ads.map((ad) => {
+                    const m = ad[windowKey] || {};
+                    return (
+                      <tr key={ad.id}>
+                        <td>
                           <div
                             style={{
-                              fontSize: '10px',
-                              color: 'var(--color-text-muted)',
-                              marginTop: '1px',
+                              fontWeight: '400',
+                              maxWidth: '220px',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
                             }}
+                            title={ad.name}
                           >
-                            {ad.status}
+                            {ad.name || '—'}
                           </div>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        {formatCurrency(ad.spend)}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        {ad.conversions != null ? ad.conversions : '—'}
-                      </td>
-                      <td
-                        style={{
-                          textAlign: 'right',
-                          color: 'var(--color-brand-blue)',
-                          fontWeight: '700',
-                        }}
-                      >
-                        {ad.cost_per_conversion != null
-                          ? formatCurrency(ad.cost_per_conversion)
-                          : '—'}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        {ad.roas != null ? `${Number(ad.roas).toFixed(2)}x` : '—'}
-                      </td>
-                    </tr>
-                  ))}
+                          {ad.status && (
+                            <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '1px' }}>
+                              {ad.status}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>{formatCurrency(m.spend)}</td>
+                        <td style={{ textAlign: 'right' }}>{m.conversions != null ? m.conversions : '—'}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--color-brand-blue)', fontWeight: '700' }}>
+                          {m.cost_per_conversion != null ? formatCurrency(m.cost_per_conversion) : '—'}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          {m.roas != null ? `${Number(m.roas).toFixed(2)}x` : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

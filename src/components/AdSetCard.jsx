@@ -6,15 +6,13 @@ import AdDetailModal from './AdDetailModal.jsx';
 
 const formatCurrency = (value) => {
   if (value == null || isNaN(value)) return '—';
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'USD',
+  return `$${new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(value)}`;
 };
 
-export default function AdSetCard({ adset, onAction }) {
+export default function AdSetCard({ adset, accountId, onAction }) {
   const [actionPanel, setActionPanel] = useState(null); // 'increase' | 'decrease' | null
   const [showPauseConfirm, setShowPauseConfirm] = useState(false);
   const [showSecondaryMetrics, setShowSecondaryMetrics] = useState(false);
@@ -210,7 +208,7 @@ export default function AdSetCard({ adset, onAction }) {
               currentBudget={budget}
               entityId={adset.id}
               entityType="adset"
-              adAccountId={adset.account_id || adset.ad_account_id}
+              adAccountId={accountId}
               direction={actionPanel}
               onSuccess={handleBudgetSuccess}
               onCancel={() => setActionPanel(null)}
@@ -269,7 +267,7 @@ export default function AdSetCard({ adset, onAction }) {
         <AdDetailModal
           adsetId={adset.id}
           adsetName={adset.name}
-          accountId={adset.account_id || adset.ad_account_id}
+          accountId={accountId}
           onClose={() => setShowModal(false)}
         />
       )}
