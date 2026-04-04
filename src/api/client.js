@@ -17,8 +17,8 @@ apiClient.interceptors.response.use(
     const status = error.response?.status;
 
     if (status === 401) {
-      // Only redirect if we're not already on login page
-      if (!window.location.pathname.includes('/login')) {
+      // Only redirect if we're not already on the root (login) page
+      if (window.location.pathname !== '/') {
         window.location.href = '/';
       }
     }
