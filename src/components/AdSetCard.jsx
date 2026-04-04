@@ -319,6 +319,7 @@ export default function AdSetCard({ adset, accountId, onAction }) {
           adsetId={adset.id}
           adsetName={adset.name}
           accountId={accountId}
+          campaignObjective={adset.campaign_objective || null}
           onClose={() => setShowModal(false)}
         />
       )}

@@ -111,7 +111,7 @@ function AdPreview({ ad, onExpand }) {
   );
 }
 
-export default function AdDetailModal({ adsetId, adsetName, accountId, onClose }) {
+export default function AdDetailModal({ adsetId, adsetName, accountId, campaignObjective, onClose }) {
   const [adsData, setAdsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -125,7 +125,8 @@ export default function AdDetailModal({ adsetId, adsetName, accountId, onClose }
       setLoading(true);
       setError(null);
       try {
-        const response = await apiClient.get(`/accounts/${accountId}/adsets/${adsetId}/ads`);
+        const params = campaignObjective ? { objective: campaignObjective } : {};
+        const response = await apiClient.get(`/accounts/${accountId}/adsets/${adsetId}/ads`, { params });
         setAdsData(response.data);
       } catch (err) {
         setError(err.message || 'Error al cargar los anuncios.');
