@@ -52,27 +52,19 @@ export default function Dashboard() {
     }
 
     const fetchData = async () => {
-      // Fetch ABO adsets
       setAdsetsLoading(true);
-      setAdsetsError(null);
-      try {
-        const response = await apiClient.get(`/accounts/${selectedAccount}/adsets`);
-        setAdsets(response.data?.adsets || response.data || []);
-      } catch (err) {
-        setAdsetsError(err.message || 'Error al cargar los conjuntos de anuncios.');
-      } finally {
-        setAdsetsLoading(false);
-      }
-
-      // Fetch CBO campaigns
       setCampaignsLoading(true);
+      setAdsetsError(null);
       setCampaignsError(null);
       try {
-        const response = await apiClient.get(`/accounts/${selectedAccount}/campaigns`);
-        setCampaigns(response.data?.campaigns || response.data || []);
+        const response = await apiClient.get(`/accounts/${selectedAccount}/adsets`);
+        setAdsets(response.data?.abo || []);
+        setCampaigns(response.data?.cbo || []);
       } catch (err) {
-        setCampaignsError(err.message || 'Error al cargar las campañas.');
+        setAdsetsError(err.message || 'Error al cargar los datos.');
+        setCampaignsError(err.message || 'Error al cargar los datos.');
       } finally {
+        setAdsetsLoading(false);
         setCampaignsLoading(false);
       }
     };
