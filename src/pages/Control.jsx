@@ -244,7 +244,7 @@ export default function Control({ onBack }) {
     setError(null);
     try {
       const res = await apiClient.get('/accounts');
-      const raw = res.data?.accounts || res.data || [];
+      const raw = Array.isArray(res.data) ? res.data : Array.isArray(res.data?.accounts) ? res.data.accounts : [];
 
       // Para cada cuenta pedimos insights del mes actual
       const withMetrics = await Promise.all(
