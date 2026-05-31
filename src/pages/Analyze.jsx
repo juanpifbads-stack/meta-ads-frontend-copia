@@ -27,24 +27,44 @@ function parseExtra(extra) {
   if (!extra) return '—';
   try {
     const obj = typeof extra === 'string' ? JSON.parse(extra) : extra;
-    const parts = [];
-    if (obj.old_value !== undefined && obj.new_value !== undefined) {
-      parts.push(`${obj.old_value} → ${obj.new_value}`);
-    } else if (obj.new_status) {
-      parts.push(obj.new_status);
-    } else {
-      return JSON.stringify(obj).slice(0, 80);
+    if (typeof obj !== 'object' || obj === null) return String(obj).slice(0, 80);
+    const oldVal = obj.old_value ?? obj.OLD_VALUE;
+    const newVal = obj.new_value ?? obj.NEW_VALUE;
+    if (oldVal !== undefined && newVal !== undefined) {
+      const fmt = (v) => {
+        if (typeof v === 'object' && v !== null) {
+          if (v.amount !== undefined) return `$${Number(v.amount / 100).toLocaleString('es-AR')}`;
+          return JSON.stringify(v).slice(0, 40);
+        }
+        return String(v);
+      };
+      return `${fmt(oldVal)} → ${fmt(newVal)}`;
     }
-    return parts.join(' | ');
+    if (obj.new_status) return obj.new_status;
+    if (obj.NEW_STATUS) return obj.NEW_STATUS;
+    return JSON.stringify(obj).slice(0, 80);
   } catch {
     return String(extra).slice(0, 80);
   }
 }
 
+function parseDate(eventTime) {
+  if (!eventTime) return '—';
+  // Meta returns either a Unix timestamp (number) or an ISO string
+  const d = typeof eventTime === 'number'
+    ? new Date(eventTime * 1000)
+    : new Date(eventTime);
+  if (isNaN(d.getTime())) return String(eventTime);
+  return d.toLocaleString('es-AR', {
+    day: '2-digit', month: '2-digit', year: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
 function toCSV(activities) {
   const headers = ['Fecha', 'Tipo de cambio', 'Objeto', 'Tipo de objeto', 'Detalle', 'Actor'];
   const rows = activities.map((a) => [
-    new Date(a.event_time * 1000).toLocaleString('es-AR'),
+    parseDate(a.event_time),
     labelEvent(a.event_type),
     a.object_name || '—',
     a.object_type || '—',
@@ -170,12 +190,7 @@ export default function Analyze({ onBack }) {
             <tbody>
               {activities.map((a, i) => (
                 <tr key={i}>
-                  <td className="analyze-td--date">
-                    {new Date(a.event_time * 1000).toLocaleString('es-AR', {
-                      day: '2-digit', month: '2-digit', year: '2-digit',
-                      hour: '2-digit', minute: '2-digit',
-                    })}
-                  </td>
+                  <td className="analyze-td--date">{parseDate(a.event_time)}</td>
                   <td><span className="analyze-tag">{labelEvent(a.event_type)}</span></td>
                   <td className="analyze-td--name">{a.object_name || '—'}</td>
                   <td className="analyze-td--type">{a.object_type || '—'}</td>
