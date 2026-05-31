@@ -99,7 +99,7 @@ function AccountCard({ account, goal, onGoalChange }) {
   const roasPct = roasGoal > 0 ? Math.min((roas / roasGoal) * 100, 999) : 0;
 
   const pace = paceStatus(revGoal, purchaseValue);
-  const alert = trendAlert(dailyGoal, account.last4Spend || 0);
+  const alert = trendAlert(dailyGoal, account.last4PurchaseValue || 0);
 
   const roasStatus = roasGoal > 0
     ? roas >= roasGoal ? 'good' : roas >= roasGoal * 0.7 ? 'warn' : 'bad'
