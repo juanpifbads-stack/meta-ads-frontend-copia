@@ -29,6 +29,15 @@ export default function Choice({ onPick }) {
             </div>
             <div className="choice-arrow">Ir al control →</div>
           </div>
+          <div className="choice-card" onClick={() => onPick('analyze')}>
+            <div className="choice-num">— 03</div>
+            <div className="choice-name">Analizar cuenta</div>
+            <div className="choice-desc">
+              Descargá el historial completo de cambios de cualquier cuenta:
+              presupuestos, estados, nuevos conjuntos y más. Elegís cuenta y período.
+            </div>
+            <div className="choice-arrow">Ir a analizar →</div>
+          </div>
         </div>
         <button className="choice-logout" onClick={logout}>Cerrar sesión</button>
       </div>

@@ -43,9 +43,13 @@
 
 .choice-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
   margin-bottom: 24px;
+}
+
+@media (max-width: 780px) {
+  .choice-grid { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 520px) {

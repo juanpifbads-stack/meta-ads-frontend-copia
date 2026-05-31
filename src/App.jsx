@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Audit from './pages/Audit.jsx';
 import Choice from './pages/Choice.jsx';
 import Control from './pages/Control.jsx';
+import Analyze from './pages/Analyze.jsx';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -50,7 +51,8 @@ function AppShell() {
 
   if (view === 'optimize') return <Dashboard onBack={() => setView('choice')} />;
   if (view === 'control') return <Control onBack={() => setView('choice')} />;
-  return <Choice onPick={(mode) => setView(mode === 'optimize' ? 'optimize' : 'control')} />;
+  if (view === 'analyze') return <Analyze onBack={() => setView('choice')} />;
+  return <Choice onPick={(mode) => setView(mode)} />;
 }
 
 export default function App() {

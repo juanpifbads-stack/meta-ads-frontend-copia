@@ -1,0 +1,217 @@
+.analyze-page {
+  min-height: 100vh;
+  background: var(--color-background);
+  padding: 32px 24px 64px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.analyze-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+
+.analyze-brand {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-brand-blue);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.analyze-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.analyze-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.1;
+}
+
+.analyze-btn {
+  background: var(--color-brand-blue);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.analyze-btn--ghost {
+  background: transparent;
+  color: var(--color-text-primary);
+  border: 1.5px solid var(--color-gray-mid);
+}
+.analyze-btn--ghost:hover { border-color: var(--color-brand-blue); color: var(--color-brand-blue); }
+
+.analyze-controls {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-gray-light);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.analyze-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.analyze-field label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.analyze-field select,
+.analyze-field input[type="date"] {
+  border: 1.5px solid var(--color-gray-light);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 13px;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  outline: none;
+  font-family: var(--font-mono);
+  min-width: 180px;
+}
+
+.analyze-field select:focus,
+.analyze-field input[type="date"]:focus {
+  border-color: var(--color-brand-blue);
+}
+
+.analyze-field--actions {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding-top: 18px;
+}
+
+.analyze-error {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: var(--color-danger);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+.analyze-empty {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text-muted);
+  padding: 32px 0;
+  text-align: center;
+}
+
+.analyze-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+}
+
+.analyze-table-wrap {
+  overflow-x: auto;
+}
+
+.analyze-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.analyze-table th {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1.5px solid var(--color-gray-light);
+  white-space: nowrap;
+}
+
+.analyze-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-gray-light);
+  color: var(--color-text-primary);
+  vertical-align: middle;
+}
+
+.analyze-table tr:hover td {
+  background: var(--color-surface);
+}
+
+.analyze-td--date {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.analyze-td--name {
+  font-weight: 600;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analyze-td--type {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.analyze-td--detail {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  max-width: 200px;
+}
+
+.analyze-td--actor {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.analyze-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--color-gray-light);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
