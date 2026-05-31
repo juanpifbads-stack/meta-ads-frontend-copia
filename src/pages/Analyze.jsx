@@ -105,6 +105,7 @@ export default function Analyze({ onBack }) {
     try {
       const res = await apiClient.get(`/accounts/${selectedAccount}/activities`, {
         params: { since, until },
+        timeout: 120000,
       });
       setActivities(res.data.activities || []);
       setFetched(true);
