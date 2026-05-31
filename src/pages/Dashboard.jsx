@@ -6,7 +6,7 @@ import AccountSelector from '../components/AccountSelector.jsx';
 import AdSetCard from '../components/AdSetCard.jsx';
 import CampaignCard from '../components/CampaignCard.jsx';
 
-export default function Dashboard() {
+export default function Dashboard({ onBack }) {
   const { user, logout } = useAuth();
 
   // Accounts
@@ -140,6 +140,15 @@ export default function Dashboard() {
             <span className="logo-subtitle">/ ads dashboard</span>
           </div>
           <nav className="header-nav">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="btn btn-secondary"
+                style={{ fontSize: '11px', padding: '5px 12px' }}
+              >
+                ← Modos
+              </button>
+            )}
             <Link
               to="/audit"
               className="btn btn-secondary"
