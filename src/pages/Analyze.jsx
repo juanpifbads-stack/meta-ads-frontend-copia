@@ -58,16 +58,33 @@ function isManualEvent(type) {
   return MANUAL_EVENT_TYPES.has(type?.toLowerCase());
 }
 
+function extractBudget(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'number') return v > 10000 ? v / 100 : v;
+  if (typeof v === 'object') {
+    // {type: "payment_amount", currency: "ARS", amount: X}
+    if (v.amount !== undefined) return Number(v.amount) > 10000 ? Number(v.amount) / 100 : Number(v.amount);
+    if (v.value !== undefined) return Number(v.value) > 10000 ? Number(v.value) / 100 : Number(v.value);
+    if (v.daily_budget !== undefined) return Number(v.daily_budget) / 100;
+    if (v.lifetime_budget !== undefined) return Number(v.lifetime_budget) / 100;
+  }
+  return null;
+}
+
+function fmtMoney(n) {
+  return `$${Number(n).toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
+}
+
 function fmtVal(v) {
   if (v === null || v === undefined) return '—';
+  if (STATUS_LABELS[v]) return STATUS_LABELS[v];
+  if (typeof v === 'number') return fmtMoney(v > 10000 ? v / 100 : v);
   if (typeof v === 'object') {
-    if (v.amount !== undefined) return `$${Number(v.amount / 100).toLocaleString('es-AR')}`;
+    const b = extractBudget(v);
+    if (b !== null) return fmtMoney(b);
     return JSON.stringify(v).slice(0, 40);
   }
-  // Status codes
-  if (STATUS_LABELS[v]) return STATUS_LABELS[v];
-  // Numeric budget (in cents or direct)
-  if (typeof v === 'number' && v > 100) return `$${(v / 100).toLocaleString('es-AR')}`;
+  if (STATUS_LABELS[String(v)]) return STATUS_LABELS[String(v)];
   return String(v);
 }
 
@@ -80,15 +97,29 @@ function parseExtra(extra, eventType) {
     const oldVal = obj.old_value ?? obj.OLD_VALUE;
     const newVal = obj.new_value ?? obj.NEW_VALUE;
 
+    const isBudget = eventType?.toLowerCase().includes('budget');
+
     if (oldVal !== undefined && newVal !== undefined) {
+      if (isBudget) {
+        const oldB = extractBudget(oldVal);
+        const newB = extractBudget(newVal);
+        if (oldB !== null && newB !== null && oldB > 0) {
+          const pct = ((newB - oldB) / oldB * 100).toFixed(0);
+          const arrow = newB > oldB ? '⬆' : '⬇';
+          return `${fmtMoney(oldB)} → ${fmtMoney(newB)} (${arrow}${Math.abs(pct)}%)`;
+        }
+        if (oldB !== null && newB !== null) return `${fmtMoney(oldB)} → ${fmtMoney(newB)}`;
+      }
       return `${fmtVal(oldVal)} → ${fmtVal(newVal)}`;
     }
     if (obj.new_status || obj.NEW_STATUS) {
       const s = obj.new_status || obj.NEW_STATUS;
       return STATUS_LABELS[s] || s;
     }
-    // For budget events, look for budget fields
-    if (obj.budget) return `$${Number(obj.budget / 100).toLocaleString('es-AR')}`;
+    if (isBudget) {
+      const b = extractBudget(obj);
+      if (b !== null) return fmtMoney(b);
+    }
     return '—';
   } catch {
     return '—';
