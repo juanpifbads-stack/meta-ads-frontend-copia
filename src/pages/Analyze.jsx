@@ -2,49 +2,96 @@ import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../api/client.js';
 import './Analyze.css';
 
+// Solo estos tipos de eventos son cambios manuales relevantes
+const MANUAL_EVENT_TYPES = new Set([
+  'update_ad_set_budget',
+  'update_ad_set_bid',
+  'update_ad_set_run_status',
+  'update_ad_run_status',
+  'update_campaign_run_status',
+  'update_campaign_budget',
+  'create_ad_set',
+  'create_ad',
+  'create_campaign',
+  'delete_ad_set',
+  'delete_ad',
+  'delete_campaign',
+  'update_ad_set_target',
+  'update_ad_creative',
+  'update_ad_set_name',
+  'update_campaign_name',
+]);
+
 const EVENT_TYPE_LABELS = {
-  UPDATE_AD_SET_BUDGET: 'Cambio de presupuesto',
-  UPDATE_AD_SET_BID: 'Cambio de puja',
-  UPDATE_AD_SET_STATUS: 'Estado conjunto',
-  UPDATE_AD_STATUS: 'Estado anuncio',
-  UPDATE_CAMPAIGN_STATUS: 'Estado campaña',
-  UPDATE_CAMPAIGN_BUDGET: 'Presupuesto campaña',
-  CREATE_AD_SET: 'Nuevo conjunto',
-  CREATE_AD: 'Nuevo anuncio',
-  CREATE_CAMPAIGN: 'Nueva campaña',
-  DELETE_AD_SET: 'Conjunto eliminado',
-  DELETE_AD: 'Anuncio eliminado',
-  DELETE_CAMPAIGN: 'Campaña eliminada',
-  UPDATE_AD_CREATIVE: 'Cambio de creativo',
-  UPDATE_AD_SET_TARGET: 'Cambio de targeting',
+  update_ad_set_budget:      '💰 Presupuesto conjunto',
+  update_campaign_budget:    '💰 Presupuesto campaña',
+  update_ad_set_bid:         '🎯 Cambio de puja',
+  update_ad_set_run_status:  '⏯ Estado conjunto',
+  update_ad_run_status:      '⏯ Estado anuncio',
+  update_campaign_run_status:'⏯ Estado campaña',
+  create_ad_set:             '✨ Nuevo conjunto',
+  create_ad:                 '✨ Nuevo anuncio',
+  create_campaign:           '✨ Nueva campaña',
+  delete_ad_set:             '🗑 Conjunto eliminado',
+  delete_ad:                 '🗑 Anuncio eliminado',
+  delete_campaign:           '🗑 Campaña eliminada',
+  update_ad_set_target:      '🎯 Cambio de targeting',
+  update_ad_creative:        '🖼 Cambio de creativo',
+  update_ad_set_name:        '✏️ Nombre conjunto',
+  update_campaign_name:      '✏️ Nombre campaña',
+};
+
+const STATUS_LABELS = {
+  ACTIVE: 'Activo',
+  PAUSED: 'Pausado',
+  DELETED: 'Eliminado',
+  ARCHIVED: 'Archivado',
+  1: 'Activo',
+  2: 'Pausado',
 };
 
 function labelEvent(type) {
-  return EVENT_TYPE_LABELS[type] || type || '—';
+  return EVENT_TYPE_LABELS[type?.toLowerCase()] || EVENT_TYPE_LABELS[type] || type || '—';
 }
 
-function parseExtra(extra) {
+function isManualEvent(type) {
+  return MANUAL_EVENT_TYPES.has(type?.toLowerCase());
+}
+
+function fmtVal(v) {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'object') {
+    if (v.amount !== undefined) return `$${Number(v.amount / 100).toLocaleString('es-AR')}`;
+    return JSON.stringify(v).slice(0, 40);
+  }
+  // Status codes
+  if (STATUS_LABELS[v]) return STATUS_LABELS[v];
+  // Numeric budget (in cents or direct)
+  if (typeof v === 'number' && v > 100) return `$${(v / 100).toLocaleString('es-AR')}`;
+  return String(v);
+}
+
+function parseExtra(extra, eventType) {
   if (!extra) return '—';
   try {
     const obj = typeof extra === 'string' ? JSON.parse(extra) : extra;
-    if (typeof obj !== 'object' || obj === null) return String(obj).slice(0, 80);
+    if (typeof obj !== 'object' || obj === null) return fmtVal(obj);
+
     const oldVal = obj.old_value ?? obj.OLD_VALUE;
     const newVal = obj.new_value ?? obj.NEW_VALUE;
+
     if (oldVal !== undefined && newVal !== undefined) {
-      const fmt = (v) => {
-        if (typeof v === 'object' && v !== null) {
-          if (v.amount !== undefined) return `$${Number(v.amount / 100).toLocaleString('es-AR')}`;
-          return JSON.stringify(v).slice(0, 40);
-        }
-        return String(v);
-      };
-      return `${fmt(oldVal)} → ${fmt(newVal)}`;
+      return `${fmtVal(oldVal)} → ${fmtVal(newVal)}`;
     }
-    if (obj.new_status) return obj.new_status;
-    if (obj.NEW_STATUS) return obj.NEW_STATUS;
-    return JSON.stringify(obj).slice(0, 80);
+    if (obj.new_status || obj.NEW_STATUS) {
+      const s = obj.new_status || obj.NEW_STATUS;
+      return STATUS_LABELS[s] || s;
+    }
+    // For budget events, look for budget fields
+    if (obj.budget) return `$${Number(obj.budget / 100).toLocaleString('es-AR')}`;
+    return '—';
   } catch {
-    return String(extra).slice(0, 80);
+    return '—';
   }
 }
 
@@ -107,7 +154,9 @@ export default function Analyze({ onBack }) {
         params: { since, until },
         timeout: 120000,
       });
-      setActivities(res.data.activities || []);
+      const all = res.data.activities || [];
+      const manual = all.filter((a) => isManualEvent(a.event_type));
+      setActivities(manual);
       setFetched(true);
     } catch (err) {
       setError(err.message || 'No se pudo obtener el historial.');
@@ -195,7 +244,7 @@ export default function Analyze({ onBack }) {
                   <td><span className="analyze-tag">{labelEvent(a.event_type)}</span></td>
                   <td className="analyze-td--name">{a.object_name || '—'}</td>
                   <td className="analyze-td--type">{a.object_type || '—'}</td>
-                  <td className="analyze-td--detail">{parseExtra(a.extra_data)}</td>
+                  <td className="analyze-td--detail">{parseExtra(a.extra_data, a.event_type)}</td>
                   <td className="analyze-td--actor">{a.actor_name || '—'}</td>
                 </tr>
               ))}
