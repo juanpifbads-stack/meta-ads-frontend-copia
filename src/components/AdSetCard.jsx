@@ -31,8 +31,10 @@ export default function AdSetCard({ adset, accountId, onAction }) {
   const [pauseLoading, setPauseLoading] = useState(false);
   const [pauseError, setPauseError] = useState(null);
   const [pauseSuccess, setPauseSuccess] = useState(false);
+  const [currentBudgetOverride, setCurrentBudgetOverride] = useState(null);
+  const [updatedAtOverride, setUpdatedAtOverride] = useState(null);
 
-  const budget = adset.daily_budget || adset.lifetime_budget || 0;
+  const budget = currentBudgetOverride ?? adset.daily_budget ?? adset.lifetime_budget ?? 0;
   const budgetLabel = adset.daily_budget ? 'diario' : 'total';
 
   const handleCardClick = (e) => {
@@ -72,6 +74,8 @@ export default function AdSetCard({ adset, accountId, onAction }) {
 
   const handleBudgetSuccess = (newBudget) => {
     setActionPanel(null);
+    setCurrentBudgetOverride(newBudget);
+    setUpdatedAtOverride(new Date().toISOString());
     onAction && onAction({ type: 'budget_updated', entityId: adset.id, newBudget });
   };
 
@@ -79,7 +83,7 @@ export default function AdSetCard({ adset, accountId, onAction }) {
   const metrics_14d = adset.metrics_14d || adset.metrics?.['14d'];
   const metrics_30d = adset.metrics_30d || adset.metrics?.['30d'];
   const trendData = adset.daily_trend || adset.trend_data || adset.daily_data || [];
-  const updatedAt = formatUpdatedTime(adset.updated_time);
+  const updatedAt = formatUpdatedTime(updatedAtOverride || adset.updated_time);
 
   return (
     <>
