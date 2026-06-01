@@ -120,7 +120,10 @@ export default function AdSetCard({ adset, accountId, onAction }) {
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            <span className="badge-active">Activo</span>
+            {pauseSuccess
+              ? <span className="badge-paused">Pausado</span>
+              : <span className="badge-active">Activo</span>
+            }
           </div>
         </div>
 
