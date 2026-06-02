@@ -13,7 +13,8 @@ export default function Dashboard({ onBack }) {
   const [accounts, setAccounts] = useState([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [accountsError, setAccountsError] = useState(null);
-  const [selectedAccount, setSelectedAccount] = useState(() => localStorage.getItem('selectedAccount') || null);
+  // Start with no account selected — the user must pick one explicitly.
+  const [selectedAccount, setSelectedAccount] = useState(null);
 
   // Adsets (ABO)
   const [adsets, setAdsets] = useState([]);
