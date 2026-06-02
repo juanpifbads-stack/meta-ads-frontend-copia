@@ -110,34 +110,47 @@
   padding: 32px;
   margin-bottom: 20px;
 }
+.cp-hero-period {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
 .cp-hero-label {
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   opacity: 0.7;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
-.cp-hero-title { font-size: 26px; font-weight: 700; line-height: 1.25; margin-bottom: 10px; }
+.cp-hero-title { font-size: 24px; font-weight: 700; line-height: 1.25; margin-bottom: 10px; }
 .cp-hero-desc { font-size: 14px; opacity: 0.85; line-height: 1.5; }
-.cp-monthly {
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255,255,255,0.2);
+
+/* Banner de mes — separador grande y claro */
+.cp-month-banner {
   display: flex;
-  gap: 12px;
-  align-items: center;
+  align-items: baseline;
+  gap: 16px;
   flex-wrap: wrap;
+  padding: 18px 4px;
+  margin-bottom: 20px;
+  border-bottom: 3px solid var(--color-text-primary);
 }
-.cp-monthly-tag {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  background: rgba(255,255,255,0.18);
-  padding: 4px 10px;
-  border-radius: 99px;
-  white-space: nowrap;
+.cp-month-banner-big {
+  font-size: 34px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+  line-height: 1;
 }
-.cp-monthly-obj { font-size: 13px; opacity: 0.9; }
+.cp-month-banner-obj {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
 
 /* KPIs */
 .cp-kpis {

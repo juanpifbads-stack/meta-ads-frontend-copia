@@ -7,7 +7,7 @@ import Audit from './pages/Audit.jsx';
 import Choice from './pages/Choice.jsx';
 import Control from './pages/Control.jsx';
 import Analyze from './pages/Analyze.jsx';
-import ClientPortal from './pages/ClientPortal.jsx';
+import ClientPortal, { PaymentsPortal } from './pages/ClientPortal.jsx';
 import ClientsList from './pages/ClientsList.jsx';
 
 function ProtectedRoute({ children }) {
@@ -87,6 +87,8 @@ export default function App() {
       />
       {/* Portal de cliente — público, protegido por clave propia */}
       <Route path="/cliente/:slug" element={<ClientPortal />} />
+      {/* Vista solo de pagos — para administración, clave separada */}
+      <Route path="/cliente/:slug/pagos" element={<PaymentsPortal />} />
       {/* Legacy redirect */}
       <Route path="/dashboard" element={<Navigate to="/app" replace />} />
       {/* Fallback */}

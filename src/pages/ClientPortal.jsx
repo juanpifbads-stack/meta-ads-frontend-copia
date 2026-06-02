@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { getClient } from '../data/clients.js';
+import PaymentsSection from '../components/PaymentsSection.jsx';
 import './ClientPortal.css';
 
 function fmtMoney(n) {
@@ -8,13 +9,6 @@ function fmtMoney(n) {
   return new Intl.NumberFormat('es-AR', {
     style: 'currency', currency: 'ARS', maximumFractionDigits: 0,
   }).format(n);
-}
-
-function fmtDate(iso) {
-  if (!iso) return '—';
-  try {
-    return new Date(iso + 'T00:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
-  } catch { return iso; }
 }
 
 function daysElapsed() { return new Date().getDate(); }
@@ -61,15 +55,41 @@ function GoalBar({ label, current, target, pct, status }) {
   );
 }
 
+/* ── Gate de clave genérico ── */
+function KeyGate({ client, title, eyebrow, expectedKey, onPass }) {
+  const [keyInput, setKeyInput] = useState('');
+  const [keyError, setKeyError] = useState(false);
+  const check = () => {
+    if (keyInput === expectedKey) onPass();
+    else setKeyError(true);
+  };
+  return (
+    <div className="cp-gate">
+      <div className="cp-gate-box">
+        <div className="cp-brand">alquimia.</div>
+        <div className="cp-gate-eyebrow">{eyebrow}</div>
+        <h1 className="cp-gate-title">{title}</h1>
+        <p className="cp-gate-msg">Ingresá la clave de acceso para continuar.</p>
+        <input
+          type="password"
+          className="cp-gate-input"
+          placeholder="Clave de acceso"
+          value={keyInput}
+          onChange={(e) => { setKeyInput(e.target.value); setKeyError(false); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') check(); }}
+        />
+        {keyError && <div className="cp-gate-error">Clave incorrecta.</div>}
+        <button className="cp-btn" onClick={check}>Ingresar</button>
+      </div>
+    </div>
+  );
+}
+
 export default function ClientPortal() {
   const { slug } = useParams();
   const client = getClient(slug);
-
   const [authed, setAuthed] = useState(false);
-  const [keyInput, setKeyInput] = useState('');
-  const [keyError, setKeyError] = useState(false);
 
-  // Cliente inexistente o inactivo
   if (!client || !client.active) {
     return (
       <div className="cp-gate">
@@ -81,40 +101,15 @@ export default function ClientPortal() {
     );
   }
 
-  // Gate de clave
   if (!authed) {
     return (
-      <div className="cp-gate">
-        <div className="cp-gate-box">
-          <div className="cp-brand">alquimia.</div>
-          <div className="cp-gate-eyebrow">Portal de cliente</div>
-          <h1 className="cp-gate-title">{client.name}</h1>
-          <p className="cp-gate-msg">Ingresá la clave de acceso para ver tu panel.</p>
-          <input
-            type="password"
-            className="cp-gate-input"
-            placeholder="Clave de acceso"
-            value={keyInput}
-            onChange={(e) => { setKeyInput(e.target.value); setKeyError(false); }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                if (keyInput === client.accessKey) setAuthed(true);
-                else setKeyError(true);
-              }
-            }}
-          />
-          {keyError && <div className="cp-gate-error">Clave incorrecta.</div>}
-          <button
-            className="cp-btn"
-            onClick={() => {
-              if (keyInput === client.accessKey) setAuthed(true);
-              else setKeyError(true);
-            }}
-          >
-            Ingresar
-          </button>
-        </div>
-      </div>
+      <KeyGate
+        client={client}
+        eyebrow="Portal de cliente"
+        title={client.name}
+        expectedKey={client.accessKey}
+        onPass={() => setAuthed(true)}
+      />
     );
   }
 
@@ -122,28 +117,15 @@ export default function ClientPortal() {
 }
 
 function ClientDashboard({ client }) {
-  const { strategyMacro, strategyMonthly, roadmap, budget, ecommerceGoal, metaGoal, hypotheses, strategicProducts, considerations } = client;
+  const {
+    strategyMacro, strategyMonthly, roadmap, budget, ecommerceGoal,
+    metaGoal, hypotheses, strategicProducts, considerations,
+  } = client;
 
-  // Totales de presupuesto
-  const totals = useMemo(() => {
-    const sum = (arr) => arr.reduce((s, x) => s + (x.amount || 0), 0);
-    const servicios = sum(budget.servicios);
-    const medios = sum(budget.medios);
-    const produccion = sum(budget.produccion);
-    return { servicios, medios, produccion, general: servicios + medios + produccion };
-  }, [budget]);
-
-  // Avance ecommerce
   const ecomPct = ecommerceGoal.target > 0 ? (ecommerceGoal.current / ecommerceGoal.target) * 100 : 0;
   const expected = (ecommerceGoal.target / daysInMonth()) * daysElapsed();
   const ecomDeviation = expected > 0 ? ((ecommerceGoal.current - expected) / expected) * 100 : 0;
   const ticket = ecommerceGoal.orders > 0 ? ecommerceGoal.current / ecommerceGoal.orders : 0;
-
-  const allPayments = [
-    ...budget.servicios.map((x) => ({ ...x, group: 'Servicios' })),
-    ...budget.medios.map((x) => ({ ...x, group: 'Medios' })),
-    ...budget.produccion.map((x) => ({ ...x, group: 'Producción' })),
-  ].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
 
   return (
     <div className="cp-page">
@@ -153,19 +135,21 @@ function ClientDashboard({ client }) {
           <div className="cp-brand">alquimia.</div>
           <div className="cp-eyebrow">Panel de {client.name}</div>
         </div>
-        <div className="cp-period">{strategyMacro.period}</div>
       </header>
 
-      {/* Estrategia macro */}
+      {/* Estrategia macro — período bien grande */}
       <section className="cp-hero">
-        <div className="cp-hero-label">Estrategia {strategyMacro.period}</div>
+        <div className="cp-hero-period">{strategyMacro.period}</div>
+        <div className="cp-hero-label">Estrategia de largo plazo</div>
         <h1 className="cp-hero-title">{strategyMacro.objective}</h1>
         <p className="cp-hero-desc">{strategyMacro.description}</p>
-        <div className="cp-monthly">
-          <span className="cp-monthly-tag">{strategyMonthly.month}</span>
-          <span className="cp-monthly-obj">{strategyMonthly.objective}</span>
-        </div>
       </section>
+
+      {/* Banner de mes — super claro */}
+      <div className="cp-month-banner">
+        <div className="cp-month-banner-big">{strategyMonthly.month}</div>
+        <div className="cp-month-banner-obj">{strategyMonthly.objective}</div>
+      </div>
 
       {/* KPI Cards */}
       <section className="cp-kpis">
@@ -188,9 +172,17 @@ function ClientDashboard({ client }) {
         </div>
         <div className="cp-kpi">
           <div className="cp-kpi-label">Presupuesto total mes</div>
-          <div className="cp-kpi-value">{fmtMoney(totals.general)}</div>
-          <div className="cp-kpi-sub">próximo pago</div>
+          <div className="cp-kpi-value">{fmtMoney(
+            [...budget.servicios, ...budget.medios, ...budget.produccion].reduce((s, x) => s + (x.amount || 0), 0)
+          )}</div>
+          <div className="cp-kpi-sub">a pagar</div>
         </div>
+      </section>
+
+      {/* PAGOS — arriba y bien claro */}
+      <section className="cp-section">
+        <h2 className="cp-section-title">Pagos del mes</h2>
+        <PaymentsSection budget={budget} />
       </section>
 
       {/* Avance objetivo ecommerce */}
@@ -268,44 +260,6 @@ function ClientDashboard({ client }) {
         </div>
       </section>
 
-      {/* Presupuesto y pagos */}
-      <section className="cp-section">
-        <h2 className="cp-section-title">Presupuesto y pagos del próximo mes</h2>
-        <div className="cp-card">
-          <table className="cp-payments">
-            <thead>
-              <tr><th>Concepto</th><th>Categoría</th><th>Vencimiento</th><th>Monto</th><th>Estado</th></tr>
-            </thead>
-            <tbody>
-              {allPayments.map((p, i) => (
-                <tr key={i}>
-                  <td>{p.concept}</td>
-                  <td className="cp-muted">{p.group}</td>
-                  <td className="cp-mono">{fmtDate(p.dueDate)}</td>
-                  <td>{fmtMoney(p.amount)}</td>
-                  <td><span className={`cp-pill ${STATUS_PILL[p.status]?.cls || ''}`}>{STATUS_PILL[p.status]?.label || p.status}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="cp-totals">
-            <div><span>Servicios</span><strong>{fmtMoney(totals.servicios)}</strong></div>
-            <div><span>Medios</span><strong>{fmtMoney(totals.medios)}</strong></div>
-            <div><span>Producción</span><strong>{fmtMoney(totals.produccion)}</strong></div>
-            <div className="cp-total-general"><span>Total general</span><strong>{fmtMoney(totals.general)}</strong></div>
-          </div>
-          <div className="cp-bank">
-            <div className="cp-bank-title">Datos para el pago</div>
-            <div className="cp-bank-grid">
-              <div><span>Titular</span><strong>{budget.bankInfo.titular}</strong></div>
-              <div><span>Alias</span><strong>{budget.bankInfo.alias}</strong></div>
-              <div><span>CBU/CVU</span><strong className="cp-mono">{budget.bankInfo.cbu}</strong></div>
-            </div>
-            {budget.bankInfo.observaciones && <div className="cp-bank-obs">{budget.bankInfo.observaciones}</div>}
-          </div>
-        </div>
-      </section>
-
       {/* Justificación de objetivos */}
       <section className="cp-section">
         <Collapsible title="Justificación de objetivos">
@@ -328,6 +282,55 @@ function ClientDashboard({ client }) {
         </Collapsible>
       </section>
 
+      <footer className="cp-footer">panel by alquimia.</footer>
+    </div>
+  );
+}
+
+/* ── Vista SOLO de pagos (para administración) ── */
+export function PaymentsPortal() {
+  const { slug } = useParams();
+  const client = getClient(slug);
+  const [authed, setAuthed] = useState(false);
+
+  if (!client || !client.active) {
+    return (
+      <div className="cp-gate">
+        <div className="cp-gate-box">
+          <div className="cp-brand">alquimia.</div>
+          <p className="cp-gate-msg">Esta vista no está disponible.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authed) {
+    return (
+      <KeyGate
+        client={client}
+        eyebrow="Pagos"
+        title={client.name}
+        expectedKey={client.paymentsKey}
+        onPass={() => setAuthed(true)}
+      />
+    );
+  }
+
+  return (
+    <div className="cp-page">
+      <header className="cp-header">
+        <div>
+          <div className="cp-brand">alquimia.</div>
+          <div className="cp-eyebrow">Pagos · {client.name}</div>
+        </div>
+      </header>
+      <div className="cp-month-banner">
+        <div className="cp-month-banner-big">Pagos del mes</div>
+        <div className="cp-month-banner-obj">Detalle de conceptos, fechas y montos a transferir.</div>
+      </div>
+      <section className="cp-section">
+        <PaymentsSection budget={client.budget} />
+      </section>
       <footer className="cp-footer">panel by alquimia.</footer>
     </div>
   );

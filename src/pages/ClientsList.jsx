@@ -29,16 +29,27 @@ export default function ClientsList({ onBack }) {
               </div>
               {c.active ? (
                 <>
-                  <div className="cl-card-link">{link}</div>
-                  <div className="cl-card-key">Clave: <strong>{c.accessKey}</strong></div>
-                  <div className="cl-card-actions">
-                    <a className="cl-btn" href={link} target="_blank" rel="noreferrer">Abrir panel</a>
-                    <button
-                      className="cl-btn cl-btn--ghost"
-                      onClick={() => navigator.clipboard?.writeText(link)}
-                    >
-                      Copiar link
-                    </button>
+                  <div className="cl-block">
+                    <div className="cl-block-label">Panel completo (cliente)</div>
+                    <div className="cl-card-link">{link}</div>
+                    <div className="cl-card-key">Clave: <strong>{c.accessKey}</strong></div>
+                    <div className="cl-card-actions">
+                      <a className="cl-btn" href={link} target="_blank" rel="noreferrer">Abrir panel</a>
+                      <button className="cl-btn cl-btn--ghost" onClick={() => navigator.clipboard?.writeText(link)}>
+                        Copiar link
+                      </button>
+                    </div>
+                  </div>
+                  <div className="cl-block">
+                    <div className="cl-block-label">Solo pagos (administración)</div>
+                    <div className="cl-card-link">{link}/pagos</div>
+                    <div className="cl-card-key">Clave: <strong>{c.paymentsKey}</strong></div>
+                    <div className="cl-card-actions">
+                      <a className="cl-btn cl-btn--ghost" href={`${link}/pagos`} target="_blank" rel="noreferrer">Abrir pagos</a>
+                      <button className="cl-btn cl-btn--ghost" onClick={() => navigator.clipboard?.writeText(`${link}/pagos`)}>
+                        Copiar link
+                      </button>
+                    </div>
                   </div>
                 </>
               ) : (

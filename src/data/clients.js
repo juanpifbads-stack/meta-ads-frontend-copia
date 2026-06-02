@@ -13,6 +13,8 @@ export const CLIENTS = {
     slug: 'moka',
     name: 'Moka Knit',
     accessKey: 'moka2026',
+    // Clave separada para el link SOLO de pagos (para administración/finanzas)
+    paymentsKey: 'pagos2026',
     active: true,
     // Cuenta de Meta (la que arranca con 7)
     metaAccountId: '708620227018166',
