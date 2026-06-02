@@ -7,6 +7,8 @@ import Audit from './pages/Audit.jsx';
 import Choice from './pages/Choice.jsx';
 import Control from './pages/Control.jsx';
 import Analyze from './pages/Analyze.jsx';
+import ClientPortal from './pages/ClientPortal.jsx';
+import ClientsList from './pages/ClientsList.jsx';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -52,6 +54,7 @@ function AppShell() {
   if (view === 'optimize') return <Dashboard onBack={() => setView('choice')} />;
   if (view === 'control') return <Control onBack={() => setView('choice')} />;
   if (view === 'analyze') return <Analyze onBack={() => setView('choice')} />;
+  if (view === 'clients') return <ClientsList onBack={() => setView('choice')} />;
   return <Choice onPick={(mode) => setView(mode)} />;
 }
 
@@ -82,6 +85,8 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      {/* Portal de cliente — público, protegido por clave propia */}
+      <Route path="/cliente/:slug" element={<ClientPortal />} />
       {/* Legacy redirect */}
       <Route path="/dashboard" element={<Navigate to="/app" replace />} />
       {/* Fallback */}

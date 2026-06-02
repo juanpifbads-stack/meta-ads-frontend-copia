@@ -23,6 +23,7 @@ const ACCOUNT_MAP = [
   { metaName: 'Cardinal Assistance',                brand: 'Cardinal Assistance',am: 'Franco' },
   { metaName: 'Cardinal Rent a Car',                brand: 'Cardinal Rent',      am: 'Franco' },
   { metaName: 'Proyecto Charcos (cuenta publicitaria)', brand: 'Proyecto Charcos', am: 'Agustín' },
+  { metaName: '800869509584808',                     brand: 'Lateckel',           am: 'Agustín' },
   { metaName: 'La Teckel Ads',                      brand: 'Lateckel',           am: 'Agustín' },
   { metaName: 'Cueva Estudios',                     brand: 'Cuevas Estudio',     am: 'Agustín' },
   { metaName: 'DASHA- Cuenta publicitaria',         brand: 'Dasha Accesorios',   am: 'Chachi' },

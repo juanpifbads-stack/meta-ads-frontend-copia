@@ -1,0 +1,45 @@
+.cl-page {
+  min-height: 100vh;
+  background: var(--color-background);
+  padding: 32px 24px 64px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.cl-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 28px;
+}
+.cl-brand { font-family: var(--font-mono); font-size: 13px; color: var(--color-brand-blue); font-weight: 700; letter-spacing: 0.06em; }
+.cl-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-muted); margin-top: 4px; }
+.cl-title { font-size: 32px; font-weight: 700; line-height: 1.1; }
+
+.cl-btn {
+  background: var(--color-brand-blue); color: #fff; border: none; border-radius: var(--radius-md);
+  padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--font-mono);
+  letter-spacing: 0.04em; text-decoration: none; display: inline-block;
+}
+.cl-btn--ghost { background: transparent; color: var(--color-text-primary); border: 1.5px solid var(--color-gray-mid); }
+.cl-btn--ghost:hover { border-color: var(--color-brand-blue); color: var(--color-brand-blue); }
+
+.cl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .cl-grid { grid-template-columns: 1fr; } }
+
+.cl-card {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-gray-light);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+.cl-card--off { opacity: 0.6; }
+.cl-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.cl-card-name { font-size: 18px; font-weight: 700; }
+.cl-tag { font-family: var(--font-mono); font-size: 10px; padding: 3px 9px; border-radius: 99px; font-weight: 600; }
+.cl-tag--on { background: #dcfce7; color: #166534; }
+.cl-tag--off { background: var(--color-gray-light); color: var(--color-text-muted); }
+
+.cl-card-link { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-secondary); word-break: break-all; margin-bottom: 6px; }
+.cl-card-key { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-muted); margin-bottom: 14px; }
+.cl-card-actions { display: flex; gap: 8px; }
+.cl-card-soon { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-muted); }
