@@ -25,6 +25,9 @@ export default function Dashboard({ onBack }) {
   const [campaignsLoading, setCampaignsLoading] = useState(false);
   const [campaignsError, setCampaignsError] = useState(null);
 
+  // Last 4 days avg spend
+  const [last4Spend, setLast4Spend] = useState(null);
+
   // Load accounts on mount
   useEffect(() => {
     const fetchAccounts = async () => {
@@ -48,6 +51,7 @@ export default function Dashboard({ onBack }) {
     if (!selectedAccount) {
       setAdsets([]);
       setCampaigns([]);
+      setLast4Spend(null);
       return;
     }
 
@@ -57,9 +61,15 @@ export default function Dashboard({ onBack }) {
       setAdsetsError(null);
       setCampaignsError(null);
       try {
-        const response = await apiClient.get(`/accounts/${selectedAccount}/adsets`);
-        setAdsets(response.data?.abo || []);
-        setCampaigns(response.data?.cbo || []);
+        const [adsetsRes, insightsRes] = await Promise.all([
+          apiClient.get(`/accounts/${selectedAccount}/adsets`),
+          apiClient.get(`/accounts/${selectedAccount}/insights/monthly`).catch(() => null),
+        ]);
+        setAdsets(adsetsRes.data?.abo || []);
+        setCampaigns(adsetsRes.data?.cbo || []);
+        if (insightsRes?.data?.last4Spend != null) {
+          setLast4Spend(insightsRes.data.last4Spend / 4);
+        }
       } catch (err) {
         setAdsetsError(err.message || 'Error al cargar los datos.');
         setCampaignsError(err.message || 'Error al cargar los datos.');
@@ -192,6 +202,30 @@ export default function Dashboard({ onBack }) {
               loading={accountsLoading}
             />
           </div>
+
+          {/* Last 4 days avg spend */}
+          {selectedAccount && last4Spend !== null && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-gray-light)',
+              borderRadius: 'var(--radius-md)',
+              padding: '10px 16px',
+              marginBottom: '20px',
+              fontFamily: 'var(--font-mono)',
+            }}>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Gasto prom. últimos 4 días
+              </span>
+              <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-primary)' }}>
+                {last4Spend > 0
+                  ? `$${last4Spend.toLocaleString('es-AR', { maximumFractionDigits: 0 })} / día`
+                  : '—'}
+              </span>
+            </div>
+          )}
 
           {/* Welcome state — no account selected */}
           {!selectedAccount && !accountsLoading && (
