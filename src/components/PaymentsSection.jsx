@@ -8,70 +8,68 @@ function fmtMoney(n) {
   }).format(n);
 }
 
-function fmtDate(iso) {
-  if (!iso) return '—';
-  try {
-    return new Date(iso + 'T00:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
-  } catch { return iso; }
-}
-
-const GROUPS = [
-  { key: 'servicios', label: 'Servicios' },
-  { key: 'medios', label: 'Medios' },
-  { key: 'produccion', label: 'Producción' },
-];
-
 export default function PaymentsSection({ budget }) {
   const [showBank, setShowBank] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(null);
 
-  const totals = useMemo(() => {
-    const sum = (arr) => arr.reduce((s, x) => s + (x.amount || 0), 0);
-    return {
-      servicios: sum(budget.servicios),
-      medios: sum(budget.medios),
-      produccion: sum(budget.produccion),
-      general: sum(budget.servicios) + sum(budget.medios) + sum(budget.produccion),
-    };
-  }, [budget]);
+  const econTotal = useMemo(
+    () => budget.economico.reduce((s, x) => s + (x.amount || 0), 0),
+    [budget]
+  );
+  const finTotal = useMemo(
+    () => budget.financiero.reduce((s, x) => s + (x.amount || 0), 0),
+    [budget]
+  );
 
-  const copy = (text) => {
+  const copy = (text, label) => {
     navigator.clipboard?.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    setCopied(label);
+    setTimeout(() => setCopied(null), 1500);
   };
 
   return (
     <div className="ps-card">
-      {/* Inversiones discriminadas por categoría */}
-      {GROUPS.map((g) => (
-        <div key={g.key} className="ps-group">
-          <div className="ps-group-head">
-            <span className="ps-group-label">{g.label}</span>
-            <span className="ps-group-total">{fmtMoney(totals[g.key])}</span>
-          </div>
-          {budget[g.key].map((item, i) => (
-            <div key={i} className="ps-line">
-              <div className="ps-line-left">
-                <span className="ps-line-concept">{item.concept}</span>
-                {item.postMonth && <span className="ps-tag-post">post día 30</span>}
-              </div>
-              <div className="ps-line-right">
-                <span className="ps-line-date">{fmtDate(item.dueDate)}</span>
-                <span className="ps-line-amount">{fmtMoney(item.amount)}</span>
-              </div>
-            </div>
-          ))}
+      {/* Económico */}
+      <div className="ps-group">
+        <div className="ps-group-head">
+          <span className="ps-group-label">Presupuesto económico del mes</span>
         </div>
-      ))}
-
-      {/* Total general */}
-      <div className="ps-general">
-        <span>Total general del mes</span>
-        <strong>{fmtMoney(totals.general)}</strong>
+        {budget.economico.map((item, i) => (
+          <div key={i} className="ps-line">
+            <div className="ps-line-left">
+              <span className="ps-line-concept">{item.concept}</span>
+              {item.detail && <span className="ps-line-detail">{item.detail}</span>}
+              {item.phase === 'post' && <span className="ps-tag-post">post día 30</span>}
+            </div>
+            <span className="ps-line-amount">{fmtMoney(item.amount)}</span>
+          </div>
+        ))}
+        <div className="ps-group-total">
+          <span>Total presupuesto del mes</span>
+          <strong>{fmtMoney(econTotal)}</strong>
+        </div>
       </div>
 
-      {/* Botón datos para transferir */}
+      {/* Financiero (mes pasado) */}
+      <div className="ps-group ps-group--fin">
+        <div className="ps-group-head">
+          <span className="ps-group-label">Financiero — mes pasado</span>
+        </div>
+        {budget.financiero.map((item, i) => (
+          <div key={i} className="ps-line">
+            <div className="ps-line-left">
+              <span className="ps-line-concept">{item.concept}</span>
+              {item.detail && <span className="ps-line-detail">{item.detail}</span>}
+            </div>
+            <span className="ps-line-amount">{fmtMoney(item.amount)}</span>
+          </div>
+        ))}
+        <div className="ps-fin-note">
+          No suma al presupuesto del mes — corresponde a pagos financieros del mes anterior.
+        </div>
+      </div>
+
+      {/* Botón transferir */}
       <button className="ps-bank-btn" onClick={() => setShowBank(!showBank)}>
         {showBank ? 'Ocultar datos para transferir' : 'Ver datos para transferir'}
       </button>
@@ -79,32 +77,36 @@ export default function PaymentsSection({ budget }) {
       {showBank && (
         <div className="ps-bank">
           <div className="ps-bank-amount">
-            Total a transferir <strong>{fmtMoney(totals.general)}</strong>
+            <span>A transferir este mes</span>
+            <strong>{fmtMoney(econTotal + finTotal)}</strong>
           </div>
           <div className="ps-bank-grid">
             <div className="ps-bank-row">
-              <span>Titular</span>
+              <span className="ps-bank-lbl">Titular</span>
               <strong>{budget.bankInfo.titular}</strong>
             </div>
             <div className="ps-bank-row">
-              <span>Alias</span>
+              <span className="ps-bank-lbl">Alias</span>
               <div className="ps-bank-copy">
                 <strong>{budget.bankInfo.alias}</strong>
-                <button onClick={() => copy(budget.bankInfo.alias)}>Copiar</button>
+                <button onClick={() => copy(budget.bankInfo.alias, 'alias')}>
+                  {copied === 'alias' ? '✓' : 'Copiar'}
+                </button>
               </div>
             </div>
             <div className="ps-bank-row">
-              <span>CBU / CVU</span>
+              <span className="ps-bank-lbl">CBU / CVU</span>
               <div className="ps-bank-copy">
                 <strong className="ps-mono">{budget.bankInfo.cbu}</strong>
-                <button onClick={() => copy(budget.bankInfo.cbu)}>Copiar</button>
+                <button onClick={() => copy(budget.bankInfo.cbu, 'cbu')}>
+                  {copied === 'cbu' ? '✓' : 'Copiar'}
+                </button>
               </div>
             </div>
           </div>
           {budget.bankInfo.observaciones && (
             <div className="ps-bank-obs">{budget.bankInfo.observaciones}</div>
           )}
-          {copied && <div className="ps-copied">✓ Copiado</div>}
         </div>
       )}
     </div>

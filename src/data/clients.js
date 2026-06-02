@@ -44,22 +44,20 @@ export const CLIENTS = {
       { week: 'Semana 4', goal: 'Escalamiento de productos seleccionados', status: 'pendiente' },
     ],
 
-    // Módulo 3 — Presupuesto y pagos (mes siguiente)
+    // Módulo 3 — Presupuesto y pagos
     budget: {
-      servicios: [
-        { concept: 'Fee mensual', amount: 1500000, dueDate: '2026-06-05', status: 'pendiente' },
-        { concept: 'Variable sobre resultados', amount: 800000, dueDate: '2026-06-30', status: 'pendiente', postMonth: true },
-        { concept: 'Email Marketing', amount: 250000, dueDate: '2026-06-05', status: 'pendiente' },
-        { concept: 'Gestión Web', amount: 300000, dueDate: '2026-06-05', status: 'pendiente' },
+      // ECONÓMICO — esto SÍ suma al "Presupuesto total del mes"
+      economico: [
+        { concept: 'Fee mensual alquimia', detail: 'TikTok + Meta Ads', amount: 1500000, phase: 'inicio' },
+        { concept: 'Email marketing + Web', amount: 550000, phase: 'inicio' },
+        { concept: 'Contenido para pauta', amount: 600000, phase: 'inicio' },
+        { concept: 'Actrices', amount: 400000, phase: 'inicio' },
+        { concept: 'Estudios + viáticos', amount: 350000, phase: 'post' },
       ],
-      medios: [
-        { concept: 'Inversión Meta', amount: 20000000, dueDate: '2026-06-30', status: 'pendiente', postMonth: true },
-        { concept: 'Inversión TikTok', amount: 5000000, dueDate: '2026-06-02', status: 'pendiente' },
-      ],
-      produccion: [
-        { concept: 'Contenido', amount: 600000, dueDate: '2026-06-05', status: 'pendiente' },
-        { concept: 'Actrices', amount: 400000, dueDate: '2026-06-05', status: 'pendiente' },
-        { concept: 'Estudios', amount: 350000, dueDate: '2026-06-05', status: 'pendiente' },
+      // FINANCIERO — del mes pasado. NO suma al presupuesto económico del mes.
+      financiero: [
+        { concept: 'Variable sobre resultados', detail: 'mes pasado', amount: 800000, phase: 'inicio' },
+        { concept: 'Inversión Meta', detail: 'mes pasado', amount: 20000000, phase: 'inicio' },
       ],
       bankInfo: {
         titular: 'Alquimia SRL',

@@ -144,8 +144,7 @@ function ClientDashboard({ client }) {
   const expected = (ecommerceGoal.target / daysInMonth()) * daysElapsed();
   const ecomDeviation = expected > 0 ? ((ecommerceGoal.current - expected) / expected) * 100 : 0;
 
-  const budgetTotal = [...budget.servicios, ...budget.medios, ...budget.produccion]
-    .reduce((s, x) => s + (x.amount || 0), 0);
+  const budgetTotal = budget.economico.reduce((s, x) => s + (x.amount || 0), 0);
 
   return (
     <div className="cp-page">
@@ -193,11 +192,11 @@ function ClientDashboard({ client }) {
           <div className="cp-kpi-label">Ritmo del mes</div>
           <div className="cp-ritmo">
             <div className="cp-ritmo-row">
-              <span>A esta altura (día {daysElapsed()}) deberías ir</span>
+              <span>Objetivo a día {daysElapsed()}:</span>
               <strong>{fmtMoney(expected)}</strong>
             </div>
             <div className="cp-ritmo-row">
-              <span>Vas</span>
+              <span>Vamos:</span>
               <strong>{fmtMoney(ecommerceGoal.current)}</strong>
             </div>
           </div>

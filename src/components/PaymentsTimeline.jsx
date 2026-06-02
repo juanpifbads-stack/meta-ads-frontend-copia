@@ -8,78 +8,68 @@ function fmtMoney(n) {
   }).format(n);
 }
 
-function dayOf(iso) {
-  try { return new Date(iso + 'T00:00:00').getDate(); } catch { return null; }
-}
-
 export default function PaymentsTimeline({ budget }) {
-  const { early, post } = useMemo(() => {
-    const all = [
-      ...budget.servicios,
-      ...budget.medios,
-      ...budget.produccion,
+  const { startItems, postItems, startTotal, postTotal } = useMemo(() => {
+    const econInicio = budget.economico.filter((x) => x.phase === 'inicio');
+    const econPost = budget.economico.filter((x) => x.phase === 'post');
+    const finInicio = budget.financiero.filter((x) => x.phase === 'inicio');
+
+    // 1 al 5: financiero (mes pasado) + económico de inicio
+    const startItems = [
+      ...finInicio.map((x) => ({ ...x, financial: true })),
+      ...econInicio,
     ];
-    const early = all.filter((x) => !x.postMonth).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-    const post = all.filter((x) => x.postMonth);
-    return { early, post };
+    const startTotal = econInicio.reduce((s, x) => s + (x.amount || 0), 0);
+    const postTotal = econPost.reduce((s, x) => s + (x.amount || 0), 0);
+    return { startItems, postItems: econPost, startTotal, postTotal };
   }, [budget]);
-
-  const earlyTotal = early.reduce((s, x) => s + (x.amount || 0), 0);
-  const postTotal = post.reduce((s, x) => s + (x.amount || 0), 0);
-
-  // Agrupar pagos tempranos por día
-  const byDay = useMemo(() => {
-    const map = new Map();
-    for (const p of early) {
-      const d = dayOf(p.dueDate);
-      if (!map.has(d)) map.set(d, []);
-      map.get(d).push(p);
-    }
-    return [...map.entries()].sort((a, b) => a[0] - b[0]);
-  }, [early]);
 
   return (
     <div className="pt-wrap">
-      {/* Bloque inicio de mes */}
+      {/* 1 al 5 de junio */}
       <div className="pt-phase">
         <div className="pt-phase-head">
           <span className="pt-phase-badge pt-phase-badge--start">1 – 5 de junio</span>
-          <span className="pt-phase-total">{fmtMoney(earlyTotal)}</span>
         </div>
         <div className="pt-phase-sub">Pagos de inicio de mes</div>
 
-        <div className="pt-line">
-          {byDay.map(([day, items]) => (
-            <div key={day} className="pt-node">
-              <div className="pt-node-day">{day} jun</div>
-              <div className="pt-node-dot" />
-              <div className="pt-node-items">
-                {items.map((it, i) => (
-                  <div key={i} className="pt-node-item">
-                    <span>{it.concept}</span>
-                    <strong>{fmtMoney(it.amount)}</strong>
-                  </div>
-                ))}
+        <div className="pt-items">
+          {startItems.map((it, i) => (
+            <div key={i} className={`pt-item ${it.financial ? 'pt-item--fin' : ''}`}>
+              <div className="pt-item-left">
+                <span className="pt-item-concept">{it.concept}</span>
+                {it.detail && <span className="pt-item-detail">{it.detail}</span>}
               </div>
+              <strong className="pt-item-amount">{fmtMoney(it.amount)}</strong>
             </div>
           ))}
         </div>
+
+        <div className="pt-note">
+          ⓘ Los conceptos marcados <strong>(mes pasado)</strong> corresponden al
+          presupuesto <strong>financiero</strong>, no al económico del mes. Por eso no
+          se suman al presupuesto del mes.
+        </div>
       </div>
 
-      {/* Bloque fin de mes */}
+      {/* Post día 30 */}
       <div className="pt-phase pt-phase--post">
         <div className="pt-phase-head">
-          <span className="pt-phase-badge pt-phase-badge--post">Post día 30</span>
-          <span className="pt-phase-total">{fmtMoney(postTotal)}</span>
+          <span className="pt-phase-badge pt-phase-badge--post">Post día 30 — mes vencido</span>
         </div>
         <div className="pt-phase-sub">
-          Al cierre del mes se paga la inversión en Meta y el componente variable del fee de alquimia.
+          Al cierre del mes se paga la <strong>inversión en Meta</strong> y el
+          <strong> componente variable del fee de alquimia</strong>. Estos conceptos
+          se abonan recién en el 1 al 5 del mes siguiente.
         </div>
-        <div className="pt-post-items">
-          {post.map((it, i) => (
-            <div key={i} className="pt-node-item">
-              <span>{it.concept}</span>
-              <strong>{fmtMoney(it.amount)}</strong>
+        <div className="pt-items">
+          {postItems.map((it, i) => (
+            <div key={i} className="pt-item">
+              <div className="pt-item-left">
+                <span className="pt-item-concept">{it.concept}</span>
+                {it.detail && <span className="pt-item-detail">{it.detail}</span>}
+              </div>
+              <strong className="pt-item-amount">{fmtMoney(it.amount)}</strong>
             </div>
           ))}
         </div>
