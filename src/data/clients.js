@@ -47,19 +47,19 @@ export const CLIENTS = {
     // Módulo 3 — Presupuesto y pagos (mes siguiente)
     budget: {
       servicios: [
-        { concept: 'Fee mensual', amount: 1500000, dueDate: '2026-07-05', status: 'pendiente' },
-        { concept: 'Variable sobre resultados', amount: 800000, dueDate: '2026-07-05', status: 'pendiente' },
-        { concept: 'Email Marketing', amount: 250000, dueDate: '2026-07-05', status: 'pendiente' },
-        { concept: 'Gestión Web', amount: 300000, dueDate: '2026-07-05', status: 'pendiente' },
+        { concept: 'Fee mensual', amount: 1500000, dueDate: '2026-06-05', status: 'pendiente' },
+        { concept: 'Variable sobre resultados', amount: 800000, dueDate: '2026-06-30', status: 'pendiente', postMonth: true },
+        { concept: 'Email Marketing', amount: 250000, dueDate: '2026-06-05', status: 'pendiente' },
+        { concept: 'Gestión Web', amount: 300000, dueDate: '2026-06-05', status: 'pendiente' },
       ],
       medios: [
-        { concept: 'Inversión Meta', amount: 20000000, dueDate: '2026-07-01', status: 'pendiente' },
-        { concept: 'Inversión TikTok', amount: 5000000, dueDate: '2026-07-01', status: 'pendiente' },
+        { concept: 'Inversión Meta', amount: 20000000, dueDate: '2026-06-30', status: 'pendiente', postMonth: true },
+        { concept: 'Inversión TikTok', amount: 5000000, dueDate: '2026-06-02', status: 'pendiente' },
       ],
       produccion: [
-        { concept: 'Contenido', amount: 600000, dueDate: '2026-07-10', status: 'pendiente' },
-        { concept: 'Actrices', amount: 400000, dueDate: '2026-07-10', status: 'pendiente' },
-        { concept: 'Estudios', amount: 350000, dueDate: '2026-07-10', status: 'pendiente' },
+        { concept: 'Contenido', amount: 600000, dueDate: '2026-06-05', status: 'pendiente' },
+        { concept: 'Actrices', amount: 400000, dueDate: '2026-06-05', status: 'pendiente' },
+        { concept: 'Estudios', amount: 350000, dueDate: '2026-06-05', status: 'pendiente' },
       ],
       bankInfo: {
         titular: 'Alquimia SRL',

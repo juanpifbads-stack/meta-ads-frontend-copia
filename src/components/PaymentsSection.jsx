@@ -11,41 +11,27 @@ function fmtMoney(n) {
 function fmtDate(iso) {
   if (!iso) return '—';
   try {
-    return new Date(iso + 'T00:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'long' });
+    return new Date(iso + 'T00:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
   } catch { return iso; }
 }
 
-const STATUS = {
-  pendiente: { label: 'Pendiente', cls: 'ps-pill--pending' },
-  pagado: { label: 'Pagado', cls: 'ps-pill--done' },
-};
-
-const GROUP_LABELS = {
-  servicios: 'Servicios',
-  medios: 'Medios',
-  produccion: 'Producción',
-};
+const GROUPS = [
+  { key: 'servicios', label: 'Servicios' },
+  { key: 'medios', label: 'Medios' },
+  { key: 'produccion', label: 'Producción' },
+];
 
 export default function PaymentsSection({ budget }) {
   const [showBank, setShowBank] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { rows, totals } = useMemo(() => {
+  const totals = useMemo(() => {
     const sum = (arr) => arr.reduce((s, x) => s + (x.amount || 0), 0);
-    const all = [
-      ...budget.servicios.map((x) => ({ ...x, group: 'servicios' })),
-      ...budget.medios.map((x) => ({ ...x, group: 'medios' })),
-      ...budget.produccion.map((x) => ({ ...x, group: 'produccion' })),
-    ].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
     return {
-      rows: all,
-      totals: {
-        servicios: sum(budget.servicios),
-        medios: sum(budget.medios),
-        produccion: sum(budget.produccion),
-        general: sum(budget.servicios) + sum(budget.medios) + sum(budget.produccion),
-        pendiente: all.filter((x) => x.status !== 'pagado').reduce((s, x) => s + (x.amount || 0), 0),
-      },
+      servicios: sum(budget.servicios),
+      medios: sum(budget.medios),
+      produccion: sum(budget.produccion),
+      general: sum(budget.servicios) + sum(budget.medios) + sum(budget.produccion),
     };
   }, [budget]);
 
@@ -57,22 +43,43 @@ export default function PaymentsSection({ budget }) {
 
   return (
     <div className="ps-card">
-      {/* Total destacado */}
-      <div className="ps-summary">
-        <div className="ps-summary-main">
-          <span className="ps-summary-lbl">Total a transferir este mes</span>
-          <span className="ps-summary-amount">{fmtMoney(totals.pendiente)}</span>
+      {/* Inversiones discriminadas por categoría */}
+      {GROUPS.map((g) => (
+        <div key={g.key} className="ps-group">
+          <div className="ps-group-head">
+            <span className="ps-group-label">{g.label}</span>
+            <span className="ps-group-total">{fmtMoney(totals[g.key])}</span>
+          </div>
+          {budget[g.key].map((item, i) => (
+            <div key={i} className="ps-line">
+              <div className="ps-line-left">
+                <span className="ps-line-concept">{item.concept}</span>
+                {item.postMonth && <span className="ps-tag-post">post día 30</span>}
+              </div>
+              <div className="ps-line-right">
+                <span className="ps-line-date">{fmtDate(item.dueDate)}</span>
+                <span className="ps-line-amount">{fmtMoney(item.amount)}</span>
+              </div>
+            </div>
+          ))}
         </div>
-        <button className="ps-bank-btn" onClick={() => setShowBank(!showBank)}>
-          {showBank ? 'Ocultar datos bancarios' : 'Ver datos bancarios — cuánto y a dónde transferir'}
-        </button>
+      ))}
+
+      {/* Total general */}
+      <div className="ps-general">
+        <span>Total general del mes</span>
+        <strong>{fmtMoney(totals.general)}</strong>
       </div>
 
-      {/* Datos bancarios (detrás del botón) */}
+      {/* Botón datos para transferir */}
+      <button className="ps-bank-btn" onClick={() => setShowBank(!showBank)}>
+        {showBank ? 'Ocultar datos para transferir' : 'Ver datos para transferir'}
+      </button>
+
       {showBank && (
         <div className="ps-bank">
           <div className="ps-bank-amount">
-            Transferir <strong>{fmtMoney(totals.pendiente)}</strong>
+            Total a transferir <strong>{fmtMoney(totals.general)}</strong>
           </div>
           <div className="ps-bank-grid">
             <div className="ps-bank-row">
@@ -100,37 +107,6 @@ export default function PaymentsSection({ budget }) {
           {copied && <div className="ps-copied">✓ Copiado</div>}
         </div>
       )}
-
-      {/* Flujo de pagos por fecha */}
-      <div className="ps-flow-title">Calendario de pagos</div>
-      <div className="ps-flow">
-        {rows.map((p, i) => {
-          const st = STATUS[p.status] || STATUS.pendiente;
-          return (
-            <div key={i} className="ps-flow-item">
-              <div className="ps-flow-date">
-                <span className="ps-flow-day">{fmtDate(p.dueDate)}</span>
-              </div>
-              <div className="ps-flow-body">
-                <div className="ps-flow-concept">{p.concept}</div>
-                <div className="ps-flow-group">{GROUP_LABELS[p.group]}</div>
-              </div>
-              <div className="ps-flow-right">
-                <div className="ps-flow-amount">{fmtMoney(p.amount)}</div>
-                <span className={`ps-pill ${st.cls}`}>{st.label}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Totales por categoría */}
-      <div className="ps-totals">
-        <div><span>Servicios</span><strong>{fmtMoney(totals.servicios)}</strong></div>
-        <div><span>Medios</span><strong>{fmtMoney(totals.medios)}</strong></div>
-        <div><span>Producción</span><strong>{fmtMoney(totals.produccion)}</strong></div>
-        <div className="ps-total-general"><span>Total general</span><strong>{fmtMoney(totals.general)}</strong></div>
-      </div>
     </div>
   );
 }

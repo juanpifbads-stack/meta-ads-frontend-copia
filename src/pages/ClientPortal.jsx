@@ -2,7 +2,23 @@ import React, { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { getClient } from '../data/clients.js';
 import PaymentsSection from '../components/PaymentsSection.jsx';
+import PaymentsTimeline from '../components/PaymentsTimeline.jsx';
 import './ClientPortal.css';
+
+/* ── Modal central ── */
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="cp-modal-overlay" onClick={onClose}>
+      <div className="cp-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="cp-modal-head">
+          <h3>{title}</h3>
+          <button className="cp-modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="cp-modal-body">{children}</div>
+      </div>
+    </div>
+  );
+}
 
 function fmtMoney(n) {
   if (n == null || isNaN(n)) return '—';
@@ -122,10 +138,14 @@ function ClientDashboard({ client }) {
     metaGoal, hypotheses, strategicProducts, considerations,
   } = client;
 
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+
   const ecomPct = ecommerceGoal.target > 0 ? (ecommerceGoal.current / ecommerceGoal.target) * 100 : 0;
   const expected = (ecommerceGoal.target / daysInMonth()) * daysElapsed();
   const ecomDeviation = expected > 0 ? ((ecommerceGoal.current - expected) / expected) * 100 : 0;
-  const ticket = ecommerceGoal.orders > 0 ? ecommerceGoal.current / ecommerceGoal.orders : 0;
+
+  const budgetTotal = [...budget.servicios, ...budget.medios, ...budget.produccion]
+    .reduce((s, x) => s + (x.amount || 0), 0);
 
   return (
     <div className="cp-page">
@@ -152,57 +172,62 @@ function ClientDashboard({ client }) {
       </div>
 
       {/* KPI Cards */}
-      <section className="cp-kpis">
-        <div className="cp-kpi">
+      <section className="cp-kpis cp-kpis--3">
+        {/* Facturación ecommerce — objetivo claro */}
+        <div className="cp-kpi cp-kpi--hero">
           <div className="cp-kpi-label">Facturación ecommerce</div>
           <div className="cp-kpi-value">{fmtMoney(ecommerceGoal.current)}</div>
-          <div className="cp-kpi-sub">obj. {fmtMoney(ecommerceGoal.target)}</div>
+          <div className="cp-kpi-objrow">
+            <span className="cp-kpi-objlbl">Objetivo del mes</span>
+            <span className="cp-kpi-objval">{fmtMoney(ecommerceGoal.target)}</span>
+          </div>
+          <div className="cp-bar cp-bar--lg">
+            <div className={`cp-bar-fill ${ecomPct >= 100 ? 'cp-bar--good' : ecomPct >= 70 ? 'cp-bar--warn' : 'cp-bar--bad'}`}
+              style={{ width: `${Math.min(ecomPct, 100)}%` }} />
+          </div>
+          <div className="cp-kpi-pct">{ecomPct.toFixed(0)}% del objetivo alcanzado</div>
         </div>
+
+        {/* Ritmo del mes */}
         <div className="cp-kpi">
-          <div className="cp-kpi-label">Pedidos</div>
-          <div className="cp-kpi-value">{ecommerceGoal.orders?.toLocaleString('es-AR') || '—'}</div>
-          <div className="cp-kpi-sub">ticket {fmtMoney(ticket)}</div>
-        </div>
-        <div className="cp-kpi">
-          <div className="cp-kpi-label">% del objetivo</div>
-          <div className="cp-kpi-value">{ecomPct.toFixed(0)}%</div>
-          <div className={`cp-kpi-sub ${ecomDeviation < 0 ? 'cp-neg' : 'cp-pos'}`}>
-            {ecomDeviation >= 0 ? '+' : ''}{ecomDeviation.toFixed(0)}% vs ritmo
+          <div className="cp-kpi-label">Ritmo del mes</div>
+          <div className="cp-ritmo">
+            <div className="cp-ritmo-row">
+              <span>A esta altura (día {daysElapsed()}) deberías ir</span>
+              <strong>{fmtMoney(expected)}</strong>
+            </div>
+            <div className="cp-ritmo-row">
+              <span>Vas</span>
+              <strong>{fmtMoney(ecommerceGoal.current)}</strong>
+            </div>
+          </div>
+          <div className={`cp-ritmo-verdict ${ecomDeviation < 0 ? 'cp-verdict--bad' : 'cp-verdict--good'}`}>
+            {ecomDeviation >= 0
+              ? `Adelantados ${ecomDeviation.toFixed(0)}% sobre el ritmo`
+              : `Desviados ${Math.abs(ecomDeviation).toFixed(0)}% por debajo del ritmo`}
           </div>
         </div>
-        <div className="cp-kpi">
+
+        {/* Presupuesto — botón a modal */}
+        <button className="cp-kpi cp-kpi--button" onClick={() => setShowBudgetModal(true)}>
           <div className="cp-kpi-label">Presupuesto total mes</div>
-          <div className="cp-kpi-value">{fmtMoney(
-            [...budget.servicios, ...budget.medios, ...budget.produccion].reduce((s, x) => s + (x.amount || 0), 0)
-          )}</div>
-          <div className="cp-kpi-sub">a pagar</div>
-        </div>
+          <div className="cp-kpi-value">{fmtMoney(budgetTotal)}</div>
+          <div className="cp-kpi-cta">Ver detalle y datos para transferir →</div>
+        </button>
       </section>
 
-      {/* PAGOS — arriba y bien claro */}
+      {/* PAGOS — línea de tiempo del mes */}
       <section className="cp-section">
         <h2 className="cp-section-title">Pagos del mes</h2>
-        <PaymentsSection budget={budget} />
+        <PaymentsTimeline budget={budget} />
       </section>
 
-      {/* Avance objetivo ecommerce */}
-      <section className="cp-section">
-        <h2 className="cp-section-title">Objetivo de facturación</h2>
-        <div className="cp-card">
-          <GoalBar
-            label="Facturación ecommerce"
-            current={ecommerceGoal.current}
-            target={ecommerceGoal.target}
-            pct={ecomPct}
-            status={ecomPct >= 100 ? 'good' : ecomPct >= 70 ? 'warn' : 'bad'}
-          />
-          <div className="cp-pace">
-            <div><span className="cp-pace-lbl">Esperado al día {daysElapsed()}</span><span>{fmtMoney(expected)}</span></div>
-            <div><span className="cp-pace-lbl">Actual</span><span>{fmtMoney(ecommerceGoal.current)}</span></div>
-            <div><span className="cp-pace-lbl">Desvío</span><span className={ecomDeviation < 0 ? 'cp-neg' : 'cp-pos'}>{ecomDeviation >= 0 ? '+' : ''}{ecomDeviation.toFixed(0)}%</span></div>
-          </div>
-        </div>
-      </section>
+      {/* Modal de presupuesto */}
+      {showBudgetModal && (
+        <Modal title="Inversiones del mes" onClose={() => setShowBudgetModal(false)}>
+          <PaymentsSection budget={budget} />
+        </Modal>
+      )}
 
       {/* Roadmap semanal */}
       <section className="cp-section">
