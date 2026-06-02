@@ -94,6 +94,19 @@ export default function Dashboard({ onBack }) {
     }
   };
 
+  // Total active daily budget (ABO adsets + CBO campaigns)
+  const totalActiveBudget = useMemo(() => {
+    const abo = adsets.reduce((sum, a) => sum + (parseFloat(a.daily_budget) || 0), 0);
+    const seenCampaigns = new Set();
+    const cbo = campaigns.reduce((sum, c) => {
+      const id = c.campaign_id || c.id;
+      if (seenCampaigns.has(id)) return sum;
+      seenCampaigns.add(id);
+      return sum + (parseFloat(c.campaign_budget || c.daily_budget) || 0);
+    }, 0);
+    return abo + cbo;
+  }, [adsets, campaigns]);
+
   // Group ABO adsets by campaign, sort by budget within each group
   const groupedAdsets = useMemo(() => {
     if (!adsets.length) return [];
@@ -203,27 +216,42 @@ export default function Dashboard({ onBack }) {
             />
           </div>
 
-          {/* Last 4 days avg spend */}
-          {selectedAccount && last4Spend !== null && (
+          {/* Account spend stats */}
+          {selectedAccount && (last4Spend !== null || totalActiveBudget > 0) && (
             <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '10px',
-              backgroundColor: 'var(--color-surface)',
-              border: '1px solid var(--color-gray-light)',
-              borderRadius: 'var(--radius-md)',
-              padding: '10px 16px',
+              display: 'flex',
+              gap: '12px',
+              flexWrap: 'wrap',
               marginBottom: '20px',
-              fontFamily: 'var(--font-mono)',
             }}>
-              <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Gasto prom. últimos 4 días
-              </span>
-              <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-primary)' }}>
-                {last4Spend > 0
-                  ? `$${last4Spend.toLocaleString('es-AR', { maximumFractionDigits: 0 })} / día`
-                  : '—'}
-              </span>
+              {last4Spend !== null && (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '10px',
+                  backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-gray-light)',
+                  borderRadius: 'var(--radius-md)', padding: '10px 16px', fontFamily: 'var(--font-mono)',
+                }}>
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Gasto prom. últimos 4 días
+                  </span>
+                  <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text-primary)' }}>
+                    {last4Spend > 0 ? `$${last4Spend.toLocaleString('es-AR', { maximumFractionDigits: 0 })} / día` : '—'}
+                  </span>
+                </div>
+              )}
+              {totalActiveBudget > 0 && (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '10px',
+                  backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-gray-light)',
+                  borderRadius: 'var(--radius-md)', padding: '10px 16px', fontFamily: 'var(--font-mono)',
+                }}>
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Presupuesto diario activo
+                  </span>
+                  <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-brand-blue)' }}>
+                    ${totalActiveBudget.toLocaleString('es-AR', { maximumFractionDigits: 0 })} / día
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
