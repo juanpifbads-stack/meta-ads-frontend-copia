@@ -1,5 +1,38 @@
 .pt-wrap { display: flex; flex-direction: column; gap: 18px; }
 
+/* Selector de moneda */
+.pt-cur { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pt-cur-lbl { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
+.pt-cur-btn {
+  padding: 5px 14px; border-radius: 99px; border: 1.5px solid var(--color-gray-mid);
+  background: transparent; font-family: var(--font-mono); font-size: 12px; cursor: pointer; color: var(--color-text-secondary);
+}
+.pt-cur-btn--active { background: var(--color-brand-blue); border-color: var(--color-brand-blue); color: #fff; }
+.pt-cur-fx { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted); }
+
+/* Checkbox pagado */
+.pt-item-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pt-paid {
+  display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+  font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--color-text-muted); white-space: nowrap;
+}
+.pt-paid input { cursor: pointer; }
+.pt-item-wrap--paid { opacity: 0.55; }
+.pt-item-wrap--paid .pt-item-concept { text-decoration: line-through; }
+
+/* Monto editable */
+.pt-edit { display: inline-flex; align-items: center; gap: 4px; }
+.pt-edit-cur { font-family: var(--font-mono); color: var(--color-text-muted); }
+.pt-edit-input {
+  width: 130px; border: 1.5px solid var(--color-gray-light); border-radius: var(--radius-sm);
+  padding: 6px 10px; font-size: 14px; text-align: right; outline: none; background: var(--color-surface); color: var(--color-text-primary);
+}
+.pt-edit-input:focus { border-color: var(--color-brand-blue); }
+
+/* Total del fee */
+.pt-fee-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+
 .pt-phase {
   background: var(--color-surface);
   border: 1.5px solid var(--color-gray-light);

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { fmtMoney } from '../utils/budget.js';
+import React, { useState, useEffect, useMemo } from 'react';
+import apiClient from '../api/client.js';
 import BankBlock from './BankBlock.jsx';
 import './PaymentsTimeline.css';
 
@@ -9,20 +9,51 @@ const PHASES = [
   { key: 'post', label: 'Post día 30 — mes vencido', sub: 'Inversión y variable de este mes. Se abona en el 1 al 5 del mes siguiente.', cls: 'post' },
 ];
 
-function SubLine({ b }) {
+function convert(amount, from, to, fx) {
+  if (amount == null || isNaN(amount)) return null;
+  if (from === to || !fx) return from === to ? amount : amount;
+  if (from === 'USD' && to === 'ARS') return amount * fx;
+  if (from === 'ARS' && to === 'USD') return amount / fx;
+  return amount;
+}
+function money(n, cur) {
+  if (n == null || isNaN(n)) return '—';
+  if (cur === 'USD') return 'USD ' + new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
+}
+
+/* monto efectivo de un ítem/sub-ítem en moneda destino */
+function effective(it, ctx) {
+  if (it.bonificado) return 0;
+  if (it.isVariable) return convert(ctx.variableAmount, 'ARS', ctx.cur, ctx.fx);
+  if (it.editable) {
+    const v = ctx.amounts[it.id] != null ? ctx.amounts[it.id] : (it.amount || 0);
+    return convert(v, it.currency || 'ARS', ctx.cur, ctx.fx);
+  }
+  return convert(it.amount || 0, it.currency || 'ARS', ctx.cur, ctx.fx);
+}
+
+function SubLine({ b, ctx }) {
   const [showTransfer, setShowTransfer] = useState(false);
   const canTransfer = b.bankInfo && !b.bonificado;
+  let right;
+  if (b.isVariable) {
+    right = <span className="pt-item-amount">{money(effective(b, ctx), ctx.cur)}</span>;
+  } else if (b.bonificado) {
+    right = <span className="pt-strike">{money(convert(b.amount, b.currency, ctx.cur, ctx.fx), ctx.cur)}</span>;
+  } else {
+    right = <span>{money(convert(b.amount, b.currency, ctx.cur, ctx.fx), ctx.cur)}</span>;
+  }
   return (
     <div className="pt-sub-wrap">
       <div className="pt-sub">
         <div className="pt-sub-left">
           <span className={b.bonificado ? 'pt-sub-concept pt-strike' : 'pt-sub-concept'}>{b.concept}</span>
           {b.detail && <span className="pt-sub-detail">{b.detail}</span>}
+          {b.isVariable && <span className="pt-sub-detail">según facturación del mes pasado</span>}
         </div>
         <div className="pt-sub-right">
-          {b.isVariable
-            ? <span className="pt-item-variable">según facturación del mes pasado</span>
-            : <span className={b.bonificado ? 'pt-strike' : ''}>{fmtMoney(b.amount, b.currency)}</span>}
+          {right}
           {b.bonificado && <span className="pt-bonif">{b.bonificado}</span>}
         </div>
       </div>
@@ -38,38 +69,58 @@ function SubLine({ b }) {
   );
 }
 
-function ItemLine({ item, budget, facturacion }) {
+function ItemLine({ item, ctx }) {
   const [open, setOpen] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
-  const bankInfo = item.bankInfo || budget.bankInfo;
-  // No mostrar transferir en: ítems con desglose (cada sub-ítem tiene el suyo),
-  // medios (Meta/TikTok) ni el variable de este mes (post 30, no sale este mes)
-  const canTransfer = bankInfo && !item.breakdown && !item.media && !(item.isVariable && item.period === 'presente');
+  const bankInfo = item.bankInfo || ctx.bankInfo;
+  const canTransfer = bankInfo && !item.breakdown && !item.media && !item.editable;
+  const paid = !!ctx.paid[item.id];
 
-  // Monto a mostrar a la derecha
+  // monto a la derecha
   let amountNode;
-  if (item.isVariable) {
-    const txt = item.period === 'pasado'
-      ? 'según facturación del mes pasado'
-      : 'según facturación de junio';
-    amountNode = <span className="pt-item-variable">{txt}</span>;
-  } else if (item.media && item.period === 'pasado') {
+  if (item.media && item.period === 'pasado') {
     amountNode = <span className="pt-item-variable">inversión del mes pasado</span>;
-  } else if (item.variableMonto) {
-    amountNode = <span className="pt-item-variable">según consumo</span>;
+  } else if (item.editable) {
+    amountNode = (
+      <div className="pt-edit">
+        <span className="pt-edit-cur">$</span>
+        <input
+          className="pt-edit-input"
+          type="number"
+          value={ctx.amounts[item.id] != null ? ctx.amounts[item.id] : (item.amount || '')}
+          placeholder="0"
+          onChange={(e) => ctx.setAmount(item.id, e.target.value === '' ? 0 : parseFloat(e.target.value))}
+        />
+      </div>
+    );
   } else if (item.breakdown) {
-    amountNode = <span className="pt-item-toggle">{open ? 'Ocultar −' : 'Ver desglose +'}</span>;
+    // total del fee (suma del desglose en moneda destino)
+    const total = item.breakdown.reduce((s, b) => s + (effective(b, ctx) || 0), 0);
+    amountNode = (
+      <div className="pt-fee-right">
+        <span className="pt-item-amount">{money(total, ctx.cur)}</span>
+        <span className="pt-item-toggle">{open ? 'Ocultar −' : 'Ver desglose +'}</span>
+      </div>
+    );
   } else {
-    amountNode = <strong className="pt-item-amount">{fmtMoney(item.amount, item.currency)}</strong>;
+    amountNode = <strong className="pt-item-amount">{money(effective(item, ctx), ctx.cur)}</strong>;
   }
 
   const clickable = !!item.breakdown;
 
   return (
-    <div className={`pt-item-wrap ${clickable ? 'pt-item-wrap--click' : ''}`}>
+    <div className={`pt-item-wrap ${clickable ? 'pt-item-wrap--click' : ''} ${paid ? 'pt-item-wrap--paid' : ''}`}>
       <div className="pt-item" onClick={clickable ? () => setOpen(!open) : undefined}>
         <div className="pt-item-left">
-          <span className="pt-item-concept">{item.concept}</span>
+          <div className="pt-item-title-row">
+            {item.id && (
+              <label className="pt-paid" onClick={(e) => e.stopPropagation()}>
+                <input type="checkbox" checked={paid} onChange={() => ctx.togglePaid(item.id)} />
+                <span>{paid ? 'Pagado' : 'Pagar'}</span>
+              </label>
+            )}
+            <span className="pt-item-concept">{item.concept}</span>
+          </div>
           {item.detail && <span className="pt-item-detail">{item.detail}</span>}
           {item.period && (
             <span className={`pt-period pt-period--${item.period}`}>
@@ -81,7 +132,7 @@ function ItemLine({ item, budget, facturacion }) {
       </div>
       {open && item.breakdown && (
         <div className="pt-breakdown">
-          {item.breakdown.map((b, i) => <SubLine key={i} b={b} />)}
+          {item.breakdown.map((b, i) => <SubLine key={i} b={b} ctx={ctx} />)}
         </div>
       )}
       {canTransfer && (
@@ -96,19 +147,55 @@ function ItemLine({ item, budget, facturacion }) {
   );
 }
 
-export default function PaymentsTimeline({ budget, facturacion }) {
-  // Ítems de medios + variable de este mes (se pagan el mes que viene)
+export default function PaymentsTimeline({ budget, slug, accessKey }) {
+  const [cur, setCur] = useState('USD');
+  const [fx, setFx] = useState(null);
+  const [prevRevenue, setPrevRevenue] = useState(0);
+  const [state, setState] = useState({ paid: {}, amounts: {} });
+
+  useEffect(() => {
+    let alive = true;
+    apiClient.get('/public/fx').then((r) => { if (alive) setFx(r.data?.venta || null); }).catch(() => {});
+    apiClient.get(`/public/${slug}/tiendanube`, { params: { key: accessKey }, timeout: 60000 })
+      .then((r) => { if (alive && r.data?.prevRevenue != null) setPrevRevenue(r.data.prevRevenue); }).catch(() => {});
+    apiClient.get(`/budget/${slug}`, { params: { key: accessKey } })
+      .then((r) => { if (alive && r.data?.data) setState({ paid: r.data.data.paid || {}, amounts: r.data.data.amounts || {} }); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [slug, accessKey]);
+
+  const variableAmount = useMemo(() => {
+    const base = budget.variable?.base || 0;
+    const rate = budget.variable?.rate || 0;
+    return Math.max(0, (prevRevenue || 0) - base) * rate;
+  }, [prevRevenue, budget.variable]);
+
+  const save = (next) => {
+    setState(next);
+    apiClient.patch(`/budget/${slug}`, { key: accessKey, data: next }).catch(() => {});
+  };
+  const togglePaid = (id) => save({ ...state, paid: { ...state.paid, [id]: !state.paid[id] } });
+  const setAmount = (id, val) => setState((s) => ({ ...s, amounts: { ...s.amounts, [id]: val } }));
+  const flushAmount = () => apiClient.patch(`/budget/${slug}`, { key: accessKey, data: state }).catch(() => {});
+
+  const ctx = { cur, fx, variableAmount, paid: state.paid, amounts: state.amounts, togglePaid, setAmount, bankInfo: budget.bankInfo };
+
   const postItems = budget.items.filter((it) => it.phase === 'post');
-  // Versión "mes pasado": lo que efectivamente se paga AHORA en el 1 al 5
   const mesPasado = postItems.map((it) => ({ ...it, period: 'pasado' }));
 
   return (
-    <div className="pt-wrap">
+    <div className="pt-wrap" onBlur={flushAmount}>
+      {/* Selector de moneda */}
+      <div className="pt-cur">
+        <span className="pt-cur-lbl">Mostrar en</span>
+        <button className={`pt-cur-btn ${cur === 'USD' ? 'pt-cur-btn--active' : ''}`} onClick={() => setCur('USD')}>USD</button>
+        <button className={`pt-cur-btn ${cur === 'ARS' ? 'pt-cur-btn--active' : ''}`} onClick={() => setCur('ARS')}>ARS</button>
+        {cur === 'ARS' && <span className="pt-cur-fx">{fx ? `dólar oficial $${fx}` : 'sin cotización'}</span>}
+      </div>
+
       {PHASES.map((ph) => {
         let items = budget.items.filter((it) => it.phase === ph.key);
-        // En el financiero, el 1 al 5 incluye los medios + variable del mes pasado
         if (ph.key === 'inicio') items = [...items, ...mesPasado];
-        // Los ítems del bloque post corresponden al mes presente (junio)
         if (ph.key === 'post') items = items.map((it) => ({ ...it, period: 'presente' }));
         if (!items.length) return null;
         return (
@@ -118,9 +205,7 @@ export default function PaymentsTimeline({ budget, facturacion }) {
             </div>
             <div className="pt-phase-sub">{ph.sub}</div>
             <div className="pt-items">
-              {items.map((it, i) => (
-                <ItemLine key={i} item={it} budget={budget} facturacion={facturacion} />
-              ))}
+              {items.map((it, i) => <ItemLine key={i} item={it} ctx={ctx} />)}
             </div>
           </div>
         );

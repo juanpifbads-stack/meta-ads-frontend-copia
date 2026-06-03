@@ -292,7 +292,7 @@ function ClientDashboard({ client }) {
       {/* PAGOS — línea de tiempo del mes (desplegable) */}
       <section className="cp-section">
         <Collapsible title="Presupuesto financiero del mes — ver pagos">
-          <PaymentsTimeline budget={budget} facturacion={ecomCurrent} />
+          <PaymentsTimeline budget={budget} slug={client.slug} accessKey={client.accessKey} />
         </Collapsible>
       </section>
 
@@ -464,7 +464,7 @@ export function PaymentsPortal() {
         <div className="cp-month-banner-obj">Flujo de pagos por fecha, con datos para transferir en cada componente.</div>
       </div>
       <section className="cp-section">
-        <PaymentsTimeline budget={client.budget} facturacion={client.ecommerceGoal.current} />
+        <PaymentsTimeline budget={client.budget} slug={client.slug} accessKey={client.accessKey} />
       </section>
       <footer className="cp-footer">panel by alquimia.</footer>
     </div>

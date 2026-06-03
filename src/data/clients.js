@@ -65,24 +65,24 @@ export const CLIENTS = {
 
     // Módulo 3 — Presupuesto y pagos
     budget: {
-      // Componente variable de alquimia: 3% del diferencial de facturación
-      // respecto de la base inicial. (Ajustar baseInicial con el número real.)
-      variable: { rate: 0.03, baseInicial: 80000000, currency: 'ARS' },
+      // Componente variable de alquimia: 3% del diferencial entre la facturación
+      // del mes ANTERIOR (Tienda Nube) y la base fija.
+      variable: { rate: 0.03, base: 59900334, currency: 'ARS' },
 
       // Ítems del mes. phase: 'inicio' (1-5) | 'fin' (29-30) | 'post' (post día 30, mes vencido)
       items: [
         {
-          concept: 'Fee alquimia Pauta', detail: 'TikTok + Meta Ads', phase: 'inicio',
+          id: 'fee_pauta', concept: 'Fee alquimia Pauta', detail: 'TikTok + Meta Ads', phase: 'inicio',
           breakdown: [
             { concept: 'Meta Ads', amount: 1100, currency: 'USD' },
             { concept: 'TikTok Ads', amount: 400, currency: 'USD', bonificado: 'Bonificado junio' },
-            { concept: 'Componente variable', detail: '3% del diferencial de facturación', isVariable: true, currency: 'ARS' },
+            { concept: 'Componente variable', detail: '3% de (facturación mes pasado − base)', isVariable: true, currency: 'ARS' },
           ],
         },
-        { concept: 'Fee alquimia Web', detail: 'Email mkt + gestión web', amount: 350, currency: 'USD', phase: 'inicio' },
-        { concept: 'Fee alquimia Contenido', detail: 'Creación de 3 sesiones de 2 hs c/u', amount: 1000, currency: 'USD', phase: 'inicio' },
+        { id: 'fee_web', concept: 'Fee alquimia Web', detail: 'Email mkt + gestión web', amount: 350, currency: 'USD', phase: 'inicio' },
+        { id: 'fee_contenido', concept: 'Fee alquimia Contenido', detail: 'Creación de 3 sesiones de 2 hs c/u', amount: 1000, currency: 'USD', phase: 'inicio' },
         {
-          concept: 'Actrices', phase: 'inicio',
+          id: 'actrices', concept: 'Actrices', phase: 'inicio',
           breakdown: [
             {
               concept: 'Delfina', detail: '2 sesiones · 2 hs', amount: 500000, currency: 'ARS',
@@ -96,12 +96,12 @@ export const CLIENTS = {
           ],
         },
         {
-          concept: 'Viáticos del mes (Delfina) + alquileres de estudio', phase: 'fin',
-          detail: 'Lo que alquimia haya abonado durante el mes', variableMonto: true, currency: 'ARS',
+          id: 'viaticos', concept: 'Viáticos del mes (Delfina) + alquileres de estudio', phase: 'fin',
+          detail: 'Lo que alquimia haya abonado durante el mes', editable: true, amount: 0, currency: 'ARS',
         },
         // post día 30 — corresponde al mes presente (junio)
-        { concept: 'Inversión Meta', amount: 15000000, currency: 'ARS', phase: 'post', media: true },
-        { concept: 'Inversión TikTok', amount: 1500000, currency: 'ARS', phase: 'post', media: true },
+        { id: 'inv_meta', concept: 'Inversión Meta', amount: 15000000, currency: 'ARS', phase: 'post', media: true },
+        { id: 'inv_tiktok', concept: 'Inversión TikTok', amount: 1500000, currency: 'ARS', phase: 'post', media: true },
       ],
 
       bankInfo: {
