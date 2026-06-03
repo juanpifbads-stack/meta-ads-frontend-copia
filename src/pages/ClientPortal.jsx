@@ -183,6 +183,7 @@ function ClientDashboard({ client }) {
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [meta, setMeta] = useState(null);
   const [metaLoading, setMetaLoading] = useState(true);
+  const [tn, setTn] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -191,14 +192,23 @@ function ClientDashboard({ client }) {
       .then((res) => { if (alive) setMeta(res.data); })
       .catch(() => { if (alive) setMeta(null); })
       .finally(() => { if (alive) setMetaLoading(false); });
+    apiClient
+      .get(`/public/${client.slug}/tiendanube`, { params: { key: client.accessKey }, timeout: 60000 })
+      .then((res) => { if (alive && res.data && !res.data.tnError) setTn(res.data); })
+      .catch(() => {});
     return () => { alive = false; };
   }, [client.slug, client.accessKey]);
 
-  const ecomPct = ecommerceGoal.target > 0 ? (ecommerceGoal.current / ecommerceGoal.target) * 100 : 0;
-  const expected = (ecommerceGoal.target / daysInMonth()) * daysElapsed();
-  const ecomDeviation = expected > 0 ? ((ecommerceGoal.current - expected) / expected) * 100 : 0;
+  // Facturación y pedidos: reales de Tienda Nube si están, si no los de config.
+  const ecomCurrent = tn ? tn.revenue : ecommerceGoal.current;
+  const ecomOrders = tn ? tn.orders : ecommerceGoal.orders;
+  const ecomTicket = tn ? tn.ticket : (ecommerceGoal.orders > 0 ? ecommerceGoal.current / ecommerceGoal.orders : 0);
 
-  const budgetTotals = sumByCurrency(budget.items, { budget, facturacion: ecommerceGoal.current });
+  const ecomPct = ecommerceGoal.target > 0 ? (ecomCurrent / ecommerceGoal.target) * 100 : 0;
+  const expected = (ecommerceGoal.target / daysInMonth()) * daysElapsed();
+  const ecomDeviation = expected > 0 ? ((ecomCurrent - expected) / expected) * 100 : 0;
+
+  const budgetTotals = sumByCurrency(budget.items, { budget, facturacion: ecomCurrent });
 
   return (
     <div className="cp-page">
@@ -229,7 +239,8 @@ function ClientDashboard({ client }) {
         {/* Facturación ecommerce — objetivo claro */}
         <div className="cp-kpi cp-kpi--hero">
           <div className="cp-kpi-label">Facturación ecommerce</div>
-          <div className="cp-kpi-value">{fmtMoney(ecommerceGoal.current)}</div>
+          <div className="cp-kpi-value">{fmtMoney(ecomCurrent)}</div>
+          {tn && <div className="cp-kpi-pct">{ecomOrders?.toLocaleString('es-AR')} pedidos · ticket {fmtMoney(ecomTicket)}</div>}
           <div className="cp-kpi-objrow">
             <span className="cp-kpi-objlbl">Objetivo del mes</span>
             <span className="cp-kpi-objval">{fmtMoney(ecommerceGoal.target)}</span>
@@ -251,7 +262,7 @@ function ClientDashboard({ client }) {
             </div>
             <div className="cp-ritmo-row">
               <span>Vamos:</span>
-              <strong>{fmtMoney(ecommerceGoal.current)}</strong>
+              <strong>{fmtMoney(ecomCurrent)}</strong>
             </div>
           </div>
           <div className={`cp-ritmo-verdict ${ecomDeviation < 0 ? 'cp-verdict--bad' : 'cp-verdict--good'}`}>
@@ -272,14 +283,14 @@ function ClientDashboard({ client }) {
       {/* PAGOS — línea de tiempo del mes (desplegable) */}
       <section className="cp-section">
         <Collapsible title="Presupuesto financiero del mes — ver pagos">
-          <PaymentsTimeline budget={budget} facturacion={ecommerceGoal.current} />
+          <PaymentsTimeline budget={budget} facturacion={ecomCurrent} />
         </Collapsible>
       </section>
 
       {/* Modal de presupuesto */}
       {showBudgetModal && (
         <Modal title="Presupuesto económico" onClose={() => setShowBudgetModal(false)}>
-          <PaymentsSection budget={budget} facturacion={ecommerceGoal.current} />
+          <PaymentsSection budget={budget} facturacion={ecomCurrent} />
         </Modal>
       )}
 
