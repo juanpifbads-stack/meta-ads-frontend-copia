@@ -174,7 +174,7 @@ export default function PaymentsTimeline({ budget, slug, accessKey }) {
   useEffect(() => {
     let alive = true;
     apiClient.get('/public/fx').then((r) => { if (alive) setFx(r.data?.venta || null); }).catch(() => {});
-    apiClient.get(`/public/${slug}/tiendanube`, { params: { key: accessKey }, timeout: 60000 })
+    apiClient.get(`/public/${slug}/tiendanube`, { params: { key: accessKey, prev: 1 }, timeout: 90000 })
       .then((r) => { if (alive && r.data?.prevRevenue != null) setPrevRevenue(r.data.prevRevenue); }).catch(() => {});
     apiClient.get(`/budget/${slug}`, { params: { key: accessKey } })
       .then((r) => { if (alive && r.data?.data) setState({ paid: r.data.data.paid || {}, amounts: r.data.data.amounts || {} }); })
