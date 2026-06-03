@@ -84,6 +84,18 @@
   align-items: flex-start;
   margin-bottom: 24px;
 }
+.cp-month-select { display: flex; align-items: center; gap: 8px; }
+.cp-month-select-lbl { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
+.cp-month-select select {
+  border: 1.5px solid var(--color-gray-mid);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
 .cp-eyebrow {
   font-family: var(--font-mono);
   font-size: 11px;

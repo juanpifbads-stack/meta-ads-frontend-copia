@@ -31,6 +31,14 @@ function fmtMoney(n) {
   }).format(n);
 }
 
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+function fmtMonthLabel(ym) {
+  if (!ym) return '';
+  const [y, m] = ym.split('-');
+  const name = MESES[parseInt(m, 10) - 1] || ym;
+  return `${name.charAt(0).toUpperCase() + name.slice(1)} ${y}`;
+}
+
 function daysElapsed() { return new Date().getDate(); }
 function daysInMonth() {
   const n = new Date();
@@ -177,10 +185,25 @@ export default function ClientPortal() {
 }
 
 function ClientDashboard({ client }) {
+  // Contenido desde la base (con fallback al config de código).
+  const [content, setContent] = useState(null);
+  const [month, setMonth] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    apiClient
+      .get(`/portal/${client.slug}`, { params: { key: client.accessKey, ...(month ? { month } : {}) } })
+      .then((res) => { if (alive) { setContent(res.data); if (!month) setMonth(res.data.selectedMonth); } })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [client.slug, client.accessKey, month]);
+
+  const data = content || client;
   const {
     strategyMacro, strategyMonthly, roadmap, budget, ecommerceGoal,
     metaGoal, hypotheses, strategicProducts, considerations,
-  } = client;
+  } = data;
+  const months = content?.months || [];
 
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [meta, setMeta] = useState(null);
@@ -225,6 +248,14 @@ function ClientDashboard({ client }) {
           <div className="cp-brand">alquimia.</div>
           <div className="cp-eyebrow">Panel de {client.name}</div>
         </div>
+        {months.length > 0 && (
+          <div className="cp-month-select">
+            <span className="cp-month-select-lbl">Mes</span>
+            <select value={month || ''} onChange={(e) => setMonth(e.target.value)}>
+              {months.map((m) => <option key={m} value={m}>{fmtMonthLabel(m)}</option>)}
+            </select>
+          </div>
+        )}
       </header>
 
       {/* Estrategia macro — período bien grande */}
