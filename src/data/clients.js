@@ -65,7 +65,8 @@ export const CLIENTS = {
           concept: 'Actrices', phase: 'inicio',
           breakdown: [
             { concept: 'Delfina', detail: '2 sesiones · 2 hs', amount: 500000, currency: 'ARS' },
-            { concept: 'Karina', detail: '2 sesiones · 2 hs', amount: 450000, currency: 'ARS', bonificado: 'Bonificado junio' },
+            { concept: 'Karina — sesión 1', detail: '2 hs · $225.000 por sesión', amount: 225000, currency: 'ARS' },
+            { concept: 'Karina — sesión 2', detail: '2 hs · $225.000 por sesión', amount: 225000, currency: 'ARS', bonificado: 'Bonificado junio' },
           ],
         },
         {

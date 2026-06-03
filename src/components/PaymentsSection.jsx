@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { fmtMoney, fmtTotals, sumByCurrency, variableAmount } from '../utils/budget.js';
+import { fmtMoney, fmtTotals, sumByCurrency } from '../utils/budget.js';
 import './PaymentsSection.css';
 
 const PHASE_TAG = {
@@ -9,7 +9,7 @@ const PHASE_TAG = {
 };
 
 function itemAmountText(item, budget, facturacion) {
-  if (item.isVariable) return fmtMoney(variableAmount(budget, facturacion), 'ARS');
+  if (item.isVariable) return 'según facturación del mes';
   if (item.variableMonto) return 'según consumo';
   if (item.breakdown) return fmtTotals(sumByCurrency([item], { budget, facturacion }));
   return fmtMoney(item.amount, item.currency);

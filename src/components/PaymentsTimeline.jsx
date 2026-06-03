@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { fmtMoney, variableAmount } from '../utils/budget.js';
+import { fmtMoney } from '../utils/budget.js';
 import './PaymentsTimeline.css';
 
 const PHASES = [
-  { key: 'inicio', label: '1 – 5 de junio', sub: 'Pagos de inicio de mes', cls: 'start' },
+  { key: 'inicio', label: '1 – 5 de junio', sub: 'Pagos de inicio de mes. Incluye los consumos de Meta y TikTok y el componente variable del mes pasado.', cls: 'start' },
   { key: 'fin', label: '29 – 30 de junio', sub: 'Cierre de mes', cls: 'mid' },
-  { key: 'post', label: 'Post día 30 — mes vencido', sub: 'Se abona en el 1 al 5 del mes siguiente', cls: 'post' },
+  { key: 'post', label: 'Post día 30 — mes vencido', sub: 'Inversión y variable de este mes. Se abona en el 1 al 5 del mes siguiente.', cls: 'post' },
 ];
 
 function ItemLine({ item, budget, facturacion }) {
@@ -14,7 +14,7 @@ function ItemLine({ item, budget, facturacion }) {
   // Monto a mostrar a la derecha
   let amountNode;
   if (item.isVariable) {
-    amountNode = <strong className="pt-item-amount">{fmtMoney(variableAmount(budget, facturacion), 'ARS')}</strong>;
+    amountNode = <span className="pt-item-variable">según facturación del mes</span>;
   } else if (item.variableMonto) {
     amountNode = <span className="pt-item-variable">según consumo</span>;
   } else if (item.breakdown) {
@@ -55,10 +55,17 @@ function ItemLine({ item, budget, facturacion }) {
 }
 
 export default function PaymentsTimeline({ budget, facturacion }) {
+  // Ítems de medios + variable de este mes (se pagan el mes que viene)
+  const postItems = budget.items.filter((it) => it.phase === 'post');
+  // Versión "mes pasado" de esos ítems: lo que efectivamente se paga AHORA en el 1 al 5
+  const mesPasado = postItems.map((it) => ({ ...it, detail: 'mes pasado', mesPasado: true }));
+
   return (
     <div className="pt-wrap">
       {PHASES.map((ph) => {
-        const items = budget.items.filter((it) => it.phase === ph.key);
+        let items = budget.items.filter((it) => it.phase === ph.key);
+        // En el financiero, el 1 al 5 incluye los medios + variable del mes pasado
+        if (ph.key === 'inicio') items = [...items, ...mesPasado];
         if (!items.length) return null;
         return (
           <div key={ph.key} className={`pt-phase pt-phase--${ph.cls}`}>

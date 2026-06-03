@@ -29,11 +29,8 @@ function lineEffective(line) {
 export function sumByCurrency(items, { budget, facturacion } = {}) {
   const totals = { ARS: 0, USD: 0 };
   for (const item of items) {
-    if (item.isVariable) {
-      totals.ARS += variableAmount(budget, facturacion);
-      continue;
-    }
-    if (item.variableMonto) continue; // monto a definir, no suma
+    if (item.isVariable) continue;      // según facturación, no suma a un total fijo
+    if (item.variableMonto) continue;   // monto a definir, no suma
     if (item.breakdown) {
       for (const b of item.breakdown) {
         totals[b.currency || 'ARS'] += lineEffective(b);
