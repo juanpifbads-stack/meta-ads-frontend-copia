@@ -5,6 +5,7 @@ import apiClient from '../api/client.js';
 import PaymentsSection from '../components/PaymentsSection.jsx';
 import PaymentsTimeline from '../components/PaymentsTimeline.jsx';
 import StrategicProducts from '../components/StrategicProducts.jsx';
+import TasksSection from '../components/TasksSection.jsx';
 import { sumByCurrency, fmtTotals } from '../utils/budget.js';
 import './ClientPortal.css';
 
@@ -301,6 +302,12 @@ function ClientDashboard({ client }) {
           <PaymentsSection budget={budget} facturacion={ecomCurrent} />
         </Modal>
       )}
+
+      {/* Tareas */}
+      <section className="cp-section">
+        <h2 className="cp-section-title">Tareas</h2>
+        <TasksSection slug={client.slug} accessKey={client.accessKey} />
+      </section>
 
       {/* Roadmap semanal */}
       <section className="cp-section">
