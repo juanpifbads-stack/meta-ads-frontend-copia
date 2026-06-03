@@ -20,7 +20,9 @@ function SubLine({ b }) {
           {b.detail && <span className="pt-sub-detail">{b.detail}</span>}
         </div>
         <div className="pt-sub-right">
-          <span className={b.bonificado ? 'pt-strike' : ''}>{fmtMoney(b.amount, b.currency)}</span>
+          {b.isVariable
+            ? <span className="pt-item-variable">según facturación del mes</span>
+            : <span className={b.bonificado ? 'pt-strike' : ''}>{fmtMoney(b.amount, b.currency)}</span>}
           {b.bonificado && <span className="pt-bonif">{b.bonificado}</span>}
         </div>
       </div>

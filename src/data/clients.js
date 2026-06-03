@@ -76,6 +76,7 @@ export const CLIENTS = {
           breakdown: [
             { concept: 'Meta Ads', amount: 1100, currency: 'USD' },
             { concept: 'TikTok Ads', amount: 400, currency: 'USD', bonificado: 'Bonificado junio' },
+            { concept: 'Componente variable', detail: '3% del diferencial de facturación', isVariable: true, currency: 'ARS' },
           ],
         },
         { concept: 'Fee mensual alquimia', detail: 'Email mkt + Gestión web', amount: 350, currency: 'USD', phase: 'inicio' },
@@ -101,7 +102,6 @@ export const CLIENTS = {
         // post día 30 — corresponde al mes presente (junio)
         { concept: 'Inversión Meta', amount: 15000000, currency: 'ARS', phase: 'post', media: true },
         { concept: 'Inversión TikTok', amount: 1500000, currency: 'ARS', phase: 'post', media: true },
-        { concept: 'Componente variable alquimia', detail: '3% del diferencial de facturación', phase: 'post', isVariable: true, currency: 'ARS' },
       ],
 
       bankInfo: {

@@ -42,7 +42,9 @@ function EconLine({ item, budget, facturacion }) {
                 {b.detail && <span className="ps-sub-detail">{b.detail}</span>}
               </div>
               <div className="ps-sub-right">
-                <span className={b.bonificado ? 'ps-strike' : ''}>{fmtMoney(b.amount, b.currency)}</span>
+                {b.isVariable
+                  ? <span className="ps-line-detail">según facturación del mes</span>
+                  : <span className={b.bonificado ? 'ps-strike' : ''}>{fmtMoney(b.amount, b.currency)}</span>}
                 {b.bonificado && <span className="ps-bonif">{b.bonificado}</span>}
               </div>
             </div>
