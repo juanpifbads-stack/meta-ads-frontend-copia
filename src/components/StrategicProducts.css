@@ -45,6 +45,8 @@
 }
 .sp-table tr:hover td { background: var(--color-surface); }
 .sp-r { text-align: right; }
+.sp-th { cursor: pointer; user-select: none; }
+.sp-th:hover { color: var(--color-brand-blue); }
 .sp-mono { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted); }
 .sp-muted { color: var(--color-text-muted); font-size: 12px; }
 .sp-stocknum { color: var(--color-text-muted); font-weight: 400; }

@@ -28,6 +28,8 @@ export default function StrategicProducts({ slug, accessKey, products }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [win, setWin] = useState('30');
+  const [sortKey, setSortKey] = useState('units');
+  const [sortDir, setSortDir] = useState('desc');
 
   const nameBySku = useMemo(() => {
     const m = {};
@@ -50,11 +52,35 @@ export default function StrategicProducts({ slug, accessKey, products }) {
     return () => { alive = false; };
   }, [slug, accessKey, products]);
 
-  // Ordenar por unidades vendidas en la ventana elegida (mayor a menor)
+  const sortVal = (p, key) => {
+    switch (key) {
+      case 'name': return (nameBySku[p.sku] || p.sku).toLowerCase();
+      case 'sku': return p.sku.toLowerCase();
+      case 'stock': return p.stock == null ? -1 : p.stock;
+      case 'units': return p.windows[win]?.units || 0;
+      case 'revenue': return p.windows[win]?.revenue || 0;
+      case 'stockout': return p.daysToStockout == null ? Infinity : p.daysToStockout;
+      default: return 0;
+    }
+  };
+
   const rows = useMemo(() => {
     if (!data) return [];
-    return [...data].sort((a, b) => (b.windows[win]?.units || 0) - (a.windows[win]?.units || 0));
-  }, [data, win]);
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...data].sort((a, b) => {
+      const va = sortVal(a, sortKey);
+      const vb = sortVal(b, sortKey);
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+  }, [data, win, sortKey, sortDir]);
+
+  const toggleSort = (key) => {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir(key === 'name' || key === 'sku' ? 'asc' : 'desc'); }
+  };
+  const arrow = (key) => (sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '');
 
   return (
     <div className="cp-card">
@@ -81,12 +107,12 @@ export default function StrategicProducts({ slug, accessKey, products }) {
           <table className="sp-table">
             <thead>
               <tr>
-                <th>Producto</th>
-                <th>SKU</th>
-                <th className="sp-r">Stock</th>
-                <th className="sp-r">Ventas ({win}d)</th>
-                <th className="sp-r">Facturación ({win}d)</th>
-                <th className="sp-r">Quiebre de stock</th>
+                <th className="sp-th" onClick={() => toggleSort('name')}>Producto{arrow('name')}</th>
+                <th className="sp-th" onClick={() => toggleSort('sku')}>SKU{arrow('sku')}</th>
+                <th className="sp-th sp-r" onClick={() => toggleSort('stock')}>Stock{arrow('stock')}</th>
+                <th className="sp-th sp-r" onClick={() => toggleSort('units')}>Ventas ({win}d){arrow('units')}</th>
+                <th className="sp-th sp-r" onClick={() => toggleSort('revenue')}>Facturación ({win}d){arrow('revenue')}</th>
+                <th className="sp-th sp-r" onClick={() => toggleSort('stockout')}>Quiebre de stock{arrow('stockout')}</th>
               </tr>
             </thead>
             <tbody>
