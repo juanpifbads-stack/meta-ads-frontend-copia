@@ -8,6 +8,136 @@ const STATUSES = [
   { key: 'terminada', label: 'Terminada', cls: 'tk-st--done' },
 ];
 
+function fmtDate(iso) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: '2-digit' });
+  } catch { return ''; }
+}
+function fmtDateTime(iso) {
+  try {
+    return new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  } catch { return ''; }
+}
+
+function TaskCard({ task, slug, accessKey, onChange, onRemove }) {
+  const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState(task.detail || '');
+  const [savingDetail, setSavingDetail] = useState(false);
+  const [author, setAuthor] = useState(() => localStorage.getItem('tk_author') || '');
+  const [msg, setMsg] = useState('');
+  const [sending, setSending] = useState(false);
+  const comments = Array.isArray(task.comments) ? task.comments : [];
+
+  const setStatus = async (status) => {
+    onChange({ ...task, status });
+    try { await apiClient.patch(`/tasks/${slug}/${task.id}`, { key: accessKey, status }); }
+    catch { /* noop */ }
+  };
+
+  const saveDetail = async () => {
+    setSavingDetail(true);
+    try {
+      const res = await apiClient.patch(`/tasks/${slug}/${task.id}`, { key: accessKey, detail });
+      onChange(res.data.task);
+    } catch { /* noop */ } finally { setSavingDetail(false); }
+  };
+
+  const sendMsg = async () => {
+    if (!msg.trim()) return;
+    setSending(true);
+    localStorage.setItem('tk_author', author);
+    try {
+      const res = await apiClient.post(`/tasks/${slug}/${task.id}/comment`, { key: accessKey, author, body: msg });
+      onChange(res.data.task);
+      setMsg('');
+    } catch { /* noop */ } finally { setSending(false); }
+  };
+
+  return (
+    <div className={`tk-item ${task.status === 'terminada' ? 'tk-item--done' : ''}`}>
+      <div className="tk-row">
+        <div className="tk-date">{fmtDate(task.created_at)}</div>
+        <div className="tk-item-body">
+          <div className="tk-item-title">{task.title}</div>
+        </div>
+        <div className="tk-item-right">
+          <div className="tk-status">
+            {STATUSES.map((s) => (
+              <button
+                key={s.key}
+                className={`tk-st ${s.cls} ${task.status === s.key ? 'tk-st--active' : ''}`}
+                onClick={() => setStatus(s.key)}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+          <button className="tk-expand" onClick={() => setOpen((o) => !o)}>
+            {open ? 'Cerrar' : `Info y consultas${comments.length ? ` (${comments.length})` : ''}`}
+          </button>
+          <button className="tk-del" title="Eliminar" onClick={onRemove}>×</button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="tk-detail-box">
+          {/* Información de la tarea */}
+          <div className="tk-block">
+            <div className="tk-block-lbl">Información de la tarea</div>
+            <textarea
+              className="tk-input tk-textarea"
+              placeholder="Agregá info, links o instrucciones sobre esta tarea…"
+              value={detail}
+              onChange={(e) => setDetail(e.target.value)}
+            />
+            <button className="tk-save tk-save--sm" onClick={saveDetail} disabled={savingDetail}>
+              {savingDetail ? 'Guardando…' : 'Guardar info'}
+            </button>
+          </div>
+
+          {/* Chat de consultas */}
+          <div className="tk-block">
+            <div className="tk-block-lbl">Consultas</div>
+            <div className="tk-chat">
+              {comments.length === 0 && <div className="tk-chat-empty">Todavía no hay consultas.</div>}
+              {comments.map((c, i) => (
+                <div key={i} className="tk-msg">
+                  <div className="tk-msg-head">
+                    <span className="tk-msg-author">{c.author}</span>
+                    <span className="tk-msg-time">{fmtDateTime(c.at)}</span>
+                  </div>
+                  <div className="tk-msg-body">{c.body}</div>
+                </div>
+              ))}
+            </div>
+            <div className="tk-chat-form">
+              <input
+                className="tk-input tk-author"
+                placeholder="Tu nombre"
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+              />
+              <div className="tk-chat-send">
+                <input
+                  className="tk-input"
+                  placeholder="Escribí una consulta…"
+                  value={msg}
+                  onChange={(e) => setMsg(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') sendMsg(); }}
+                />
+                <button className="tk-save tk-save--sm" onClick={sendMsg} disabled={sending || !msg.trim()}>
+                  {sending ? '…' : 'Enviar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TasksSection({ slug, accessKey }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,17 +167,10 @@ export default function TasksSection({ slug, accessKey }) {
     } catch { /* noop */ } finally { setSaving(false); }
   };
 
-  const setStatus = async (id, status) => {
-    setTasks((t) => t.map((x) => (x.id === id ? { ...x, status } : x))); // optimista
-    try {
-      await apiClient.patch(`/tasks/${slug}/${id}`, { key: accessKey, status });
-    } catch { load(); }
-  };
-
-  const remove = async (id) => {
+  const updateTask = (updated) => setTasks((t) => t.map((x) => (x.id === updated.id ? updated : x)));
+  const removeTask = async (id) => {
     setTasks((t) => t.filter((x) => x.id !== id));
-    try { await apiClient.delete(`/tasks/${slug}/${id}`, { params: { key: accessKey } }); }
-    catch { load(); }
+    try { await apiClient.delete(`/tasks/${slug}/${id}`, { params: { key: accessKey } }); } catch { load(); }
   };
 
   const pending = tasks.filter((t) => t.status !== 'terminada').length;
@@ -65,18 +188,8 @@ export default function TasksSection({ slug, accessKey }) {
 
       {showAdd && (
         <div className="tk-add">
-          <input
-            className="tk-input"
-            placeholder="Título de la tarea"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <textarea
-            className="tk-input tk-textarea"
-            placeholder="Detalle (opcional)"
-            value={detail}
-            onChange={(e) => setDetail(e.target.value)}
-          />
+          <input className="tk-input" placeholder="Título de la tarea" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <textarea className="tk-input tk-textarea" placeholder="Info inicial (opcional)" value={detail} onChange={(e) => setDetail(e.target.value)} />
           <button className="tk-save" onClick={addTask} disabled={saving || !title.trim()}>
             {saving ? 'Guardando…' : 'Guardar tarea'}
           </button>
@@ -84,33 +197,18 @@ export default function TasksSection({ slug, accessKey }) {
       )}
 
       {error && <p className="cp-placeholder">No se pudieron cargar las tareas.</p>}
-
-      {!loading && !error && tasks.length === 0 && (
-        <p className="cp-placeholder">No hay tareas todavía.</p>
-      )}
+      {!loading && !error && tasks.length === 0 && <p className="cp-placeholder">No hay tareas todavía.</p>}
 
       <div className="tk-list">
         {tasks.map((t) => (
-          <div key={t.id} className={`tk-item ${t.status === 'terminada' ? 'tk-item--done' : ''}`}>
-            <div className="tk-item-body">
-              <div className="tk-item-title">{t.title}</div>
-              {t.detail && <div className="tk-item-detail">{t.detail}</div>}
-            </div>
-            <div className="tk-item-right">
-              <div className="tk-status">
-                {STATUSES.map((s) => (
-                  <button
-                    key={s.key}
-                    className={`tk-st ${s.cls} ${t.status === s.key ? 'tk-st--active' : ''}`}
-                    onClick={() => setStatus(t.id, s.key)}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-              <button className="tk-del" title="Eliminar" onClick={() => remove(t.id)}>×</button>
-            </div>
-          </div>
+          <TaskCard
+            key={t.id}
+            task={t}
+            slug={slug}
+            accessKey={accessKey}
+            onChange={updateTask}
+            onRemove={() => removeTask(t.id)}
+          />
         ))}
       </div>
     </div>

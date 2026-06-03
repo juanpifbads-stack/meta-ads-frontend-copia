@@ -56,19 +56,85 @@
 
 .tk-list { display: flex; flex-direction: column; gap: 10px; }
 .tk-item {
+  border: 1.5px solid var(--color-gray-light);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  padding: 14px;
+}
+.tk-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 14px;
-  padding: 14px;
-  border: 1.5px solid var(--color-gray-light);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
   flex-wrap: wrap;
+}
+.tk-date {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: var(--color-background);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  white-space: nowrap;
+  text-transform: uppercase;
 }
 .tk-item--done { opacity: 0.6; }
 .tk-item--done .tk-item-title { text-decoration: line-through; }
-.tk-item-body { flex: 1; min-width: 180px; }
+.tk-item-body { flex: 1; min-width: 160px; }
+
+/* Detalle expandible */
+.tk-detail-box {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-gray-light);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.tk-block { display: flex; flex-direction: column; gap: 8px; }
+.tk-block-lbl {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+.tk-save--sm { align-self: flex-start; padding: 7px 14px; font-size: 12px; }
+.tk-expand {
+  background: none;
+  border: 1.5px solid var(--color-gray-mid);
+  border-radius: 99px;
+  padding: 5px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.tk-expand:hover { border-color: var(--color-brand-blue); color: var(--color-brand-blue); }
+
+/* Chat */
+.tk-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--color-background);
+  border: 1px solid var(--color-gray-light);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.tk-chat-empty { font-size: 12px; color: var(--color-text-muted); font-style: italic; }
+.tk-msg { background: var(--color-surface); border-radius: var(--radius-sm); padding: 8px 10px; }
+.tk-msg-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+.tk-msg-author { font-size: 12px; font-weight: 700; color: var(--color-brand-blue); }
+.tk-msg-time { font-family: var(--font-mono); font-size: 10px; color: var(--color-text-muted); }
+.tk-msg-body { font-size: 13px; color: var(--color-text-primary); line-height: 1.4; white-space: pre-wrap; }
+.tk-chat-form { display: flex; flex-direction: column; gap: 8px; }
+.tk-author { max-width: 200px; }
+.tk-chat-send { display: flex; gap: 8px; }
+.tk-chat-send .tk-input { flex: 1; }
 .tk-item-title { font-size: 15px; font-weight: 600; color: var(--color-text-primary); }
 .tk-item-detail { font-size: 13px; color: var(--color-text-secondary); margin-top: 4px; line-height: 1.4; }
 
