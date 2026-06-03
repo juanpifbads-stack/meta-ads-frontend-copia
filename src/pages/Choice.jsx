@@ -47,6 +47,15 @@ export default function Choice({ onPick }) {
             </div>
             <div className="choice-arrow">Ver clientes →</div>
           </div>
+          <div className="choice-card" onClick={() => onPick('admin')}>
+            <div className="choice-num">— 05</div>
+            <div className="choice-name">Admin</div>
+            <div className="choice-desc">
+              Editá el contenido de cada cliente sin código: estrategia, objetivos,
+              roadmap, productos, presupuesto. Duplicá meses.
+            </div>
+            <div className="choice-arrow">Ir al admin →</div>
+          </div>
         </div>
         <button className="choice-logout" onClick={logout}>Cerrar sesión</button>
       </div>

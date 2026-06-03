@@ -9,6 +9,7 @@ import Control from './pages/Control.jsx';
 import Analyze from './pages/Analyze.jsx';
 import ClientPortal, { PaymentsPortal } from './pages/ClientPortal.jsx';
 import ClientsList from './pages/ClientsList.jsx';
+import Admin from './pages/Admin.jsx';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -55,6 +56,7 @@ function AppShell() {
   if (view === 'control') return <Control onBack={() => setView('choice')} />;
   if (view === 'analyze') return <Analyze onBack={() => setView('choice')} />;
   if (view === 'clients') return <ClientsList onBack={() => setView('choice')} />;
+  if (view === 'admin') return <Admin onBack={() => setView('choice')} />;
   return <Choice onPick={(mode) => setView(mode)} />;
 }
 
