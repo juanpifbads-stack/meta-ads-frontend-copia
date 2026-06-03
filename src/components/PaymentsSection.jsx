@@ -1,25 +1,74 @@
 import React, { useState, useMemo } from 'react';
+import { fmtMoney, fmtTotals, sumByCurrency, variableAmount } from '../utils/budget.js';
 import './PaymentsSection.css';
 
-function fmtMoney(n) {
-  if (n == null || isNaN(n)) return '—';
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency', currency: 'ARS', maximumFractionDigits: 0,
-  }).format(n);
+// Texto del monto de un ítem (resuelve breakdown / variable / a definir)
+function itemAmountText(item, budget, facturacion) {
+  if (item.isVariable) return fmtMoney(variableAmount(budget, facturacion), 'ARS');
+  if (item.variableMonto) return 'según consumo';
+  if (item.breakdown) {
+    const t = sumByCurrency([item], { budget, facturacion });
+    return fmtTotals(t);
+  }
+  return fmtMoney(item.amount, item.currency);
 }
 
-export default function PaymentsSection({ budget }) {
+function Column({ title, accent, groups, budget, facturacion, total }) {
+  return (
+    <div className={`ps-col ps-col--${accent}`}>
+      <div className="ps-col-title">{title}</div>
+      {groups.map((g, gi) => (
+        <div key={gi} className="ps-col-group">
+          <div className="ps-col-group-label">{g.label}</div>
+          {g.items.map((it, i) => (
+            <div key={i} className="ps-col-line">
+              <div className="ps-col-line-left">
+                <span>{it.concept}</span>
+                {it.detail && <span className="ps-col-line-detail">{it.detail}</span>}
+              </div>
+              <span className="ps-col-line-amount">{itemAmountText(it, budget, facturacion)}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+      <div className="ps-col-total">
+        <span>Total</span>
+        <strong>{fmtTotals(total)}</strong>
+      </div>
+    </div>
+  );
+}
+
+export default function PaymentsSection({ budget, facturacion = 0 }) {
   const [showBank, setShowBank] = useState(false);
   const [copied, setCopied] = useState(null);
 
-  const econTotal = useMemo(
-    () => budget.economico.reduce((s, x) => s + (x.amount || 0), 0),
-    [budget]
-  );
-  const finTotal = useMemo(
-    () => budget.financiero.reduce((s, x) => s + (x.amount || 0), 0),
-    [budget]
-  );
+  const { econGroups, finGroups, econTotal, finTotal } = useMemo(() => {
+    const inicio = budget.items.filter((x) => x.phase === 'inicio');
+    const fin = budget.items.filter((x) => x.phase === 'fin');
+    const post = budget.items.filter((x) => x.phase === 'post');
+
+    // Económico: costo del servicio según el mes
+    const econGroups = [
+      { label: '1 al 5', items: inicio },
+      { label: '29 al 30', items: fin },
+      { label: 'Post día 30', items: post },
+    ].filter((g) => g.items.length);
+
+    // Financiero: idéntico, pero medios + variable se pagan en el 1 al 5 (mes pasado)
+    const finGroups = [
+      { label: '1 al 5', items: [...inicio, ...post.map((p) => ({ ...p, detail: 'mes pasado' }))] },
+      { label: '29 al 30', items: fin },
+    ].filter((g) => g.items.length);
+
+    const all = budget.items;
+    return {
+      econGroups,
+      finGroups,
+      econTotal: sumByCurrency(all, { budget, facturacion }),
+      finTotal: sumByCurrency(all, { budget, facturacion }),
+    };
+  }, [budget, facturacion]);
 
   const copy = (text, label) => {
     navigator.clipboard?.writeText(text);
@@ -29,44 +78,15 @@ export default function PaymentsSection({ budget }) {
 
   return (
     <div className="ps-card">
-      {/* Económico */}
-      <div className="ps-group">
-        <div className="ps-group-head">
-          <span className="ps-group-label">Presupuesto económico del mes</span>
-        </div>
-        {budget.economico.map((item, i) => (
-          <div key={i} className="ps-line">
-            <div className="ps-line-left">
-              <span className="ps-line-concept">{item.concept}</span>
-              {item.detail && <span className="ps-line-detail">{item.detail}</span>}
-              {item.phase === 'post' && <span className="ps-tag-post">post día 30</span>}
-            </div>
-            <span className="ps-line-amount">{fmtMoney(item.amount)}</span>
-          </div>
-        ))}
-        <div className="ps-group-total">
-          <span>Total presupuesto del mes</span>
-          <strong>{fmtMoney(econTotal)}</strong>
-        </div>
+      <div className="ps-compare">
+        <Column title="Presupuesto económico" accent="econ" groups={econGroups} budget={budget} facturacion={facturacion} total={econTotal} />
+        <Column title="Presupuesto financiero" accent="fin" groups={finGroups} budget={budget} facturacion={facturacion} total={finTotal} />
       </div>
 
-      {/* Financiero (mes pasado) */}
-      <div className="ps-group ps-group--fin">
-        <div className="ps-group-head">
-          <span className="ps-group-label">Financiero — mes pasado</span>
-        </div>
-        {budget.financiero.map((item, i) => (
-          <div key={i} className="ps-line">
-            <div className="ps-line-left">
-              <span className="ps-line-concept">{item.concept}</span>
-              {item.detail && <span className="ps-line-detail">{item.detail}</span>}
-            </div>
-            <span className="ps-line-amount">{fmtMoney(item.amount)}</span>
-          </div>
-        ))}
-        <div className="ps-fin-note">
-          No suma al presupuesto del mes — corresponde a pagos financieros del mes anterior.
-        </div>
+      <div className="ps-compare-note">
+        El <strong>económico</strong> es el costo del servicio del mes. El <strong>financiero</strong> es
+        el flujo de caja real: en el 1 al 5 se abonan además los consumos de Meta y TikTok y el
+        componente variable del mes anterior.
       </div>
 
       {/* Botón transferir */}
@@ -76,10 +96,6 @@ export default function PaymentsSection({ budget }) {
 
       {showBank && (
         <div className="ps-bank">
-          <div className="ps-bank-amount">
-            <span>A transferir este mes</span>
-            <strong>{fmtMoney(econTotal + finTotal)}</strong>
-          </div>
           <div className="ps-bank-grid">
             <div className="ps-bank-row">
               <span className="ps-bank-lbl">Titular</span>

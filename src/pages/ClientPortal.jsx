@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { getClient } from '../data/clients.js';
 import PaymentsSection from '../components/PaymentsSection.jsx';
 import PaymentsTimeline from '../components/PaymentsTimeline.jsx';
+import { sumByCurrency, fmtTotals } from '../utils/budget.js';
 import './ClientPortal.css';
 
 /* ── Modal central ── */
@@ -144,7 +145,7 @@ function ClientDashboard({ client }) {
   const expected = (ecommerceGoal.target / daysInMonth()) * daysElapsed();
   const ecomDeviation = expected > 0 ? ((ecommerceGoal.current - expected) / expected) * 100 : 0;
 
-  const budgetTotal = budget.economico.reduce((s, x) => s + (x.amount || 0), 0);
+  const budgetTotals = sumByCurrency(budget.items, { budget, facturacion: ecommerceGoal.current });
 
   return (
     <div className="cp-page">
@@ -210,7 +211,7 @@ function ClientDashboard({ client }) {
         {/* Presupuesto — botón a modal */}
         <button className="cp-kpi cp-kpi--button" onClick={() => setShowBudgetModal(true)}>
           <div className="cp-kpi-label">Presupuesto total mes</div>
-          <div className="cp-kpi-value">{fmtMoney(budgetTotal)}</div>
+          <div className="cp-kpi-value cp-kpi-value--budget">{fmtTotals(budgetTotals)}</div>
           <div className="cp-kpi-cta">Ver detalle y datos para transferir →</div>
         </button>
       </section>
@@ -218,13 +219,13 @@ function ClientDashboard({ client }) {
       {/* PAGOS — línea de tiempo del mes */}
       <section className="cp-section">
         <h2 className="cp-section-title">Pagos del mes</h2>
-        <PaymentsTimeline budget={budget} />
+        <PaymentsTimeline budget={budget} facturacion={ecommerceGoal.current} />
       </section>
 
       {/* Modal de presupuesto */}
       {showBudgetModal && (
-        <Modal title="Inversiones del mes" onClose={() => setShowBudgetModal(false)}>
-          <PaymentsSection budget={budget} />
+        <Modal title="Presupuesto del mes" onClose={() => setShowBudgetModal(false)}>
+          <PaymentsSection budget={budget} facturacion={ecommerceGoal.current} />
         </Modal>
       )}
 
@@ -353,7 +354,7 @@ export function PaymentsPortal() {
         <div className="cp-month-banner-obj">Detalle de conceptos, fechas y montos a transferir.</div>
       </div>
       <section className="cp-section">
-        <PaymentsSection budget={client.budget} />
+        <PaymentsSection budget={client.budget} facturacion={client.ecommerceGoal.current} />
       </section>
       <footer className="cp-footer">panel by alquimia.</footer>
     </div>

@@ -46,19 +46,38 @@ export const CLIENTS = {
 
     // Módulo 3 — Presupuesto y pagos
     budget: {
-      // ECONÓMICO — esto SÍ suma al "Presupuesto total del mes"
-      economico: [
-        { concept: 'Fee mensual alquimia', detail: 'TikTok + Meta Ads', amount: 1500000, phase: 'inicio' },
-        { concept: 'Email marketing + Web', amount: 550000, phase: 'inicio' },
-        { concept: 'Contenido para pauta', amount: 600000, phase: 'inicio' },
-        { concept: 'Actrices', amount: 400000, phase: 'inicio' },
-        { concept: 'Estudios + viáticos', amount: 350000, phase: 'post' },
+      // Componente variable de alquimia: 3% del diferencial de facturación
+      // respecto de la base inicial. (Ajustar baseInicial con el número real.)
+      variable: { rate: 0.03, baseInicial: 80000000, currency: 'ARS' },
+
+      // Ítems del mes. phase: 'inicio' (1-5) | 'fin' (29-30) | 'post' (post día 30, mes vencido)
+      items: [
+        {
+          concept: 'Fee mensual alquimia', detail: 'TikTok + Meta Ads', phase: 'inicio',
+          breakdown: [
+            { concept: 'Meta Ads', amount: 1100, currency: 'USD' },
+            { concept: 'TikTok Ads', amount: 400, currency: 'USD', bonificado: 'Bonificado junio' },
+          ],
+        },
+        { concept: 'Fee mensual alquimia', detail: 'Email mkt + Gestión web', amount: 350, currency: 'USD', phase: 'inicio' },
+        { concept: 'Fee mensual alquimia', detail: 'Contenido para pauta', amount: 1000, currency: 'USD', phase: 'inicio' },
+        {
+          concept: 'Actrices', phase: 'inicio',
+          breakdown: [
+            { concept: 'Delfina', detail: '2 sesiones · 2 hs', amount: 500000, currency: 'ARS' },
+            { concept: 'Karina', detail: '2 sesiones · 2 hs', amount: 450000, currency: 'ARS', bonificado: 'Bonificado junio' },
+          ],
+        },
+        {
+          concept: 'Viáticos del mes (Delfina) + alquileres de estudio', phase: 'fin',
+          detail: 'Lo que alquimia haya abonado durante el mes', variableMonto: true, currency: 'ARS',
+        },
+        // post día 30 — mes vencido
+        { concept: 'Inversión Meta', detail: 'mes vencido', amount: 15000000, currency: 'ARS', phase: 'post', media: true },
+        { concept: 'Inversión TikTok', detail: 'mes vencido', amount: 1500000, currency: 'ARS', phase: 'post', media: true },
+        { concept: 'Componente variable alquimia', detail: '3% del diferencial de facturación', phase: 'post', isVariable: true, currency: 'ARS' },
       ],
-      // FINANCIERO — del mes pasado. NO suma al presupuesto económico del mes.
-      financiero: [
-        { concept: 'Variable sobre resultados', detail: 'mes pasado', amount: 800000, phase: 'inicio' },
-        { concept: 'Inversión Meta', detail: 'mes pasado', amount: 20000000, phase: 'inicio' },
-      ],
+
       bankInfo: {
         titular: 'Alquimia SRL',
         alias: 'alquimia.ads.mp',
