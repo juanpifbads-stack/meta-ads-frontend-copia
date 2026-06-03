@@ -4,6 +4,7 @@ import { getClient } from '../data/clients.js';
 import apiClient from '../api/client.js';
 import PaymentsSection from '../components/PaymentsSection.jsx';
 import PaymentsTimeline from '../components/PaymentsTimeline.jsx';
+import StrategicProducts from '../components/StrategicProducts.jsx';
 import { sumByCurrency, fmtTotals } from '../utils/budget.js';
 import './ClientPortal.css';
 
@@ -377,25 +378,7 @@ function ClientDashboard({ client }) {
       {/* Productos estratégicos */}
       <section className="cp-section">
         <h2 className="cp-section-title">Productos estratégicos</h2>
-        <div className="cp-card">
-          <table className="cp-products">
-            <thead>
-              <tr><th>Producto</th><th>SKU</th><th>Stock</th><th>Ventas</th><th>Facturación</th></tr>
-            </thead>
-            <tbody>
-              {strategicProducts.map((p, i) => (
-                <tr key={i}>
-                  <td>{p.name}</td>
-                  <td className="cp-mono">{p.sku}</td>
-                  <td className="cp-muted">—</td>
-                  <td className="cp-muted">—</td>
-                  <td className="cp-muted">—</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="cp-placeholder">Stock, ventas y facturación se conectan con Tienda Nube.</p>
-        </div>
+        <StrategicProducts slug={client.slug} accessKey={client.accessKey} products={strategicProducts} />
       </section>
 
       {/* Justificación de objetivos */}
