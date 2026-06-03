@@ -73,9 +73,9 @@ export const CLIENTS = {
           concept: 'Viáticos del mes (Delfina) + alquileres de estudio', phase: 'fin',
           detail: 'Lo que alquimia haya abonado durante el mes', variableMonto: true, currency: 'ARS',
         },
-        // post día 30 — mes vencido
-        { concept: 'Inversión Meta', detail: 'mes vencido', amount: 15000000, currency: 'ARS', phase: 'post', media: true },
-        { concept: 'Inversión TikTok', detail: 'mes vencido', amount: 1500000, currency: 'ARS', phase: 'post', media: true },
+        // post día 30 — corresponde al mes presente (junio)
+        { concept: 'Inversión Meta', amount: 15000000, currency: 'ARS', phase: 'post', media: true },
+        { concept: 'Inversión TikTok', amount: 1500000, currency: 'ARS', phase: 'post', media: true },
         { concept: 'Componente variable alquimia', detail: '3% del diferencial de facturación', phase: 'post', isVariable: true, currency: 'ARS' },
       ],
 

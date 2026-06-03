@@ -14,7 +14,10 @@ function ItemLine({ item, budget, facturacion }) {
   // Monto a mostrar a la derecha
   let amountNode;
   if (item.isVariable) {
-    amountNode = <span className="pt-item-variable">según facturación del mes</span>;
+    const txt = item.period === 'pasado'
+      ? 'según facturación del mes pasado'
+      : 'según facturación de junio';
+    amountNode = <span className="pt-item-variable">{txt}</span>;
   } else if (item.variableMonto) {
     amountNode = <span className="pt-item-variable">según consumo</span>;
   } else if (item.breakdown) {
@@ -31,6 +34,11 @@ function ItemLine({ item, budget, facturacion }) {
         <div className="pt-item-left">
           <span className="pt-item-concept">{item.concept}</span>
           {item.detail && <span className="pt-item-detail">{item.detail}</span>}
+          {item.period && (
+            <span className={`pt-period pt-period--${item.period}`}>
+              {item.period === 'pasado' ? 'Corresponde al mes pasado' : 'Corresponde a junio (mes presente)'}
+            </span>
+          )}
         </div>
         {amountNode}
       </div>
@@ -57,8 +65,8 @@ function ItemLine({ item, budget, facturacion }) {
 export default function PaymentsTimeline({ budget, facturacion }) {
   // Ítems de medios + variable de este mes (se pagan el mes que viene)
   const postItems = budget.items.filter((it) => it.phase === 'post');
-  // Versión "mes pasado" de esos ítems: lo que efectivamente se paga AHORA en el 1 al 5
-  const mesPasado = postItems.map((it) => ({ ...it, detail: 'mes pasado', mesPasado: true }));
+  // Versión "mes pasado": lo que efectivamente se paga AHORA en el 1 al 5
+  const mesPasado = postItems.map((it) => ({ ...it, period: 'pasado' }));
 
   return (
     <div className="pt-wrap">
@@ -66,6 +74,8 @@ export default function PaymentsTimeline({ budget, facturacion }) {
         let items = budget.items.filter((it) => it.phase === ph.key);
         // En el financiero, el 1 al 5 incluye los medios + variable del mes pasado
         if (ph.key === 'inicio') items = [...items, ...mesPasado];
+        // Los ítems del bloque post corresponden al mes presente (junio)
+        if (ph.key === 'post') items = items.map((it) => ({ ...it, period: 'presente' }));
         if (!items.length) return null;
         return (
           <div key={ph.key} className={`pt-phase pt-phase--${ph.cls}`}>
