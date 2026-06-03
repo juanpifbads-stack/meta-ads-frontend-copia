@@ -8,6 +8,8 @@ const STATUSES = [
   { key: 'terminada', label: 'Terminada', cls: 'tk-st--done' },
 ];
 
+const AUTHORS = ['Juanpi', 'Agus', 'Fran', 'Equipo de Agus'];
+
 function fmtDate(iso) {
   if (!iso) return '';
   try {
@@ -24,7 +26,7 @@ function TaskCard({ task, slug, accessKey, onChange, onRemove }) {
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState(task.detail || '');
   const [savingDetail, setSavingDetail] = useState(false);
-  const [author, setAuthor] = useState(() => localStorage.getItem('tk_author') || '');
+  const [author, setAuthor] = useState(() => localStorage.getItem('tk_author') || AUTHORS[0]);
   const [msg, setMsg] = useState('');
   const [sending, setSending] = useState(false);
   const comments = Array.isArray(task.comments) ? task.comments : [];
@@ -73,12 +75,19 @@ function TaskCard({ task, slug, accessKey, onChange, onRemove }) {
               </button>
             ))}
           </div>
-          <button className="tk-expand" onClick={() => setOpen((o) => !o)}>
-            {open ? 'Cerrar' : `Info y consultas${comments.length ? ` (${comments.length})` : ''}`}
-          </button>
-          <button className="tk-del" title="Eliminar" onClick={onRemove}>×</button>
+          <button
+            className="tk-del"
+            title="Eliminar"
+            onClick={() => { if (window.confirm(`¿Eliminar la tarea "${task.title}"? No se puede deshacer.`)) onRemove(); }}
+          >×</button>
         </div>
       </div>
+
+      {/* Toggle desplegable (distinto de los estados) */}
+      <button className={`tk-toggle ${open ? 'tk-toggle--open' : ''}`} onClick={() => setOpen((o) => !o)}>
+        <span className="tk-toggle-caret">{open ? '▾' : '▸'}</span>
+        Info y consultas{comments.length ? ` · ${comments.length} mensaje${comments.length > 1 ? 's' : ''}` : ''}
+      </button>
 
       {open && (
         <div className="tk-detail-box">
@@ -112,12 +121,13 @@ function TaskCard({ task, slug, accessKey, onChange, onRemove }) {
               ))}
             </div>
             <div className="tk-chat-form">
-              <input
+              <select
                 className="tk-input tk-author"
-                placeholder="Tu nombre"
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
-              />
+              >
+                {AUTHORS.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
               <div className="tk-chat-send">
                 <input
                   className="tk-input"
@@ -173,13 +183,26 @@ export default function TasksSection({ slug, accessKey }) {
     try { await apiClient.delete(`/tasks/${slug}/${id}`, { params: { key: accessKey } }); } catch { load(); }
   };
 
-  const pending = tasks.filter((t) => t.status !== 'terminada').length;
+  const [showArchive, setShowArchive] = useState(false);
+  const active = tasks.filter((t) => t.status !== 'terminada');
+  const done = tasks.filter((t) => t.status === 'terminada');
+
+  const card = (t) => (
+    <TaskCard
+      key={t.id}
+      task={t}
+      slug={slug}
+      accessKey={accessKey}
+      onChange={updateTask}
+      onRemove={() => removeTask(t.id)}
+    />
+  );
 
   return (
     <div className="cp-card">
       <div className="tk-head">
         <span className="tk-count">
-          {loading ? 'Cargando…' : `${pending} pendiente${pending === 1 ? '' : 's'} de ${tasks.length}`}
+          {loading ? 'Cargando…' : `${active.length} pendiente${active.length === 1 ? '' : 's'}`}
         </span>
         <button className="tk-add-btn" onClick={() => setShowAdd((s) => !s)}>
           {showAdd ? 'Cancelar' : '+ Agregar tarea'}
@@ -199,18 +222,17 @@ export default function TasksSection({ slug, accessKey }) {
       {error && <p className="cp-placeholder">No se pudieron cargar las tareas.</p>}
       {!loading && !error && tasks.length === 0 && <p className="cp-placeholder">No hay tareas todavía.</p>}
 
-      <div className="tk-list">
-        {tasks.map((t) => (
-          <TaskCard
-            key={t.id}
-            task={t}
-            slug={slug}
-            accessKey={accessKey}
-            onChange={updateTask}
-            onRemove={() => removeTask(t.id)}
-          />
-        ))}
-      </div>
+      <div className="tk-list">{active.map(card)}</div>
+
+      {done.length > 0 && (
+        <div className="tk-archive">
+          <button className="tk-archive-head" onClick={() => setShowArchive((s) => !s)}>
+            <span className="tk-toggle-caret">{showArchive ? '▾' : '▸'}</span>
+            Archivo de tareas terminadas ({done.length})
+          </button>
+          {showArchive && <div className="tk-list tk-list--archive">{done.map(card)}</div>}
+        </div>
+      )}
     </div>
   );
 }

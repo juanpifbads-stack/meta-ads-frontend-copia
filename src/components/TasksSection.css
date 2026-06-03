@@ -100,18 +100,42 @@
   color: var(--color-text-muted);
 }
 .tk-save--sm { align-self: flex-start; padding: 7px 14px; font-size: 12px; }
-.tk-expand {
+
+/* Toggle desplegable — estilo distinto a los estados */
+.tk-toggle {
+  margin-top: 10px;
   background: none;
-  border: 1.5px solid var(--color-gray-mid);
-  border-radius: 99px;
-  padding: 5px 12px;
+  border: none;
+  padding: 4px 0;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-brand-blue);
   cursor: pointer;
-  color: var(--color-text-secondary);
-  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-.tk-expand:hover { border-color: var(--color-brand-blue); color: var(--color-brand-blue); }
+.tk-toggle:hover { text-decoration: underline; }
+.tk-toggle-caret { font-size: 10px; }
+
+/* Archivo de terminadas */
+.tk-archive { margin-top: 16px; padding-top: 14px; border-top: 1.5px dashed var(--color-gray-light); }
+.tk-archive-head {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tk-archive-head:hover { color: var(--color-text-primary); }
+.tk-list--archive { margin-top: 12px; }
 
 /* Chat */
 .tk-chat {
