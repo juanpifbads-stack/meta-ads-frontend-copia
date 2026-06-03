@@ -290,6 +290,31 @@
 .cp-week-name { font-family: var(--font-mono); font-size: 12px; font-weight: 700; }
 .cp-week-goal { font-size: 13px; color: var(--color-text-secondary); line-height: 1.4; }
 
+.cp-week--click { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+.cp-week--click:hover { border-color: var(--color-brand-blue); }
+.cp-week--open { border-color: var(--color-brand-blue); }
+
+.cp-week-recline {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--color-gray-light);
+  font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted);
+}
+.cp-week-toggle { font-weight: 700; color: var(--color-brand-blue); font-size: 14px; }
+
+.cp-week-recs { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.cp-week-empty { font-size: 12px; color: var(--color-text-muted); font-style: italic; }
+.cp-rec {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: var(--color-background); border-radius: var(--radius-sm); padding: 8px 10px;
+}
+.cp-rec-date {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  color: var(--color-brand-blue); text-transform: uppercase; white-space: nowrap; min-width: 70px;
+}
+.cp-rec-body { display: flex; flex-direction: column; gap: 2px; }
+.cp-rec-actress { font-size: 13px; font-weight: 600; }
+.cp-rec-note { font-size: 11px; color: var(--color-text-muted); }
+
 .cp-pill { padding: 3px 9px; border-radius: 99px; font-family: var(--font-mono); font-size: 10px; font-weight: 600; white-space: nowrap; }
 .cp-pill--pending { background: var(--color-gray-light); color: var(--color-text-muted); }
 .cp-pill--progress { background: #fef9c3; color: #854d0e; }

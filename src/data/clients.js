@@ -36,12 +36,31 @@ export const CLIENTS = {
         'Foco en testeo de catálogo, validación de ganadores y escalamiento progresivo.',
     },
 
-    // Módulo 2 — Roadmap semanal
+    // Módulo 2 — Roadmap semanal (con grabaciones de la semana)
     roadmap: [
-      { week: 'Semana 1', goal: 'Planificación y preparación', status: 'finalizada' },
-      { week: 'Semana 2', goal: 'Identificación de productos ganadores', status: 'en_curso' },
-      { week: 'Semana 3', goal: 'Validación de productos ganadores', status: 'pendiente' },
-      { week: 'Semana 4', goal: 'Escalamiento de productos seleccionados', status: 'pendiente' },
+      {
+        week: 'Semana 1', goal: 'Planificación y preparación', status: 'finalizada',
+        recordings: [
+          { date: '2026-06-03', actress: 'Delfina', note: 'Sesión UGC · 2 hs' },
+        ],
+      },
+      {
+        week: 'Semana 2', goal: 'Identificación de productos ganadores', status: 'en_curso',
+        recordings: [
+          { date: '2026-06-10', actress: 'Delfina', note: 'Producto + estáticos' },
+          { date: '2026-06-12', actress: 'Karina', note: 'Reels de catálogo' },
+        ],
+      },
+      {
+        week: 'Semana 3', goal: 'Validación de productos ganadores', status: 'pendiente',
+        recordings: [],
+      },
+      {
+        week: 'Semana 4', goal: 'Escalamiento de productos seleccionados', status: 'pendiente',
+        recordings: [
+          { date: '2026-06-24', actress: 'Karina', note: 'Contenido de escalamiento' },
+        ],
+      },
     ],
 
     // Módulo 3 — Presupuesto y pagos

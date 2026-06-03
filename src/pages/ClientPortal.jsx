@@ -34,12 +34,6 @@ function daysInMonth() {
   return new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
 }
 
-const STATUS_PILL = {
-  pendiente: { label: 'Pendiente', cls: 'cp-pill--pending' },
-  en_curso: { label: 'En curso', cls: 'cp-pill--progress' },
-  finalizada: { label: 'Finalizada', cls: 'cp-pill--done' },
-};
-
 /* ── Bloque desplegable ── */
 function Collapsible({ title, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -50,6 +44,52 @@ function Collapsible({ title, children, defaultOpen = false }) {
         <span>{open ? '−' : '+'}</span>
       </button>
       {open && <div className="cp-collapsible-body">{children}</div>}
+    </div>
+  );
+}
+
+const STATUS_PILL = {
+  pendiente: { label: 'Pendiente', cls: 'cp-pill--pending' },
+  en_curso: { label: 'En curso', cls: 'cp-pill--progress' },
+  finalizada: { label: 'Finalizada', cls: 'cp-pill--done' },
+};
+
+function fmtRecDate(iso) {
+  try {
+    return new Date(iso + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short' });
+  } catch { return iso; }
+}
+
+/* ── Card de semana del roadmap (tocable) ── */
+function WeekCard({ week }) {
+  const [open, setOpen] = useState(false);
+  const pill = STATUS_PILL[week.status] || STATUS_PILL.pendiente;
+  const recs = week.recordings || [];
+  return (
+    <div className={`cp-week cp-week--click ${open ? 'cp-week--open' : ''}`} onClick={() => setOpen(!open)}>
+      <div className="cp-week-head">
+        <span className="cp-week-name">{week.week}</span>
+        <span className={`cp-pill ${pill.cls}`}>{pill.label}</span>
+      </div>
+      <div className="cp-week-goal">{week.goal}</div>
+      <div className="cp-week-recline">
+        🎬 {recs.length > 0 ? `${recs.length} grabación${recs.length > 1 ? 'es' : ''}` : 'Sin grabaciones'}
+        <span className="cp-week-toggle">{open ? '−' : '+'}</span>
+      </div>
+      {open && (
+        <div className="cp-week-recs" onClick={(e) => e.stopPropagation()}>
+          {recs.length === 0 && <div className="cp-week-empty">No hay grabaciones esta semana.</div>}
+          {recs.map((r, i) => (
+            <div key={i} className="cp-rec">
+              <div className="cp-rec-date">{fmtRecDate(r.date)}</div>
+              <div className="cp-rec-body">
+                <span className="cp-rec-actress">{r.actress}</span>
+                {r.note && <span className="cp-rec-note">{r.note}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -234,18 +274,7 @@ function ClientDashboard({ client }) {
       <section className="cp-section">
         <h2 className="cp-section-title">Roadmap del mes</h2>
         <div className="cp-roadmap">
-          {roadmap.map((r, i) => {
-            const pill = STATUS_PILL[r.status] || STATUS_PILL.pendiente;
-            return (
-              <div key={i} className="cp-week">
-                <div className="cp-week-head">
-                  <span className="cp-week-name">{r.week}</span>
-                  <span className={`cp-pill ${pill.cls}`}>{pill.label}</span>
-                </div>
-                <div className="cp-week-goal">{r.goal}</div>
-              </div>
-            );
-          })}
+          {roadmap.map((r, i) => <WeekCard key={i} week={r} />)}
         </div>
       </section>
 
