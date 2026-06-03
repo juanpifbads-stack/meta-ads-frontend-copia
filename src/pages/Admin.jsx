@@ -40,12 +40,17 @@ export default function Admin({ onBack }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
 
-  useEffect(() => {
+  const [showNew, setShowNew] = useState(false);
+
+  const loadClients = useCallback((selectSlug) => {
     apiClient.get('/admin/clients').then((r) => {
       setClients(r.data.clients || []);
-      if (r.data.clients?.[0]) setSlug(r.data.clients[0].slug);
+      if (selectSlug) setSlug(selectSlug);
+      else if (!slug && r.data.clients?.[0]) setSlug(r.data.clients[0].slug);
     }).catch(() => {});
-  }, []);
+  }, [slug]);
+
+  useEffect(() => { loadClients(); /* eslint-disable-next-line */ }, []);
 
   const loadClient = useCallback((s) => {
     apiClient.get(`/admin/${s}`).then((r) => {
@@ -118,11 +123,16 @@ export default function Admin({ onBack }) {
         </div>
         <button className="ad-btn ad-btn--ghost" onClick={duplicate}>Duplicar mes →</button>
         <button className="ad-btn ad-btn--ghost" onClick={newMonth}>+ Mes en blanco</button>
+        <button className="ad-btn ad-btn--ghost" onClick={() => setShowNew(true)}>+ Nuevo cliente</button>
         <div className="ad-save">
           {msg && <span className="ad-msg">{msg}</span>}
           <button className="ad-btn" onClick={savePlan} disabled={!plan}>Guardar plan</button>
         </div>
       </div>
+
+      {showNew && <NewClientForm onClose={() => setShowNew(false)} onCreated={(s) => { setShowNew(false); loadClients(s); }} />}
+
+      {slug && <ClientConfigEditor slug={slug} />}
 
       {clientData && <MacroEditor slug={slug} macros={clientData.macros} reload={() => loadClient(slug)} />}
 
@@ -289,6 +299,143 @@ function CurField({ value, onChange }) {
         <option value="ARS">ARS</option>
         <option value="USD">USD</option>
       </select>
+    </div>
+  );
+}
+
+const TN_APP_ID = '33450';
+const CAPS = [
+  { k: 'ecommerce', l: 'Ecommerce (Tienda Nube)' },
+  { k: 'meta', l: 'Pauta en Meta' },
+  { k: 'tiktok', l: 'Pauta en TikTok' },
+  { k: 'contenido', l: 'Contenido / grabaciones' },
+  { k: 'variable', l: 'Cobra componente variable' },
+  { k: 'web', l: 'Email mkt + gestión web' },
+];
+
+function CapsEditor({ caps, onToggle }) {
+  return (
+    <div className="ad-caps">
+      {CAPS.map((c) => (
+        <label key={c.k} className="ad-cap">
+          <input type="checkbox" checked={!!caps[c.k]} onChange={() => onToggle(c.k)} />
+          <span>{c.l}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function NewClientForm({ onClose, onCreated }) {
+  const [f, setF] = useState({
+    name: '', slug: '', accessKey: '', paymentsKey: '', metaAccountId: '',
+    capabilities: { meta: true, ecommerce: true, tiktok: true, contenido: true, variable: true, web: true },
+    variableBase: 0,
+    bankInfo: { titular: '', alias: '', cbu: '', observaciones: '' },
+  });
+  const [err, setErr] = useState('');
+  const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
+  const setBank = (k, v) => setF((s) => ({ ...s, bankInfo: { ...s.bankInfo, [k]: v } }));
+  const toggleCap = (k) => setF((s) => ({ ...s, capabilities: { ...s.capabilities, [k]: !s.capabilities[k] } }));
+
+  const create = () => {
+    if (!f.name || !f.slug || !f.accessKey) { setErr('Nombre, slug y clave son obligatorios.'); return; }
+    const config = {
+      name: f.name, accessKey: f.accessKey, paymentsKey: f.paymentsKey || f.accessKey,
+      metaAccountId: f.metaAccountId || null, capabilities: f.capabilities,
+      variable: { base: Number(f.variableBase) || 0, rate: 0.03 }, bankInfo: f.bankInfo,
+    };
+    apiClient.post('/admin/clients', { slug: f.slug, config })
+      .then(() => onCreated(f.slug))
+      .catch((e) => setErr(e.message || 'Error al crear'));
+  };
+
+  return (
+    <div className="ad-section ad-new">
+      <div className="ad-row" style={{ justifyContent: 'space-between' }}>
+        <h3 className="ad-section-title">Nuevo cliente</h3>
+        <button className="ad-del" onClick={onClose}>×</button>
+      </div>
+      <div className="ad-row">
+        <Field label="Nombre" value={f.name} onChange={(v) => set('name', v)} />
+        <Field label="Slug (URL, ej. cameo)" value={f.slug} onChange={(v) => set('slug', v.toLowerCase().replace(/[^a-z0-9-]/g, ''))} />
+      </div>
+      <div className="ad-row">
+        <Field label="Clave de acceso (cliente)" value={f.accessKey} onChange={(v) => set('accessKey', v)} />
+        <Field label="Clave de pagos (admin)" value={f.paymentsKey} onChange={(v) => set('paymentsKey', v)} />
+      </div>
+      <Field label="ID de cuenta de Meta (solo números)" value={f.metaAccountId} onChange={(v) => set('metaAccountId', v)} />
+      <div className="ad-sublabel">¿Qué le ofrecés?</div>
+      <CapsEditor caps={f.capabilities} onToggle={toggleCap} />
+      {f.capabilities.variable && <NumField label="Base fija del variable (ARS)" value={f.variableBase} onChange={(v) => set('variableBase', v)} />}
+      <div className="ad-sublabel">Datos bancarios de alquimia</div>
+      <div className="ad-row">
+        <Field label="Titular" value={f.bankInfo.titular} onChange={(v) => setBank('titular', v)} />
+        <Field label="Alias" value={f.bankInfo.alias} onChange={(v) => setBank('alias', v)} />
+      </div>
+      <Field label="CBU / CVU" value={f.bankInfo.cbu} onChange={(v) => setBank('cbu', v)} />
+      {err && <div className="ad-err">{err}</div>}
+      <button className="ad-btn" onClick={create}>Crear cliente</button>
+      <p className="ad-muted">Después de crearlo: cargá su plan mensual, y si tiene ecommerce conectá Tienda Nube desde la config del cliente.</p>
+    </div>
+  );
+}
+
+function ClientConfigEditor({ slug }) {
+  const [open, setOpen] = useState(false);
+  const [cfg, setCfg] = useState(null);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    if (!open || cfg) return;
+    apiClient.get(`/admin/clients/${slug}/config`).then((r) => setCfg(r.data.config)).catch(() => {});
+  }, [open, slug, cfg]);
+  useEffect(() => { setCfg(null); }, [slug]);
+
+  const save = () => {
+    const config = { ...cfg };
+    delete config.slug; delete config.active;
+    if (config.tiendanube) delete config.tiendanube; // no pisar el token
+    apiClient.put(`/admin/clients/${slug}`, { config })
+      .then(() => { setMsg('✓ Guardado'); setTimeout(() => setMsg(''), 2000); })
+      .catch(() => setMsg('Error'));
+  };
+
+  const tnUrl = `https://www.tiendanube.com/apps/${TN_APP_ID}/authorize?state=${slug}`;
+
+  return (
+    <div className="ad-macro">
+      <button className="ad-macro-head" onClick={() => setOpen(!open)}>
+        <span>{open ? '▾' : '▸'}</span> Config del cliente
+      </button>
+      {open && cfg && (
+        <div className="ad-macro-body">
+          <div className="ad-row">
+            <Field label="Nombre" value={cfg.name || ''} onChange={(v) => setCfg({ ...cfg, name: v })} />
+            <Field label="ID cuenta Meta" value={cfg.metaAccountId || ''} onChange={(v) => setCfg({ ...cfg, metaAccountId: v })} />
+          </div>
+          <div className="ad-row">
+            <Field label="Clave de acceso" value={cfg.accessKey || ''} onChange={(v) => setCfg({ ...cfg, accessKey: v })} />
+            <Field label="Clave de pagos" value={cfg.paymentsKey || ''} onChange={(v) => setCfg({ ...cfg, paymentsKey: v })} />
+          </div>
+          <div className="ad-sublabel">Capacidades</div>
+          <CapsEditor caps={cfg.capabilities || {}} onToggle={(k) => setCfg({ ...cfg, capabilities: { ...(cfg.capabilities || {}), [k]: !(cfg.capabilities || {})[k] } })} />
+          {(cfg.capabilities || {}).variable && (
+            <NumField label="Base fija del variable (ARS)" value={cfg.variable?.base} onChange={(v) => setCfg({ ...cfg, variable: { ...(cfg.variable || { rate: 0.03 }), base: v } })} />
+          )}
+          {(cfg.capabilities || {}).ecommerce && (
+            <div className="ad-tn">
+              {cfg.tiendanube?.connected
+                ? <span className="ad-tn-ok">✓ Tienda Nube conectada (#{cfg.tiendanube.storeId})</span>
+                : <a className="ad-btn ad-btn--ghost" href={tnUrl} target="_blank" rel="noreferrer">Conectar Tienda Nube</a>}
+            </div>
+          )}
+          <div className="ad-row" style={{ justifyContent: 'flex-end' }}>
+            {msg && <span className="ad-msg">{msg}</span>}
+            <button className="ad-btn" onClick={save}>Guardar config</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

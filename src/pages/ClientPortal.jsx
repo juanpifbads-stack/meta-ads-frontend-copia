@@ -204,6 +204,7 @@ function ClientDashboard({ client }) {
     metaGoal, hypotheses, strategicProducts, considerations,
   } = data;
   const months = content?.months || [];
+  const caps = data.capabilities || { ecommerce: true, meta: true, contenido: true, variable: true, web: true, tiktok: true };
 
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [meta, setMeta] = useState(null);
@@ -275,6 +276,7 @@ function ClientDashboard({ client }) {
       {/* KPI Cards */}
       <section className="cp-kpis cp-kpis--3">
         {/* Facturación ecommerce — objetivo claro */}
+        {caps.ecommerce && (
         <div className="cp-kpi cp-kpi--hero">
           <div className="cp-kpi-label">Facturación ecommerce</div>
           <div className="cp-kpi-value">{ecomReady ? fmtMoney(ecomCurrent) : <span className="dots">Cargando</span>}</div>
@@ -289,8 +291,10 @@ function ClientDashboard({ client }) {
           </div>
           <div className="cp-kpi-pct">{ecomReady ? `${ecomPct.toFixed(0)}% del objetivo alcanzado` : '—'}</div>
         </div>
+        )}
 
         {/* Ritmo del mes */}
+        {caps.ecommerce && (
         <div className="cp-kpi">
           <div className="cp-kpi-label">Ritmo del mes</div>
           <div className="cp-ritmo">
@@ -311,6 +315,7 @@ function ClientDashboard({ client }) {
             </div>
           )}
         </div>
+        )}
 
         {/* Presupuesto — botón a modal */}
         <button className="cp-kpi cp-kpi--button" onClick={() => setShowBudgetModal(true)}>
@@ -349,6 +354,7 @@ function ClientDashboard({ client }) {
       </section>
 
       {/* Performance Meta */}
+      {caps.meta && (
       <section className="cp-section">
         <h2 className="cp-section-title">Performance Meta · junio</h2>
         <div className="cp-card">
@@ -419,12 +425,15 @@ function ClientDashboard({ client }) {
           })()}
         </div>
       </section>
+      )}
 
       {/* Productos estratégicos */}
+      {caps.ecommerce && (
       <section className="cp-section">
         <h2 className="cp-section-title">Productos estratégicos</h2>
         <StrategicProducts slug={client.slug} accessKey={client.accessKey} products={strategicProducts} />
       </section>
+      )}
 
       {/* Justificación de objetivos */}
       <section className="cp-section">

@@ -38,3 +38,11 @@
 .ad-macro { background: var(--color-surface); border: 1.5px solid var(--color-gray-light); border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 16px; }
 .ad-macro-head { background: none; border: none; font-family: var(--font-mono); font-size: 13px; font-weight: 700; cursor: pointer; display: flex; gap: 8px; align-items: center; color: var(--color-text-primary); }
 .ad-macro-body { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+
+.ad-caps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 600px) { .ad-caps { grid-template-columns: 1fr; } }
+.ad-cap { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.ad-err { color: var(--color-danger); font-size: 13px; }
+.ad-new { border-color: var(--color-brand-blue); }
+.ad-tn { margin: 8px 0; }
+.ad-tn-ok { font-family: var(--font-mono); font-size: 12px; color: var(--color-success); }
