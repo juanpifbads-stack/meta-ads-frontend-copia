@@ -17,8 +17,9 @@ apiClient.interceptors.response.use(
     const status = error.response?.status;
 
     if (status === 401) {
-      // Only redirect if we're not already on the root (login) page
-      if (window.location.pathname !== '/') {
+      // No redirigir en el portal de cliente (es público, con su propia clave)
+      const path = window.location.pathname;
+      if (path !== '/' && !path.startsWith('/cliente')) {
         window.location.href = '/';
       }
     }
