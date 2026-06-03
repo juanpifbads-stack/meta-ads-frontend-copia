@@ -16,7 +16,42 @@ function itemAmountText(item, budget, facturacion) {
   return fmtMoney(item.amount, item.currency);
 }
 
-function EconLine({ item, budget, facturacion }) {
+function PsSub({ b, varProjected, objetivo, base }) {
+  const [showCalc, setShowCalc] = useState(false);
+  const diff = Math.max(0, (objetivo || 0) - (base || 0));
+  return (
+    <div className="ps-sub-wrap">
+      <div className="ps-sub">
+        <div className="ps-sub-left">
+          <span className={b.bonificado ? 'ps-sub-concept ps-strike' : 'ps-sub-concept'}>{b.concept}</span>
+          {b.detail && <span className="ps-sub-detail">{b.detail}</span>}
+          {b.isVariable && <span className="ps-sub-detail">según facturación del mes actual — proyectado si se cumple el objetivo</span>}
+          {b.isVariable && (
+            <button className="ps-calc-btn" onClick={() => setShowCalc((s) => !s)}>
+              {showCalc ? 'Ocultar cálculo' : 'ⓘ Cómo se calcula'}
+            </button>
+          )}
+        </div>
+        <div className="ps-sub-right">
+          {b.isVariable
+            ? <span>{fmtMoney(varProjected, 'ARS')}</span>
+            : <span className={b.bonificado ? 'ps-strike' : ''}>{fmtMoney(b.amount, b.currency)}</span>}
+          {b.bonificado && <span className="ps-bonif">{b.bonificado}</span>}
+        </div>
+      </div>
+      {b.isVariable && showCalc && (
+        <div className="ps-calc">
+          <div className="ps-calc-row"><span>Objetivo de facturación del mes</span><strong>{fmtMoney(objetivo, 'ARS')}</strong></div>
+          <div className="ps-calc-row"><span>− Base fija</span><strong>− {fmtMoney(base, 'ARS')}</strong></div>
+          <div className="ps-calc-row ps-calc-sub"><span>= Diferencial</span><strong>{fmtMoney(diff, 'ARS')}</strong></div>
+          <div className="ps-calc-row ps-calc-total"><span>× 3%</span><strong>{fmtMoney(diff * 0.03, 'ARS')}</strong></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EconLine({ item, budget, facturacion, varProjected, objetivo, base }) {
   const [open, setOpen] = useState(false);
   const clickable = !!item.breakdown;
   return (
@@ -36,18 +71,7 @@ function EconLine({ item, budget, facturacion }) {
       {open && item.breakdown && (
         <div className="ps-breakdown">
           {item.breakdown.map((b, i) => (
-            <div key={i} className="ps-sub">
-              <div className="ps-sub-left">
-                <span className={b.bonificado ? 'ps-sub-concept ps-strike' : 'ps-sub-concept'}>{b.concept}</span>
-                {b.detail && <span className="ps-sub-detail">{b.detail}</span>}
-              </div>
-              <div className="ps-sub-right">
-                {b.isVariable
-                  ? <span className="ps-line-detail">según facturación del mes pasado</span>
-                  : <span className={b.bonificado ? 'ps-strike' : ''}>{fmtMoney(b.amount, b.currency)}</span>}
-                {b.bonificado && <span className="ps-bonif">{b.bonificado}</span>}
-              </div>
-            </div>
+            <PsSub key={i} b={b} varProjected={varProjected} objetivo={objetivo} base={base} />
           ))}
         </div>
       )}
@@ -55,8 +79,12 @@ function EconLine({ item, budget, facturacion }) {
   );
 }
 
-export default function PaymentsSection({ budget, facturacion = 0, showTransfer = false }) {
+export default function PaymentsSection({ budget, facturacion = 0, objetivo = 0, showTransfer = false }) {
   const [showBank, setShowBank] = useState(false);
+
+  const base = budget.variable?.base || 0;
+  const rate = budget.variable?.rate || 0;
+  const varProjected = Math.max(0, objetivo - base) * rate;
 
   const total = useMemo(
     () => sumByCurrency(budget.items, { budget, facturacion }),
@@ -67,7 +95,7 @@ export default function PaymentsSection({ budget, facturacion = 0, showTransfer 
     <div className="ps-card">
       <div className="ps-econ">
         {budget.items.map((it, i) => (
-          <EconLine key={i} item={it} budget={budget} facturacion={facturacion} />
+          <EconLine key={i} item={it} budget={budget} facturacion={facturacion} varProjected={varProjected} objetivo={objetivo} base={base} />
         ))}
         <div className="ps-econ-total">
           <span>Total presupuesto del mes</span>

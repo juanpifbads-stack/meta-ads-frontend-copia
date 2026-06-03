@@ -299,7 +299,7 @@ function ClientDashboard({ client }) {
       {/* Modal de presupuesto */}
       {showBudgetModal && (
         <Modal title="Presupuesto económico" onClose={() => setShowBudgetModal(false)}>
-          <PaymentsSection budget={budget} facturacion={ecomCurrent} />
+          <PaymentsSection budget={budget} facturacion={ecomCurrent} objetivo={ecommerceGoal.target} />
         </Modal>
       )}
 
