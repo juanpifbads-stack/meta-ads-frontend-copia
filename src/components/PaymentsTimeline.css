@@ -96,15 +96,15 @@
   padding: 6px 14px;
   margin: 0 0 12px;
 }
+.pt-sub-wrap { border-bottom: 1px solid var(--color-gray-light); }
+.pt-sub-wrap:last-child { border-bottom: none; }
 .pt-sub {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--color-gray-light);
 }
-.pt-sub:last-child { border-bottom: none; }
 .pt-sub-left { display: flex; flex-direction: column; gap: 2px; }
 .pt-sub-concept { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
 .pt-sub-detail { font-family: var(--font-mono); font-size: 10px; color: var(--color-text-muted); text-transform: uppercase; }

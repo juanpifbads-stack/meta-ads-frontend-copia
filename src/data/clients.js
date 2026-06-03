@@ -79,12 +79,18 @@ export const CLIENTS = {
           ],
         },
         { concept: 'Fee mensual alquimia', detail: 'Email mkt + Gestión web', amount: 350, currency: 'USD', phase: 'inicio' },
-        { concept: 'Fee mensual alquimia', detail: 'Contenido para pauta', amount: 1000, currency: 'USD', phase: 'inicio' },
+        { concept: 'Fee mensual alquimia', detail: 'Contenido para pauta · creación de 3 sesiones de 2 hs c/u', amount: 1000, currency: 'USD', phase: 'inicio' },
         {
           concept: 'Actrices', phase: 'inicio',
           breakdown: [
-            { concept: 'Delfina', detail: '2 sesiones · 2 hs', amount: 500000, currency: 'ARS' },
-            { concept: 'Karina — sesión 1', detail: '2 hs · $225.000 por sesión', amount: 225000, currency: 'ARS' },
+            {
+              concept: 'Delfina', detail: '2 sesiones · 2 hs', amount: 500000, currency: 'ARS',
+              bankInfo: { titular: 'Delfina (apellido)', alias: 'delfina.alias', cbu: '0000000000000000000000', observaciones: 'Datos de la actriz — completar con los reales.' },
+            },
+            {
+              concept: 'Karina — sesión 1', detail: '2 hs · $225.000 por sesión', amount: 225000, currency: 'ARS',
+              bankInfo: { titular: 'Karina (apellido)', alias: 'karina.alias', cbu: '0000000000000000000000', observaciones: 'Datos de la actriz — completar con los reales.' },
+            },
             { concept: 'Karina — sesión 2', detail: '2 hs · $225.000 por sesión', amount: 225000, currency: 'ARS', bonificado: 'Bonificado junio' },
           ],
         },
