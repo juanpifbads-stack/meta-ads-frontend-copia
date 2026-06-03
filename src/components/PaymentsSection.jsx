@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { fmtMoney, fmtTotals, sumByCurrency } from '../utils/budget.js';
+import BankBlock from './BankBlock.jsx';
 import './PaymentsSection.css';
 
 const PHASE_TAG = {
@@ -52,20 +53,13 @@ function EconLine({ item, budget, facturacion }) {
   );
 }
 
-export default function PaymentsSection({ budget, facturacion = 0 }) {
+export default function PaymentsSection({ budget, facturacion = 0, showTransfer = false }) {
   const [showBank, setShowBank] = useState(false);
-  const [copied, setCopied] = useState(null);
 
   const total = useMemo(
     () => sumByCurrency(budget.items, { budget, facturacion }),
     [budget, facturacion]
   );
-
-  const copy = (text, label) => {
-    navigator.clipboard?.writeText(text);
-    setCopied(label);
-    setTimeout(() => setCopied(null), 1500);
-  };
 
   return (
     <div className="ps-card">
@@ -79,41 +73,13 @@ export default function PaymentsSection({ budget, facturacion = 0 }) {
         </div>
       </div>
 
-      {/* Botón transferir */}
-      <button className="ps-bank-btn" onClick={() => setShowBank(!showBank)}>
-        {showBank ? 'Ocultar datos para transferir' : 'Ver datos para transferir'}
-      </button>
-
-      {showBank && (
-        <div className="ps-bank">
-          <div className="ps-bank-grid">
-            <div className="ps-bank-row">
-              <span className="ps-bank-lbl">Titular</span>
-              <strong>{budget.bankInfo.titular}</strong>
-            </div>
-            <div className="ps-bank-row">
-              <span className="ps-bank-lbl">Alias</span>
-              <div className="ps-bank-copy">
-                <strong>{budget.bankInfo.alias}</strong>
-                <button onClick={() => copy(budget.bankInfo.alias, 'alias')}>
-                  {copied === 'alias' ? '✓' : 'Copiar'}
-                </button>
-              </div>
-            </div>
-            <div className="ps-bank-row">
-              <span className="ps-bank-lbl">CBU / CVU</span>
-              <div className="ps-bank-copy">
-                <strong className="ps-mono">{budget.bankInfo.cbu}</strong>
-                <button onClick={() => copy(budget.bankInfo.cbu, 'cbu')}>
-                  {copied === 'cbu' ? '✓' : 'Copiar'}
-                </button>
-              </div>
-            </div>
-          </div>
-          {budget.bankInfo.observaciones && (
-            <div className="ps-bank-obs">{budget.bankInfo.observaciones}</div>
-          )}
-        </div>
+      {showTransfer && (
+        <>
+          <button className="ps-bank-btn" onClick={() => setShowBank(!showBank)}>
+            {showBank ? 'Ocultar datos para transferir' : 'Ver datos para transferir'}
+          </button>
+          {showBank && <BankBlock bankInfo={budget.bankInfo} />}
+        </>
       )}
     </div>
   );

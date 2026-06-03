@@ -70,6 +70,22 @@
 }
 .pt-period--pasado { background: #fee2e2; color: #991b1b; }
 .pt-period--presente { background: #dbeafe; color: #1e40af; }
+
+/* Datos para transferir por componente */
+.pt-transfer { padding: 0 0 12px; }
+.pt-transfer-btn {
+  background: none;
+  border: none;
+  color: var(--color-brand-blue);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pt-transfer-btn:hover { text-decoration: underline; }
 .pt-item-variable { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-muted); font-style: italic; }
 .pt-item-toggle { font-family: var(--font-mono); font-size: 12px; color: var(--color-brand-blue); font-weight: 600; white-space: nowrap; }
 

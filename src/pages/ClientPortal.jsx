@@ -212,14 +212,15 @@ function ClientDashboard({ client }) {
         <button className="cp-kpi cp-kpi--button" onClick={() => setShowBudgetModal(true)}>
           <div className="cp-kpi-label">Presupuesto total mes</div>
           <div className="cp-kpi-value cp-kpi-value--budget">{fmtTotals(budgetTotals)}</div>
-          <div className="cp-kpi-cta">Ver detalle y datos para transferir →</div>
+          <div className="cp-kpi-cta">Ver detalle →</div>
         </button>
       </section>
 
-      {/* PAGOS — línea de tiempo del mes */}
+      {/* PAGOS — línea de tiempo del mes (desplegable) */}
       <section className="cp-section">
-        <h2 className="cp-section-title">Presupuesto financiero del mes</h2>
-        <PaymentsTimeline budget={budget} facturacion={ecommerceGoal.current} />
+        <Collapsible title="Presupuesto financiero del mes — ver pagos">
+          <PaymentsTimeline budget={budget} facturacion={ecommerceGoal.current} />
+        </Collapsible>
       </section>
 
       {/* Modal de presupuesto */}
@@ -354,7 +355,7 @@ export function PaymentsPortal() {
         <div className="cp-month-banner-obj">Detalle de conceptos, fechas y montos a transferir.</div>
       </div>
       <section className="cp-section">
-        <PaymentsSection budget={client.budget} facturacion={client.ecommerceGoal.current} />
+        <PaymentsSection budget={client.budget} facturacion={client.ecommerceGoal.current} showTransfer />
       </section>
       <footer className="cp-footer">panel by alquimia.</footer>
     </div>

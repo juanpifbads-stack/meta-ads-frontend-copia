@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { fmtMoney } from '../utils/budget.js';
+import BankBlock from './BankBlock.jsx';
 import './PaymentsTimeline.css';
 
 const PHASES = [
@@ -10,6 +11,8 @@ const PHASES = [
 
 function ItemLine({ item, budget, facturacion }) {
   const [open, setOpen] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const bankInfo = item.bankInfo || budget.bankInfo;
 
   // Monto a mostrar a la derecha
   let amountNode;
@@ -58,6 +61,14 @@ function ItemLine({ item, budget, facturacion }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {bankInfo && (
+        <div className="pt-transfer">
+          <button className="pt-transfer-btn" onClick={() => setShowTransfer(!showTransfer)}>
+            {showTransfer ? 'Ocultar datos para transferir' : 'Datos para transferir →'}
+          </button>
+          {showTransfer && <BankBlock bankInfo={bankInfo} />}
         </div>
       )}
     </div>
