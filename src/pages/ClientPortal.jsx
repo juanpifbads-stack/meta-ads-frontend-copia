@@ -185,6 +185,7 @@ function ClientDashboard({ client }) {
   const [meta, setMeta] = useState(null);
   const [metaLoading, setMetaLoading] = useState(true);
   const [tn, setTn] = useState(null);
+  const [tnLoading, setTnLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
@@ -196,9 +197,13 @@ function ClientDashboard({ client }) {
     apiClient
       .get(`/public/${client.slug}/tiendanube`, { params: { key: client.accessKey }, timeout: 60000 })
       .then((res) => { if (alive && res.data && !res.data.tnError) setTn(res.data); })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => { if (alive) setTnLoading(false); });
     return () => { alive = false; };
   }, [client.slug, client.accessKey]);
+
+  // Mientras carga Tienda Nube no mostramos el valor de ejemplo (evita el parpadeo).
+  const ecomReady = !tnLoading;
 
   // Facturación y pedidos: reales de Tienda Nube si están, si no los de config.
   const ecomCurrent = tn ? tn.revenue : ecommerceGoal.current;
@@ -240,17 +245,17 @@ function ClientDashboard({ client }) {
         {/* Facturación ecommerce — objetivo claro */}
         <div className="cp-kpi cp-kpi--hero">
           <div className="cp-kpi-label">Facturación ecommerce</div>
-          <div className="cp-kpi-value">{fmtMoney(ecomCurrent)}</div>
-          {tn && <div className="cp-kpi-pct">{ecomOrders?.toLocaleString('es-AR')} pedidos · ticket {fmtMoney(ecomTicket)}</div>}
+          <div className="cp-kpi-value">{ecomReady ? fmtMoney(ecomCurrent) : 'Cargando…'}</div>
+          {ecomReady && tn && <div className="cp-kpi-pct">{ecomOrders?.toLocaleString('es-AR')} pedidos · ticket {fmtMoney(ecomTicket)}</div>}
           <div className="cp-kpi-objrow">
             <span className="cp-kpi-objlbl">Objetivo del mes</span>
             <span className="cp-kpi-objval">{fmtMoney(ecommerceGoal.target)}</span>
           </div>
           <div className="cp-bar cp-bar--lg">
             <div className={`cp-bar-fill ${ecomPct >= 100 ? 'cp-bar--good' : ecomPct >= 70 ? 'cp-bar--warn' : 'cp-bar--bad'}`}
-              style={{ width: `${Math.min(ecomPct, 100)}%` }} />
+              style={{ width: `${ecomReady ? Math.min(ecomPct, 100) : 0}%` }} />
           </div>
-          <div className="cp-kpi-pct">{ecomPct.toFixed(0)}% del objetivo alcanzado</div>
+          <div className="cp-kpi-pct">{ecomReady ? `${ecomPct.toFixed(0)}% del objetivo alcanzado` : '—'}</div>
         </div>
 
         {/* Ritmo del mes */}
@@ -263,14 +268,16 @@ function ClientDashboard({ client }) {
             </div>
             <div className="cp-ritmo-row">
               <span>Vamos:</span>
-              <strong>{fmtMoney(ecomCurrent)}</strong>
+              <strong>{ecomReady ? fmtMoney(ecomCurrent) : 'Cargando…'}</strong>
             </div>
           </div>
-          <div className={`cp-ritmo-verdict ${ecomDeviation < 0 ? 'cp-verdict--bad' : 'cp-verdict--good'}`}>
-            {ecomDeviation >= 0
-              ? `Adelantados ${ecomDeviation.toFixed(0)}% sobre el ritmo`
-              : `Desviados ${Math.abs(ecomDeviation).toFixed(0)}% por debajo del ritmo`}
-          </div>
+          {ecomReady && (
+            <div className={`cp-ritmo-verdict ${ecomDeviation < 0 ? 'cp-verdict--bad' : 'cp-verdict--good'}`}>
+              {ecomDeviation >= 0
+                ? `Adelantados ${ecomDeviation.toFixed(0)}% sobre el ritmo`
+                : `Desviados ${Math.abs(ecomDeviation).toFixed(0)}% por debajo del ritmo`}
+            </div>
+          )}
         </div>
 
         {/* Presupuesto — botón a modal */}
