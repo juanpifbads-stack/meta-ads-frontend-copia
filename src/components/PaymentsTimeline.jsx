@@ -35,6 +35,7 @@ function effective(it, ctx) {
 
 function SubLine({ b, ctx }) {
   const [showTransfer, setShowTransfer] = useState(false);
+  const [showCalc, setShowCalc] = useState(false);
   const canTransfer = b.bankInfo && !b.bonificado;
   let right;
   if (b.isVariable) {
@@ -44,6 +45,7 @@ function SubLine({ b, ctx }) {
   } else {
     right = <span>{money(convert(b.amount, b.currency, ctx.cur, ctx.fx), ctx.cur)}</span>;
   }
+  const diff = Math.max(0, (ctx.prevRevenue || 0) - (ctx.base || 0));
   return (
     <div className="pt-sub-wrap">
       <div className="pt-sub">
@@ -51,12 +53,25 @@ function SubLine({ b, ctx }) {
           <span className={b.bonificado ? 'pt-sub-concept pt-strike' : 'pt-sub-concept'}>{b.concept}</span>
           {b.detail && <span className="pt-sub-detail">{b.detail}</span>}
           {b.isVariable && <span className="pt-sub-detail">según facturación del mes pasado</span>}
+          {b.isVariable && (
+            <button className="pt-calc-btn" onClick={() => setShowCalc((s) => !s)}>
+              {showCalc ? 'Ocultar cálculo' : 'ⓘ Cómo se calcula'}
+            </button>
+          )}
         </div>
         <div className="pt-sub-right">
           {right}
           {b.bonificado && <span className="pt-bonif">{b.bonificado}</span>}
         </div>
       </div>
+      {b.isVariable && showCalc && (
+        <div className="pt-calc">
+          <div className="pt-calc-row"><span>Facturación del mes pasado (Tienda Nube, ventas confirmadas)</span><strong>{money(ctx.prevRevenue, 'ARS')}</strong></div>
+          <div className="pt-calc-row"><span>− Base fija</span><strong>− {money(ctx.base, 'ARS')}</strong></div>
+          <div className="pt-calc-row pt-calc-sub"><span>= Diferencial</span><strong>{money(diff, 'ARS')}</strong></div>
+          <div className="pt-calc-row pt-calc-total"><span>× 3%</span><strong>{money(diff * 0.03, 'ARS')}</strong></div>
+        </div>
+      )}
       {canTransfer && (
         <div className="pt-transfer">
           <button className="pt-transfer-btn" onClick={() => setShowTransfer(!showTransfer)}>
@@ -179,7 +194,10 @@ export default function PaymentsTimeline({ budget, slug, accessKey }) {
   const setAmount = (id, val) => setState((s) => ({ ...s, amounts: { ...s.amounts, [id]: val } }));
   const flushAmount = () => apiClient.patch(`/budget/${slug}`, { key: accessKey, data: state }).catch(() => {});
 
-  const ctx = { cur, fx, variableAmount, paid: state.paid, amounts: state.amounts, togglePaid, setAmount, bankInfo: budget.bankInfo };
+  const ctx = {
+    cur, fx, variableAmount, prevRevenue, base: budget.variable?.base || 0,
+    paid: state.paid, amounts: state.amounts, togglePaid, setAmount, bankInfo: budget.bankInfo,
+  };
 
   const postItems = budget.items.filter((it) => it.phase === 'post');
   const mesPasado = postItems.map((it) => ({ ...it, period: 'pasado' }));
@@ -193,6 +211,13 @@ export default function PaymentsTimeline({ budget, slug, accessKey }) {
         <button className={`pt-cur-btn ${cur === 'ARS' ? 'pt-cur-btn--active' : ''}`} onClick={() => setCur('ARS')}>ARS</button>
         {cur === 'ARS' && <span className="pt-cur-fx">{fx ? `dólar oficial $${fx}` : 'sin cotización'}</span>}
       </div>
+
+      {cur === 'ARS' && fx && (
+        <p className="pt-note pt-note--fx">
+          ⓘ Los importes que originalmente están en USD (fees de alquimia) se muestran convertidos a pesos
+          al <strong>dólar oficial venta (${fx})</strong> del día.
+        </p>
+      )}
 
       {PHASES.map((ph) => {
         let items = budget.items.filter((it) => it.phase === ph.key);
