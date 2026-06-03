@@ -73,7 +73,7 @@ export default function StrategicProducts({ slug, accessKey, products }) {
         </div>
       </div>
 
-      {loading && <p className="cp-placeholder">Cargando productos de Tienda Nube… (puede tardar unos segundos)</p>}
+      {loading && <p className="cp-placeholder"><span className="dots">Cargando productos de Tienda Nube</span> (puede tardar unos segundos)</p>}
       {!loading && error && <p className="cp-placeholder">No se pudieron cargar los productos de Tienda Nube.</p>}
 
       {!loading && !error && data && (

@@ -245,7 +245,7 @@ function ClientDashboard({ client }) {
         {/* Facturación ecommerce — objetivo claro */}
         <div className="cp-kpi cp-kpi--hero">
           <div className="cp-kpi-label">Facturación ecommerce</div>
-          <div className="cp-kpi-value">{ecomReady ? fmtMoney(ecomCurrent) : 'Cargando…'}</div>
+          <div className="cp-kpi-value">{ecomReady ? fmtMoney(ecomCurrent) : <span className="dots">Cargando</span>}</div>
           {ecomReady && tn && <div className="cp-kpi-pct">{ecomOrders?.toLocaleString('es-AR')} pedidos · ticket {fmtMoney(ecomTicket)}</div>}
           <div className="cp-kpi-objrow">
             <span className="cp-kpi-objlbl">Objetivo del mes</span>
@@ -268,7 +268,7 @@ function ClientDashboard({ client }) {
             </div>
             <div className="cp-ritmo-row">
               <span>Vamos:</span>
-              <strong>{ecomReady ? fmtMoney(ecomCurrent) : 'Cargando…'}</strong>
+              <strong>{ecomReady ? fmtMoney(ecomCurrent) : <span className="dots">Cargando</span>}</strong>
             </div>
           </div>
           {ecomReady && (
