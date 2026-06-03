@@ -18,6 +18,8 @@ function ItemLine({ item, budget, facturacion }) {
       ? 'según facturación del mes pasado'
       : 'según facturación de junio';
     amountNode = <span className="pt-item-variable">{txt}</span>;
+  } else if (item.media && item.period === 'pasado') {
+    amountNode = <span className="pt-item-variable">inversión del mes pasado</span>;
   } else if (item.variableMonto) {
     amountNode = <span className="pt-item-variable">según consumo</span>;
   } else if (item.breakdown) {
