@@ -30,6 +30,7 @@ export default function StrategicProducts({ slug, accessKey, products }) {
   const [win, setWin] = useState('30');
   const [sortKey, setSortKey] = useState('units');
   const [sortDir, setSortDir] = useState('desc');
+  const [expanded, setExpanded] = useState({});
 
   const nameBySku = useMemo(() => {
     const m = {};
@@ -116,19 +117,38 @@ export default function StrategicProducts({ slug, accessKey, products }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((p) => (
-                <tr key={p.sku}>
-                  <td>{nameBySku[p.sku] || p.sku}</td>
-                  <td className="sp-mono">{p.sku}</td>
-                  <td className="sp-r">{p.stock == null ? '—' : `${p.stock} u`}</td>
-                  <td className="sp-r"><strong>{p.windows[win]?.units || 0}</strong> u</td>
-                  <td className="sp-r">{fmtMoney(p.windows[win]?.revenue || 0)}</td>
-                  <td className="sp-r">{stockoutCell(p)}</td>
-                </tr>
-              ))}
+              {rows.map((p) => {
+                const isOpen = !!expanded[p.sku];
+                const vs = p.variants || [];
+                return (
+                  <React.Fragment key={p.sku}>
+                    <tr className="sp-prow" onClick={() => setExpanded((e) => ({ ...e, [p.sku]: !e[p.sku] }))}>
+                      <td>
+                        {vs.length > 0 && <span className="sp-caret">{isOpen ? '▾' : '▸'}</span>}
+                        {nameBySku[p.sku] || p.sku}
+                      </td>
+                      <td className="sp-mono">{p.sku}</td>
+                      <td className="sp-r">{p.stock == null ? '—' : `${p.stock} u`}</td>
+                      <td className="sp-r"><strong>{p.windows[win]?.units || 0}</strong> u</td>
+                      <td className="sp-r">{fmtMoney(p.windows[win]?.revenue || 0)}</td>
+                      <td className="sp-r">{stockoutCell(p)}</td>
+                    </tr>
+                    {isOpen && vs.map((v, i) => (
+                      <tr key={p.sku + '-' + i} className="sp-vrow">
+                        <td className="sp-vlabel">↳ {v.label}</td>
+                        <td></td>
+                        <td className="sp-r">{v.stock == null ? '—' : `${v.stock} u`}</td>
+                        <td className="sp-r">{v.windows[win]?.units || 0} u</td>
+                        <td className="sp-r">{fmtMoney(v.windows[win]?.revenue || 0)}</td>
+                        <td className="sp-r">{stockoutCell(v)}</td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
-          <p className="sp-foot">La predicción de quiebre se calcula con el ritmo de ventas de los últimos 21 días.</p>
+          <p className="sp-foot">Tocá un producto para ver sus variantes. El quiebre a nivel producto es el de la <strong>variante más urgente</strong>; se calcula con el ritmo de ventas de los últimos 21 días.</p>
         </div>
       )}
     </div>

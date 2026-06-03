@@ -47,6 +47,10 @@
 .sp-r { text-align: right; }
 .sp-th { cursor: pointer; user-select: none; }
 .sp-th:hover { color: var(--color-brand-blue); }
+.sp-prow { cursor: pointer; }
+.sp-caret { display: inline-block; width: 14px; color: var(--color-brand-blue); font-size: 11px; }
+.sp-vrow td { background: var(--color-background); font-size: 12px; color: var(--color-text-secondary); padding: 7px 10px; }
+.sp-vlabel { padding-left: 18px !important; font-family: var(--font-mono); font-size: 11px; }
 .sp-mono { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted); }
 .sp-muted { color: var(--color-text-muted); font-size: 12px; }
 .sp-stocknum { color: var(--color-text-muted); font-weight: 400; }
