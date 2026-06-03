@@ -13,6 +13,8 @@ function ItemLine({ item, budget, facturacion }) {
   const [open, setOpen] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const bankInfo = item.bankInfo || budget.bankInfo;
+  // No mostrar transferir en: medios (Meta/TikTok) ni en el variable de este mes (post 30, no sale este mes)
+  const canTransfer = bankInfo && !item.media && !(item.isVariable && item.period === 'presente');
 
   // Monto a mostrar a la derecha
   let amountNode;
@@ -63,7 +65,7 @@ function ItemLine({ item, budget, facturacion }) {
           ))}
         </div>
       )}
-      {bankInfo && (
+      {canTransfer && (
         <div className="pt-transfer">
           <button className="pt-transfer-btn" onClick={() => setShowTransfer(!showTransfer)}>
             {showTransfer ? 'Ocultar datos para transferir' : 'Datos para transferir →'}
