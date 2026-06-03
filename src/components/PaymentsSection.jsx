@@ -2,39 +2,52 @@ import React, { useState, useMemo } from 'react';
 import { fmtMoney, fmtTotals, sumByCurrency, variableAmount } from '../utils/budget.js';
 import './PaymentsSection.css';
 
-// Texto del monto de un ítem (resuelve breakdown / variable / a definir)
+const PHASE_TAG = {
+  inicio: '1 al 5 jun',
+  fin: '29 al 30 jun',
+  post: 'post día 30',
+};
+
 function itemAmountText(item, budget, facturacion) {
   if (item.isVariable) return fmtMoney(variableAmount(budget, facturacion), 'ARS');
   if (item.variableMonto) return 'según consumo';
-  if (item.breakdown) {
-    const t = sumByCurrency([item], { budget, facturacion });
-    return fmtTotals(t);
-  }
+  if (item.breakdown) return fmtTotals(sumByCurrency([item], { budget, facturacion }));
   return fmtMoney(item.amount, item.currency);
 }
 
-function Column({ title, accent, groups, budget, facturacion, total }) {
+function EconLine({ item, budget, facturacion }) {
+  const [open, setOpen] = useState(false);
+  const clickable = !!item.breakdown;
   return (
-    <div className={`ps-col ps-col--${accent}`}>
-      <div className="ps-col-title">{title}</div>
-      {groups.map((g, gi) => (
-        <div key={gi} className="ps-col-group">
-          <div className="ps-col-group-label">{g.label}</div>
-          {g.items.map((it, i) => (
-            <div key={i} className="ps-col-line">
-              <div className="ps-col-line-left">
-                <span>{it.concept}</span>
-                {it.detail && <span className="ps-col-line-detail">{it.detail}</span>}
+    <div className="ps-line-wrap">
+      <div className={`ps-line ${clickable ? 'ps-line--click' : ''}`} onClick={clickable ? () => setOpen(!open) : undefined}>
+        <div className="ps-line-left">
+          <span className="ps-line-concept">{item.concept}</span>
+          {item.detail && <span className="ps-line-detail">{item.detail}</span>}
+          <span className={`ps-when ps-when--${item.phase}`}>{PHASE_TAG[item.phase]}</span>
+        </div>
+        <div className="ps-line-right">
+          {clickable
+            ? <span className="ps-toggle">{open ? 'Ocultar −' : 'Ver desglose +'}</span>
+            : <span className="ps-line-amount">{itemAmountText(item, budget, facturacion)}</span>}
+        </div>
+      </div>
+      {open && item.breakdown && (
+        <div className="ps-breakdown">
+          {item.breakdown.map((b, i) => (
+            <div key={i} className="ps-sub">
+              <div className="ps-sub-left">
+                <span className={b.bonificado ? 'ps-sub-concept ps-strike' : 'ps-sub-concept'}>{b.concept}</span>
+                {b.detail && <span className="ps-sub-detail">{b.detail}</span>}
               </div>
-              <span className="ps-col-line-amount">{itemAmountText(it, budget, facturacion)}</span>
+              <div className="ps-sub-right">
+                <span className={b.bonificado ? 'ps-strike' : ''}>{fmtMoney(b.amount, b.currency)}</span>
+                {b.bonificado && <span className="ps-bonif">{b.bonificado}</span>}
+              </div>
             </div>
           ))}
         </div>
-      ))}
-      <div className="ps-col-total">
-        <span>Total</span>
-        <strong>{fmtTotals(total)}</strong>
-      </div>
+      )}
     </div>
   );
 }
@@ -43,32 +56,10 @@ export default function PaymentsSection({ budget, facturacion = 0 }) {
   const [showBank, setShowBank] = useState(false);
   const [copied, setCopied] = useState(null);
 
-  const { econGroups, finGroups, econTotal, finTotal } = useMemo(() => {
-    const inicio = budget.items.filter((x) => x.phase === 'inicio');
-    const fin = budget.items.filter((x) => x.phase === 'fin');
-    const post = budget.items.filter((x) => x.phase === 'post');
-
-    // Económico: costo del servicio según el mes
-    const econGroups = [
-      { label: '1 al 5', items: inicio },
-      { label: '29 al 30', items: fin },
-      { label: 'Post día 30', items: post },
-    ].filter((g) => g.items.length);
-
-    // Financiero: idéntico, pero medios + variable se pagan en el 1 al 5 (mes pasado)
-    const finGroups = [
-      { label: '1 al 5', items: [...inicio, ...post.map((p) => ({ ...p, detail: 'mes pasado' }))] },
-      { label: '29 al 30', items: fin },
-    ].filter((g) => g.items.length);
-
-    const all = budget.items;
-    return {
-      econGroups,
-      finGroups,
-      econTotal: sumByCurrency(all, { budget, facturacion }),
-      finTotal: sumByCurrency(all, { budget, facturacion }),
-    };
-  }, [budget, facturacion]);
+  const total = useMemo(
+    () => sumByCurrency(budget.items, { budget, facturacion }),
+    [budget, facturacion]
+  );
 
   const copy = (text, label) => {
     navigator.clipboard?.writeText(text);
@@ -78,15 +69,14 @@ export default function PaymentsSection({ budget, facturacion = 0 }) {
 
   return (
     <div className="ps-card">
-      <div className="ps-compare">
-        <Column title="Presupuesto económico" accent="econ" groups={econGroups} budget={budget} facturacion={facturacion} total={econTotal} />
-        <Column title="Presupuesto financiero" accent="fin" groups={finGroups} budget={budget} facturacion={facturacion} total={finTotal} />
-      </div>
-
-      <div className="ps-compare-note">
-        El <strong>económico</strong> es el costo del servicio del mes. El <strong>financiero</strong> es
-        el flujo de caja real: en el 1 al 5 se abonan además los consumos de Meta y TikTok y el
-        componente variable del mes anterior.
+      <div className="ps-econ">
+        {budget.items.map((it, i) => (
+          <EconLine key={i} item={it} budget={budget} facturacion={facturacion} />
+        ))}
+        <div className="ps-econ-total">
+          <span>Total presupuesto del mes</span>
+          <strong>{fmtTotals(total)}</strong>
+        </div>
       </div>
 
       {/* Botón transferir */}

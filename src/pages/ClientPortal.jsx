@@ -218,13 +218,13 @@ function ClientDashboard({ client }) {
 
       {/* PAGOS — línea de tiempo del mes */}
       <section className="cp-section">
-        <h2 className="cp-section-title">Pagos del mes</h2>
+        <h2 className="cp-section-title">Presupuesto financiero del mes</h2>
         <PaymentsTimeline budget={budget} facturacion={ecommerceGoal.current} />
       </section>
 
       {/* Modal de presupuesto */}
       {showBudgetModal && (
-        <Modal title="Presupuesto del mes" onClose={() => setShowBudgetModal(false)}>
+        <Modal title="Presupuesto económico" onClose={() => setShowBudgetModal(false)}>
           <PaymentsSection budget={budget} facturacion={ecommerceGoal.current} />
         </Modal>
       )}

@@ -1,79 +1,92 @@
 .ps-card { display: flex; flex-direction: column; gap: 20px; }
 
-/* Comparación económico vs financiero */
-.ps-compare {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-@media (max-width: 640px) { .ps-compare { grid-template-columns: 1fr; } }
-
-.ps-col {
+/* Lista económico */
+.ps-econ {
   border: 1.5px solid var(--color-gray-light);
   border-radius: var(--radius-md);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-}
-.ps-col--econ { background: var(--color-surface); }
-.ps-col--fin { background: #f5f7ff; border-color: #c7d2fe; }
-
-.ps-col-title {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-primary);
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid var(--color-text-primary);
+  padding: 6px 18px 18px;
+  background: var(--color-surface);
 }
 
-.ps-col-group { margin-bottom: 12px; }
-.ps-col-group-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-brand-blue);
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-.ps-col-line {
+.ps-line-wrap { border-bottom: 1px solid var(--color-gray-light); }
+.ps-line-wrap:last-of-type { border-bottom: none; }
+
+.ps-line {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 10px;
-  padding: 7px 0;
+  gap: 14px;
+  padding: 14px 0;
+}
+.ps-line--click { cursor: pointer; }
+.ps-line--click:hover { background: rgba(0,0,0,0.015); }
+
+.ps-line-left { display: flex; flex-direction: column; gap: 4px; }
+.ps-line-concept { font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
+.ps-line-detail { font-family: var(--font-mono); font-size: 10px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.ps-line-right { text-align: right; white-space: nowrap; }
+.ps-line-amount { font-size: 15px; font-weight: 700; color: var(--color-text-primary); }
+.ps-toggle { font-family: var(--font-mono); font-size: 12px; color: var(--color-brand-blue); font-weight: 600; }
+
+/* Tag de cuándo se abona */
+.ps-when {
+  display: inline-block;
+  width: fit-content;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 99px;
+  margin-top: 2px;
+}
+.ps-when--inicio { background: #e0e7ff; color: #3730a3; }
+.ps-when--fin { background: #ede9fe; color: #5b21b6; }
+.ps-when--post { background: #ffedd5; color: #9a3412; }
+
+/* Desglose */
+.ps-breakdown {
+  background: var(--color-background);
+  border-radius: var(--radius-sm);
+  padding: 4px 14px;
+  margin-bottom: 12px;
+}
+.ps-sub {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--color-gray-light);
 }
-.ps-col-line:last-child { border-bottom: none; }
-.ps-col-line-left { display: flex; flex-direction: column; gap: 2px; }
-.ps-col-line-left > span:first-child { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
-.ps-col-line-detail { font-family: var(--font-mono); font-size: 10px; color: var(--color-text-muted); text-transform: uppercase; }
-.ps-col-line-amount { font-size: 13px; font-weight: 700; white-space: nowrap; color: var(--color-text-primary); }
+.ps-sub:last-child { border-bottom: none; }
+.ps-sub-left { display: flex; flex-direction: column; gap: 2px; }
+.ps-sub-concept { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+.ps-sub-detail { font-family: var(--font-mono); font-size: 10px; color: var(--color-text-muted); text-transform: uppercase; }
+.ps-sub-right { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; white-space: nowrap; }
+.ps-strike { text-decoration: line-through; opacity: 0.5; }
+.ps-bonif {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  background: #dcfce7;
+  color: #166534;
+  padding: 2px 8px;
+  border-radius: 99px;
+  text-transform: uppercase;
+}
 
-.ps-col-total {
+.ps-econ-total {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-top: auto;
-  padding-top: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
   border-top: 2px solid var(--color-text-primary);
 }
-.ps-col-total span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; color: var(--color-text-secondary); }
-.ps-col-total strong { font-size: 15px; color: var(--color-brand-blue); }
-
-.ps-compare-note {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  line-height: 1.5;
-  background: var(--color-background);
-  border: 1px solid var(--color-gray-light);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-}
+.ps-econ-total span { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); }
+.ps-econ-total strong { font-size: 18px; color: var(--color-brand-blue); }
 
 /* Botón */
 .ps-bank-btn {
