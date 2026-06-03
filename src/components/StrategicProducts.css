@@ -57,4 +57,5 @@
 .sp-good { color: var(--color-success); font-weight: 600; }
 .sp-warn { color: var(--color-warning); font-weight: 600; }
 .sp-bad { color: var(--color-danger); font-weight: 700; }
+.sp-soldout { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: #991b1b; }
 .sp-foot { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted); margin-top: 12px; }

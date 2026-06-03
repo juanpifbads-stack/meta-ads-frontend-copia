@@ -14,13 +14,21 @@ const WINDOWS = [
 ];
 
 function stockoutCell(p) {
-  if (p.stock == null) return <span className="sp-muted">sin seguimiento</span>;
+  // Variante ya agotada (que se estaba vendiendo)
+  if (p.soldOut) return <span className="sp-bad">Agotada</span>;
+
+  const badge = p.soldOutCount > 0
+    ? <span className="sp-soldout"> · {p.soldOutCount} agotada{p.soldOutCount > 1 ? 's' : ''}</span>
+    : null;
+
+  if (p.stock == null) return <span className="sp-muted">sin seguimiento{badge}</span>;
+  if (p.stock <= 0) return <span className="sp-bad">Agotado{badge}</span>;
   if (p.daysToStockout == null) {
-    return <span className="sp-muted">{p.stock} u · sin ventas (21d)</span>;
+    return <span className="sp-muted">{p.stock} u · sin ventas (21d){badge}</span>;
   }
   const d = p.daysToStockout;
   const cls = d <= 14 ? 'sp-bad' : d <= 30 ? 'sp-warn' : 'sp-good';
-  return <span className={cls}>≈ {d} días <span className="sp-stocknum">({p.stock} u)</span></span>;
+  return <span className={cls}>≈ {d} días <span className="sp-stocknum">({p.stock} u)</span>{badge}</span>;
 }
 
 export default function StrategicProducts({ slug, accessKey, products }) {
@@ -60,7 +68,9 @@ export default function StrategicProducts({ slug, accessKey, products }) {
       case 'stock': return p.stock == null ? -1 : p.stock;
       case 'units': return p.windows[win]?.units || 0;
       case 'revenue': return p.windows[win]?.revenue || 0;
-      case 'stockout': return p.daysToStockout == null ? Infinity : p.daysToStockout;
+      case 'stockout':
+        if ((p.stock != null && p.stock <= 0) || p.soldOutCount > 0) return 0; // agotados: máxima urgencia
+        return p.daysToStockout == null ? Infinity : p.daysToStockout;
       default: return 0;
     }
   };
