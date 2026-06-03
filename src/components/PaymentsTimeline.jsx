@@ -211,6 +211,11 @@ export default function PaymentsTimeline({ budget, slug, accessKey }) {
           </div>
         );
       })}
+
+      <p className="pt-note">
+        ⓘ El componente variable se calcula sobre la facturación de ecommerce del mes anterior (Tienda Nube),
+        considerando únicamente <strong>ventas confirmadas (pagadas)</strong>.
+      </p>
     </div>
   );
 }
