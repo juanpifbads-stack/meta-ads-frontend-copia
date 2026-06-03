@@ -336,6 +336,10 @@
 .cp-meta-val--bad { color: var(--color-danger); }
 .cp-meta-sub { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted); margin-top: 4px; }
 .cp-meta-verdict { margin-top: 14px; padding: 10px 14px; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+.cp-meta-pace { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--color-gray-light); }
+.cp-meta-pace-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 5px 0; }
+.cp-meta-pace-row span { font-size: 13px; color: var(--color-text-secondary); }
+.cp-meta-pace-row strong { font-size: 15px; color: var(--color-text-primary); }
 
 /* Tables */
 .cp-products, .cp-payments { width: 100%; border-collapse: collapse; font-size: 13px; }

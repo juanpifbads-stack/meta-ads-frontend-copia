@@ -305,6 +305,10 @@ function ClientDashboard({ client }) {
           {!metaLoading && meta && !meta.metaError && (() => {
             const roasStatus = meta.roas >= metaGoal.roasTarget ? 'good' : meta.roas >= metaGoal.roasTarget * 0.7 ? 'warn' : 'bad';
             const revPct = metaGoal.revenueTarget > 0 ? (meta.purchaseValue / metaGoal.revenueTarget) * 100 : 0;
+            // Desvío de facturación atribuida vs ritmo esperado del mes
+            const revExpected = (metaGoal.revenueTarget / daysInMonth()) * daysElapsed();
+            const revDeviation = revExpected > 0 ? ((meta.purchaseValue - revExpected) / revExpected) * 100 : 0;
+            const revOnTrack = revDeviation >= -10;
             return (
               <>
                 <div className="cp-meta-grid">
@@ -335,6 +339,23 @@ function ClientDashboard({ client }) {
                     : roasStatus === 'warn'
                     ? `⚠ Levemente desviado del objetivo de ROAS ${metaGoal.roasTarget}×`
                     : `⚠ Crítico: ROAS por debajo del objetivo de ${metaGoal.roasTarget}×`}
+                </div>
+
+                {/* Desvío de facturación atribuida vs ritmo */}
+                <div className="cp-meta-pace">
+                  <div className="cp-meta-pace-row">
+                    <span>Objetivo de facturación a día {daysElapsed()}</span>
+                    <strong>{fmtMoney(revExpected)}</strong>
+                  </div>
+                  <div className="cp-meta-pace-row">
+                    <span>Facturación atribuida actual</span>
+                    <strong>{fmtMoney(meta.purchaseValue)}</strong>
+                  </div>
+                  <div className={`cp-meta-verdict cp-verdict--${revOnTrack ? 'good' : 'bad'}`}>
+                    {revDeviation >= 0
+                      ? `✓ Facturación atribuida ${revDeviation.toFixed(0)}% por encima del ritmo`
+                      : `⚠ Facturación atribuida desviada ${Math.abs(revDeviation).toFixed(0)}% por debajo del ritmo`}
+                  </div>
                 </div>
               </>
             );
