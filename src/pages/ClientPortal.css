@@ -326,6 +326,17 @@
 .cp-meta-goal span { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; color: var(--color-text-muted); }
 .cp-meta-goal strong { font-size: 16px; }
 
+.cp-meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 720px) { .cp-meta-grid { grid-template-columns: 1fr 1fr; } }
+.cp-meta-cell { background: var(--color-background); border-radius: var(--radius-sm); padding: 14px; }
+.cp-meta-lbl { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); margin-bottom: 6px; }
+.cp-meta-val { font-size: 19px; font-weight: 700; color: var(--color-text-primary); }
+.cp-meta-val--good { color: var(--color-success); }
+.cp-meta-val--warn { color: var(--color-warning); }
+.cp-meta-val--bad { color: var(--color-danger); }
+.cp-meta-sub { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted); margin-top: 4px; }
+.cp-meta-verdict { margin-top: 14px; padding: 10px 14px; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+
 /* Tables */
 .cp-products, .cp-payments { width: 100%; border-collapse: collapse; font-size: 13px; }
 .cp-products th, .cp-payments th {

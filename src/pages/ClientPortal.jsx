@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { getClient } from '../data/clients.js';
+import apiClient from '../api/client.js';
 import PaymentsSection from '../components/PaymentsSection.jsx';
 import PaymentsTimeline from '../components/PaymentsTimeline.jsx';
 import { sumByCurrency, fmtTotals } from '../utils/budget.js';
@@ -180,6 +181,18 @@ function ClientDashboard({ client }) {
   } = client;
 
   const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [meta, setMeta] = useState(null);
+  const [metaLoading, setMetaLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    apiClient
+      .get(`/public/${client.slug}/meta-insights`, { params: { key: client.accessKey } })
+      .then((res) => { if (alive) setMeta(res.data); })
+      .catch(() => { if (alive) setMeta(null); })
+      .finally(() => { if (alive) setMetaLoading(false); });
+    return () => { alive = false; };
+  }, [client.slug, client.accessKey]);
 
   const ecomPct = ecommerceGoal.target > 0 ? (ecommerceGoal.current / ecommerceGoal.target) * 100 : 0;
   const expected = (ecommerceGoal.target / daysInMonth()) * daysElapsed();
@@ -280,14 +293,49 @@ function ClientDashboard({ client }) {
 
       {/* Performance Meta */}
       <section className="cp-section">
-        <h2 className="cp-section-title">Performance Meta</h2>
+        <h2 className="cp-section-title">Performance Meta · junio</h2>
         <div className="cp-card">
-          <p className="cp-placeholder">Métricas de Meta — se conectan con la cuenta {client.metaAccountId}.</p>
-          <div className="cp-meta-goals">
-            <div className="cp-meta-goal"><span>Facturación obj.</span><strong>{fmtMoney(metaGoal.revenueTarget)}</strong></div>
-            <div className="cp-meta-goal"><span>ROAS obj.</span><strong>{metaGoal.roasTarget}×</strong></div>
-            <div className="cp-meta-goal"><span>Inversión obj.</span><strong>{fmtMoney(metaGoal.spendTarget)}</strong></div>
-          </div>
+          {metaLoading && <p className="cp-placeholder">Cargando datos de Meta…</p>}
+          {!metaLoading && !meta && (
+            <p className="cp-placeholder">No se pudieron cargar los datos de Meta en este momento.</p>
+          )}
+          {!metaLoading && meta && (() => {
+            const roasStatus = meta.roas >= metaGoal.roasTarget ? 'good' : meta.roas >= metaGoal.roasTarget * 0.7 ? 'warn' : 'bad';
+            const revPct = metaGoal.revenueTarget > 0 ? (meta.purchaseValue / metaGoal.revenueTarget) * 100 : 0;
+            return (
+              <>
+                <div className="cp-meta-grid">
+                  <div className="cp-meta-cell">
+                    <div className="cp-meta-lbl">Facturación atribuida</div>
+                    <div className="cp-meta-val">{fmtMoney(meta.purchaseValue)}</div>
+                    <div className="cp-meta-sub">obj. {fmtMoney(metaGoal.revenueTarget)} · {revPct.toFixed(0)}%</div>
+                  </div>
+                  <div className="cp-meta-cell">
+                    <div className="cp-meta-lbl">Inversión</div>
+                    <div className="cp-meta-val">{fmtMoney(meta.spend)}</div>
+                    <div className="cp-meta-sub">obj. {fmtMoney(metaGoal.spendTarget)}</div>
+                  </div>
+                  <div className="cp-meta-cell">
+                    <div className="cp-meta-lbl">ROAS</div>
+                    <div className={`cp-meta-val cp-meta-val--${roasStatus}`}>{meta.roas.toFixed(2)}×</div>
+                    <div className="cp-meta-sub">obj. {metaGoal.roasTarget}×</div>
+                  </div>
+                  <div className="cp-meta-cell">
+                    <div className="cp-meta-lbl">Compras</div>
+                    <div className="cp-meta-val">{meta.purchases?.toLocaleString('es-AR') || 0}</div>
+                    <div className="cp-meta-sub">CPA {fmtMoney(meta.cpa)}</div>
+                  </div>
+                </div>
+                <div className={`cp-meta-verdict cp-verdict--${roasStatus === 'good' ? 'good' : 'bad'}`}>
+                  {roasStatus === 'good'
+                    ? `✓ En línea: ROAS por encima del objetivo de ${metaGoal.roasTarget}×`
+                    : roasStatus === 'warn'
+                    ? `⚠ Levemente desviado del objetivo de ROAS ${metaGoal.roasTarget}×`
+                    : `⚠ Crítico: ROAS por debajo del objetivo de ${metaGoal.roasTarget}×`}
+                </div>
+              </>
+            );
+          })()}
         </div>
       </section>
 
