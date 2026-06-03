@@ -73,7 +73,8 @@ function ItemLine({ item, ctx }) {
   const [open, setOpen] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const bankInfo = item.bankInfo || ctx.bankInfo;
-  const canTransfer = bankInfo && !item.breakdown && !item.media && !item.editable;
+  const subHaveBank = item.breakdown && item.breakdown.some((b) => b.bankInfo);
+  const canTransfer = bankInfo && !item.media && !item.editable && !subHaveBank;
   const paid = !!ctx.paid[item.id];
 
   // monto a la derecha
