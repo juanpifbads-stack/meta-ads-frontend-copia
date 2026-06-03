@@ -352,10 +352,10 @@ export function PaymentsPortal() {
       </header>
       <div className="cp-month-banner">
         <div className="cp-month-banner-big">Pagos del mes</div>
-        <div className="cp-month-banner-obj">Detalle de conceptos, fechas y montos a transferir.</div>
+        <div className="cp-month-banner-obj">Flujo de pagos por fecha, con datos para transferir en cada componente.</div>
       </div>
       <section className="cp-section">
-        <PaymentsSection budget={client.budget} facturacion={client.ecommerceGoal.current} showTransfer />
+        <PaymentsTimeline budget={client.budget} facturacion={client.ecommerceGoal.current} />
       </section>
       <footer className="cp-footer">panel by alquimia.</footer>
     </div>
