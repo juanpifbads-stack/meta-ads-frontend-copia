@@ -39,7 +39,9 @@ function SubLine({ b, ctx }) {
   const canTransfer = b.bankInfo && !b.bonificado;
   let right;
   if (b.isVariable) {
-    right = <span className="pt-item-amount">{money(effective(b, ctx), ctx.cur)}</span>;
+    right = ctx.prevRevenue == null
+      ? <span className="pt-item-variable">calculando…</span>
+      : <span className="pt-item-amount">{money(effective(b, ctx), ctx.cur)}</span>;
   } else if (b.bonificado) {
     right = <span className="pt-strike">{money(convert(b.amount, b.currency, ctx.cur, ctx.fx), ctx.cur)}</span>;
   } else {
@@ -166,7 +168,7 @@ function ItemLine({ item, ctx }) {
 export default function PaymentsTimeline({ budget, slug, accessKey }) {
   const [cur, setCur] = useState('USD');
   const [fx, setFx] = useState(null);
-  const [prevRevenue, setPrevRevenue] = useState(0);
+  const [prevRevenue, setPrevRevenue] = useState(null);
   const [state, setState] = useState({ paid: {}, amounts: {} });
 
   useEffect(() => {
@@ -181,9 +183,10 @@ export default function PaymentsTimeline({ budget, slug, accessKey }) {
   }, [slug, accessKey]);
 
   const variableAmount = useMemo(() => {
+    if (prevRevenue == null) return null; // todavía calculando
     const base = budget.variable?.base || 0;
     const rate = budget.variable?.rate || 0;
-    return Math.max(0, (prevRevenue || 0) - base) * rate;
+    return Math.max(0, prevRevenue - base) * rate;
   }, [prevRevenue, budget.variable]);
 
   const save = (next) => {
