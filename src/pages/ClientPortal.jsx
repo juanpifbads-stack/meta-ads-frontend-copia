@@ -299,7 +299,10 @@ function ClientDashboard({ client }) {
           {!metaLoading && !meta && (
             <p className="cp-placeholder">No se pudieron cargar los datos de Meta en este momento.</p>
           )}
-          {!metaLoading && meta && (() => {
+          {!metaLoading && meta && meta.metaError && (
+            <p className="cp-placeholder">Meta no devolvió datos: {meta.metaError}</p>
+          )}
+          {!metaLoading && meta && !meta.metaError && (() => {
             const roasStatus = meta.roas >= metaGoal.roasTarget ? 'good' : meta.roas >= metaGoal.roasTarget * 0.7 ? 'warn' : 'bad';
             const revPct = metaGoal.revenueTarget > 0 ? (meta.purchaseValue / metaGoal.revenueTarget) * 100 : 0;
             return (
