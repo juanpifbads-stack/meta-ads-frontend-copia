@@ -72,15 +72,15 @@ export const CLIENTS = {
       // Ítems del mes. phase: 'inicio' (1-5) | 'fin' (29-30) | 'post' (post día 30, mes vencido)
       items: [
         {
-          concept: 'Fee mensual alquimia', detail: 'TikTok + Meta Ads', phase: 'inicio',
+          concept: 'Fee alquimia Pauta', detail: 'TikTok + Meta Ads', phase: 'inicio',
           breakdown: [
             { concept: 'Meta Ads', amount: 1100, currency: 'USD' },
             { concept: 'TikTok Ads', amount: 400, currency: 'USD', bonificado: 'Bonificado junio' },
             { concept: 'Componente variable', detail: '3% del diferencial de facturación', isVariable: true, currency: 'ARS' },
           ],
         },
-        { concept: 'Fee mensual alquimia', detail: 'Email mkt + Gestión web', amount: 350, currency: 'USD', phase: 'inicio' },
-        { concept: 'Fee mensual alquimia', detail: 'Contenido para pauta · creación de 3 sesiones de 2 hs c/u', amount: 1000, currency: 'USD', phase: 'inicio' },
+        { concept: 'Fee alquimia Web', detail: 'Email mkt + gestión web', amount: 350, currency: 'USD', phase: 'inicio' },
+        { concept: 'Fee alquimia Contenido', detail: 'Creación de 3 sesiones de 2 hs c/u', amount: 1000, currency: 'USD', phase: 'inicio' },
         {
           concept: 'Actrices', phase: 'inicio',
           breakdown: [

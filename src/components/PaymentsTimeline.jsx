@@ -21,7 +21,7 @@ function SubLine({ b }) {
         </div>
         <div className="pt-sub-right">
           {b.isVariable
-            ? <span className="pt-item-variable">según facturación del mes</span>
+            ? <span className="pt-item-variable">según facturación del mes pasado</span>
             : <span className={b.bonificado ? 'pt-strike' : ''}>{fmtMoney(b.amount, b.currency)}</span>}
           {b.bonificado && <span className="pt-bonif">{b.bonificado}</span>}
         </div>
