@@ -466,13 +466,22 @@ function ClientConfigEditor({ slug }) {
           {(cfg.capabilities || {}).variable && (
             <NumField label="Base fija del variable (ARS)" value={cfg.variable?.base} onChange={(v) => setCfg({ ...cfg, variable: { ...(cfg.variable || { rate: 0.03 }), base: v } })} />
           )}
-          {(cfg.capabilities || {}).ecommerce && (
-            <div className="ad-tn">
-              {cfg.tiendanube?.connected
-                ? <span className="ad-tn-ok">✓ Tienda Nube conectada (#{cfg.tiendanube.storeId})</span>
-                : <a className="ad-btn ad-btn--ghost" href={tnUrl} target="_blank" rel="noreferrer">Conectar Tienda Nube</a>}
-            </div>
-          )}
+          <div className="ad-sublabel">Tienda Nube</div>
+          <div className="ad-tn">
+            {cfg.tiendanube?.connected
+              ? (
+                <>
+                  <span className="ad-tn-ok">✓ Tienda Nube conectada (#{cfg.tiendanube.storeId})</span>
+                  <a className="ad-btn ad-btn--ghost" href={tnUrl} target="_blank" rel="noreferrer">Reconectar</a>
+                </>
+              )
+              : (
+                <>
+                  <a className="ad-btn" href={tnUrl} target="_blank" rel="noreferrer">Conectar Tienda Nube</a>
+                  <span className="ad-muted">Conectá la tienda de este cliente para traer facturación y productos.</span>
+                </>
+              )}
+          </div>
           <div className="ad-row" style={{ justifyContent: 'flex-end' }}>
             {msg && <span className="ad-msg">{msg}</span>}
             <button className="ad-btn" onClick={save}>Guardar config</button>
