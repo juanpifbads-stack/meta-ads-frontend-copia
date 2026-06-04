@@ -112,9 +112,9 @@ function buildTrendSvg(points, { w = 640, h = 240, visible = ['roas', 'facturaci
 
 const DISCLAIMER = 'Esto es una proyección: estamos estimando. No quiere decir que vaya a suceder.';
 
-export default function MediaPlan({ onBack }) {
+export default function MediaPlan({ onBack, lockedSlug }) {
   const [clients, setClients] = useState([]);
-  const [slug, setSlug] = useState('');
+  const [slug, setSlug] = useState(lockedSlug || '');
   const [months, setMonths] = useState([]);
   const [month, setMonth] = useState('');
   const [plan, setPlan] = useState(null);
@@ -127,9 +127,10 @@ export default function MediaPlan({ onBack }) {
   useEffect(() => {
     apiClient.get('/admin/clients').then((r) => {
       setClients(r.data.clients || []);
-      if (r.data.clients?.[0]) setSlug(r.data.clients[0].slug);
+      if (lockedSlug) setSlug(lockedSlug);
+      else if (r.data.clients?.[0]) setSlug(r.data.clients[0].slug);
     }).catch(() => {});
-  }, []);
+  }, [lockedSlug]);
 
   const loadMonths = useCallback((s) => {
     apiClient.get(`/admin/${s}/media-months`).then((r) => setMonths(r.data.months || [])).catch(() => setMonths([]));
@@ -289,12 +290,14 @@ export default function MediaPlan({ onBack }) {
       </header>
 
       <div className="ad-controls">
-        <div className="ad-field">
-          <label>Cliente</label>
-          <select value={slug} onChange={(e) => setSlug(e.target.value)}>
-            {clients.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-          </select>
-        </div>
+        {!lockedSlug && (
+          <div className="ad-field">
+            <label>Cliente</label>
+            <select value={slug} onChange={(e) => setSlug(e.target.value)}>
+              {clients.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
         <div className="ad-field">
           <label>Mes del plan</label>
           <select value={month} onChange={(e) => setMonth(e.target.value)}>

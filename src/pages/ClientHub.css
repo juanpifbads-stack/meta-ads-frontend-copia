@@ -1,0 +1,33 @@
+.hub-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.hub-tab {
+  font-family: var(--font-mono); font-size: 12px; padding: 8px 14px; border-radius: 999px;
+  border: 1px solid var(--color-gray-light, #d8d8df); background: #fff; color: #475569; cursor: pointer; transition: all .12s;
+}
+.hub-tab:hover { border-color: #94a3b8; }
+.hub-tab--active { background: var(--color-brand-blue, #1b1fe8); color: #fff; border-color: var(--color-brand-blue, #1b1fe8); }
+
+.hub-resumen { display: flex; flex-direction: column; gap: 18px; }
+.hub-metrics { display: flex; gap: 14px; flex-wrap: wrap; }
+.hub-metric { flex: 1; min-width: 160px; border: 1.5px solid var(--color-gray-light, #e5e6ea); border-radius: 14px; padding: 18px; }
+.hub-metric-lbl { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #8a8d96; margin-bottom: 6px; }
+.hub-metric-val { font-size: 28px; font-weight: 700; color: #15161a; }
+
+.hub-goals-card { border: 1.5px solid var(--color-gray-light, #e5e6ea); border-radius: 14px; padding: 18px; }
+.hub-goals-title { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #8a8d96; margin-bottom: 12px; }
+.hub-goals-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.hub-progress { display: flex; gap: 24px; margin-top: 12px; }
+.hub-prog-row { font-size: 13px; color: #475569; } .hub-prog-row strong { color: #15161a; margin-left: 6px; }
+
+.hub-quick { display: flex; gap: 12px; flex-wrap: wrap; }
+.hub-quick-btn {
+  flex: 1; min-width: 180px; border: 1.5px solid var(--color-gray-light, #e5e6ea); border-radius: 14px; padding: 18px;
+  background: #fff; cursor: pointer; font-size: 15px; font-weight: 600; color: #15161a; text-align: left; transition: all .12s;
+}
+.hub-quick-btn:hover { border-color: var(--color-brand-blue, #1b1fe8); transform: translateY(-2px); box-shadow: 0 6px 22px rgba(0,0,0,.06); }
+
+.hub-portal { display: flex; gap: 16px; flex-wrap: wrap; }
+.hub-portal-card { flex: 1; min-width: 280px; border: 1.5px solid var(--color-gray-light, #e5e6ea); border-radius: 14px; padding: 18px; }
+.hub-portal-lbl { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #8a8d96; margin-bottom: 8px; }
+.hub-portal-link { font-family: var(--font-mono); font-size: 12px; color: #1b1fe8; word-break: break-all; margin-bottom: 4px; }
+.hub-portal-key { font-size: 13px; color: #475569; margin-bottom: 12px; }
+.hub-portal-actions { display: flex; gap: 8px; }

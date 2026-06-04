@@ -153,9 +153,9 @@ function toCSV(activities) {
   return [headers, ...rows].map((r) => r.map(escape).join(',')).join('\n');
 }
 
-export default function Analyze({ onBack }) {
+export default function Analyze({ onBack, lockedAccount }) {
   const [accounts, setAccounts] = useState([]);
-  const [selectedAccount, setSelectedAccount] = useState('');
+  const [selectedAccount, setSelectedAccount] = useState(lockedAccount ? String(lockedAccount).replace('act_', '') : '');
   const [since, setSince] = useState(() => {
     const d = new Date();
     d.setDate(1);
@@ -171,9 +171,10 @@ export default function Analyze({ onBack }) {
     apiClient.get('/accounts').then((res) => {
       const raw = Array.isArray(res.data) ? res.data : Array.isArray(res.data?.accounts) ? res.data.accounts : [];
       setAccounts(raw);
-      if (raw.length > 0) setSelectedAccount(raw[0].id);
+      if (lockedAccount) setSelectedAccount(String(lockedAccount).replace('act_', ''));
+      else if (raw.length > 0) setSelectedAccount(raw[0].id);
     }).catch(() => {});
-  }, []);
+  }, [lockedAccount]);
 
   const fetch = useCallback(async () => {
     if (!selectedAccount) return;
@@ -220,14 +221,16 @@ export default function Analyze({ onBack }) {
       </div>
 
       <div className="analyze-controls">
-        <div className="analyze-field">
-          <label>Cuenta publicitaria</label>
-          <select value={selectedAccount} onChange={(e) => setSelectedAccount(e.target.value)}>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
-        </div>
+        {!lockedAccount && (
+          <div className="analyze-field">
+            <label>Cuenta publicitaria</label>
+            <select value={selectedAccount} onChange={(e) => setSelectedAccount(e.target.value)}>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="analyze-field">
           <label>Desde</label>
           <input type="date" value={since} onChange={(e) => setSince(e.target.value)} />

@@ -6,15 +6,15 @@ import AccountSelector from '../components/AccountSelector.jsx';
 import AdSetCard from '../components/AdSetCard.jsx';
 import CampaignCard from '../components/CampaignCard.jsx';
 
-export default function Dashboard({ onBack }) {
+export default function Dashboard({ onBack, initialAccount }) {
   const { user, logout } = useAuth();
 
   // Accounts
   const [accounts, setAccounts] = useState([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [accountsError, setAccountsError] = useState(null);
-  // Start with no account selected — the user must pick one explicitly.
-  const [selectedAccount, setSelectedAccount] = useState(null);
+  // Preselección si viene desde el hub de un cliente; si no, el usuario elige.
+  const [selectedAccount, setSelectedAccount] = useState(initialAccount ? String(initialAccount).replace('act_', '') : null);
 
   // Adsets (ABO)
   const [adsets, setAdsets] = useState([]);
