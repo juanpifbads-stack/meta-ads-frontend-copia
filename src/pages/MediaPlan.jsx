@@ -19,7 +19,7 @@ function money(n) {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
 }
 
-// ---- Modelo del plan ----
+// ---- Series del gráfico de tendencia ----
 const SERIES = [
   { key: 'roas', label: 'ROAS', color: '#1b1fe8', fmt: (v) => `${v}×` },
   { key: 'ventas', label: 'Ventas (u)', color: '#16a34a', fmt: (v) => new Intl.NumberFormat('es-AR').format(v) },
@@ -27,10 +27,13 @@ const SERIES = [
 ];
 
 const blank = () => ({
-  // INTERNO
+  // INTERNO (no va al entregable)
   clientInput: '',
+  // OBLIGATORIOS en el entregable
   lastMonthMeta: { facturacion: 0, inversion: 0, roas: 0 },
   lastYearMeta: { facturacion: 0, inversion: 0, roas: 0 },
+  objective: { facturacion: 0, roas: 0 },
+  // OPCIONALES (tilde)
   trend: [
     { label: '', roas: 0, ventas: 0, facturacion: 0 },
     { label: '', roas: 0, ventas: 0, facturacion: 0 },
@@ -39,19 +42,7 @@ const blank = () => ({
   trendNote: '',
   context: { dates: '', products: '' },
   considerations: [''],
-  // ENTREGABLE (siempre arriba)
-  objective: { facturacion: 0, roas: 0 },
-  explanation: '',
-  // Qué se muestra al cliente
-  include: {
-    clientInput: false,
-    lastMonthMeta: true,
-    lastYearMeta: false,
-    trend: true,
-    context: true,
-    considerations: true,
-    explanation: true,
-  },
+  include: { trend: true, context: true, considerations: true },
 });
 
 function normalize(raw) {
@@ -71,16 +62,18 @@ function normalize(raw) {
 }
 
 // ---- Gráfico de tendencia (SVG puro, reutilizable en pantalla y PDF) ----
-function buildTrendSvg(points, { w = 620, h = 230 } = {}) {
+function buildTrendSvg(points, { w = 620, h = 230, only = 'all' } = {}) {
   const pts = (points || []).filter((p) => (p.label || '').trim() || p.roas || p.ventas || p.facturacion);
   if (pts.length < 2) return '';
-  const padL = 16, padR = 16, padT = 20, padB = 34;
+  const series = only === 'all' ? SERIES : SERIES.filter((s) => s.key === only);
+  const showVals = only !== 'all';
+  const padL = 16, padR = 16, padT = 22, padB = 34;
   const cw = w - padL - padR, ch = h - padT - padB;
   const n = pts.length;
   const x = (i) => padL + (n === 1 ? cw / 2 : (cw * i) / (n - 1));
 
   let body = '';
-  for (const s of SERIES) {
+  for (const s of series) {
     const vals = pts.map((p) => Number(p[s.key]) || 0);
     const min = Math.min(...vals), max = Math.max(...vals);
     const range = max - min || 1;
@@ -89,23 +82,23 @@ function buildTrendSvg(points, { w = 620, h = 230 } = {}) {
     body += `<polyline fill="none" stroke="${s.color}" stroke-width="2.5" points="${coords.join(' ')}" />`;
     coords.forEach((c, i) => {
       const [cx, cy] = c.split(',');
-      body += `<circle cx="${cx}" cy="${cy}" r="3.2" fill="${s.color}" />`;
-      body += `<text x="${cx}" y="${(parseFloat(cy) - 7).toFixed(1)}" font-size="9" fill="${s.color}" text-anchor="middle" font-family="monospace">${s.fmt(vals[i])}</text>`;
+      body += `<circle cx="${cx}" cy="${cy}" r="3" fill="${s.color}" />`;
+      if (showVals) body += `<text x="${cx}" y="${(parseFloat(cy) - 8).toFixed(1)}" font-size="10" fill="${s.color}" text-anchor="middle" font-family="monospace">${s.fmt(vals[i])}</text>`;
     });
   }
-  // etiquetas de mes
   let labels = '';
   pts.forEach((p, i) => {
-    labels += `<text x="${x(i).toFixed(1)}" y="${h - 14}" font-size="11" fill="#5b5e66" text-anchor="middle">${(p.label || `Mes ${i + 1}`)}</text>`;
+    labels += `<text x="${x(i).toFixed(1)}" y="${h - 12}" font-size="11" fill="#5b5e66" text-anchor="middle">${(p.label || `Mes ${i + 1}`)}</text>`;
   });
-  // leyenda
   let legend = '';
-  SERIES.forEach((s, i) => {
+  series.forEach((s, i) => {
     const lx = padL + i * 150;
-    legend += `<rect x="${lx}" y="2" width="10" height="10" rx="2" fill="${s.color}" /><text x="${lx + 15}" y="11" font-size="10" fill="#15161a" font-family="monospace">${s.label}</text>`;
+    legend += `<rect x="${lx}" y="2" width="9" height="9" rx="2" fill="${s.color}" /><text x="${lx + 14}" y="10" font-size="9.5" fill="#15161a" font-family="monospace">${s.label}</text>`;
   });
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" xmlns="http://www.w3.org/2000/svg">${legend}${body}${labels}</svg>`;
 }
+
+const DISCLAIMER = 'Esto es una proyección: estamos estimando. No quiere decir que vaya a suceder.';
 
 export default function MediaPlan({ onBack }) {
   const [clients, setClients] = useState([]);
@@ -115,6 +108,7 @@ export default function MediaPlan({ onBack }) {
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
+  const [trendView, setTrendView] = useState('all');
 
   useEffect(() => {
     apiClient.get('/admin/clients').then((r) => {
@@ -125,13 +119,11 @@ export default function MediaPlan({ onBack }) {
 
   const loadMonths = useCallback((s) => {
     apiClient.get(`/admin/${s}/media-months`).then((r) => {
-      const ms = r.data.months || [];
-      setMonths(ms);
-      setMonth(ms.includes(currentYM()) ? currentYM() : (ms[0] || currentYM()));
-    }).catch(() => { setMonths([]); setMonth(currentYM()); });
+      setMonths(r.data.months || []);
+    }).catch(() => setMonths([]));
   }, []);
 
-  useEffect(() => { if (slug) loadMonths(slug); }, [slug, loadMonths]);
+  useEffect(() => { if (slug) { loadMonths(slug); setMonth(currentYM()); } }, [slug, loadMonths]);
 
   useEffect(() => {
     if (!slug || !month) return;
@@ -151,13 +143,15 @@ export default function MediaPlan({ onBack }) {
       .catch(() => setMsg('Error al guardar'));
   };
 
-  const newMonth = () => {
-    const to = prompt('Mes del plan. Formato AAAA-MM (ej. 2026-07)');
-    if (!to) return;
-    setMonth(to); setPlan(blank());
-  };
+  // Todos los meses del año actual + cualquier mes ya guardado
+  const year = new Date().getFullYear();
+  const allMonths = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
+  const monthOptions = Array.from(new Set([...allMonths, ...months])).sort();
 
   const inv = plan && plan.objective.roas > 0 ? plan.objective.facturacion / plan.objective.roas : 0;
+  const lastYearComparable = plan && (plan.lastYearMeta.inversion || 0) > 0;
+
+  const tgl = (key) => upd((p) => { p.include[key] = !p.include[key]; });
 
   const exportPdf = () => {
     if (!plan) return;
@@ -167,21 +161,23 @@ export default function MediaPlan({ onBack }) {
     const cons = (plan.considerations || []).filter((c) => c.trim()).map((c) => `<li>${esc(c)}</li>`).join('');
 
     const sections = [];
-    if (inc.clientInput && plan.clientInput?.trim())
-      sections.push(`<div class="sec"><div class="sec-t">Qué pedimos resolver este mes</div><div class="txt">${esc(plan.clientInput)}</div></div>`);
-    if (inc.lastMonthMeta)
-      sections.push(`<div class="sec"><div class="sec-t">Cómo nos fue el mes pasado</div><div class="kpis">
-        <div class="kpi"><div class="lbl">Facturación</div><div class="val">${money(plan.lastMonthMeta.facturacion)}</div></div>
-        <div class="kpi"><div class="lbl">Inversión pauta</div><div class="val">${money(plan.lastMonthMeta.inversion)}</div></div>
-        <div class="kpi"><div class="lbl">ROAS</div><div class="val">${plan.lastMonthMeta.roas || '—'}×</div></div></div></div>`);
-    if (inc.lastYearMeta)
+    // Cómo nos fue el mes pasado — obligatorio
+    sections.push(`<div class="sec"><div class="sec-t">Cómo nos fue el mes pasado</div><div class="kpis">
+      <div class="kpi"><div class="lbl">Facturación</div><div class="val">${money(plan.lastMonthMeta.facturacion)}</div></div>
+      <div class="kpi"><div class="lbl">Inversión pauta</div><div class="val">${money(plan.lastMonthMeta.inversion)}</div></div>
+      <div class="kpi"><div class="lbl">ROAS</div><div class="val">${plan.lastMonthMeta.roas || '—'}×</div></div></div></div>`);
+    // Mismo período del año pasado — obligatorio, con regla de inversión nula
+    if (lastYearComparable) {
       sections.push(`<div class="sec"><div class="sec-t">Mismo período del año pasado</div><div class="kpis">
         <div class="kpi"><div class="lbl">Facturación</div><div class="val">${money(plan.lastYearMeta.facturacion)}</div></div>
         <div class="kpi"><div class="lbl">Inversión pauta</div><div class="val">${money(plan.lastYearMeta.inversion)}</div></div>
         <div class="kpi"><div class="lbl">ROAS</div><div class="val">${plan.lastYearMeta.roas || '—'}×</div></div></div></div>`);
+    } else {
+      sections.push(`<div class="sec"><div class="sec-t">Mismo período del año pasado</div><div class="txt">No se puede comparar con el mismo período del año pasado ya que no hubo inversión publicitaria.</div></div>`);
+    }
     if (inc.trend) {
-      const svg = buildTrendSvg(plan.trend);
-      if (svg) sections.push(`<div class="sec"><div class="sec-t">Tendencia últimos 3 meses (Meta)</div><div class="chart">${svg}</div>${plan.trendNote?.trim() ? `<div class="txt" style="margin-top:8px">${esc(plan.trendNote)}</div>` : ''}</div>`);
+      const svg = buildTrendSvg(plan.trend, { only: trendView });
+      if (svg) sections.push(`<div class="sec"><div class="sec-t">Tendencia últimos 3 meses</div><div class="chart">${svg}</div>${plan.trendNote?.trim() ? `<div class="txt" style="margin-top:8px">${esc(plan.trendNote)}</div>` : ''}</div>`);
     }
     if (inc.context && (plan.context.dates?.trim() || plan.context.products?.trim())) {
       let c = '';
@@ -191,8 +187,6 @@ export default function MediaPlan({ onBack }) {
     }
     if (inc.considerations && cons)
       sections.push(`<div class="sec"><div class="sec-t">Consideraciones</div><ul>${cons}</ul></div>`);
-    if (inc.explanation && plan.explanation?.trim())
-      sections.push(`<div class="sec"><div class="sec-t">Por qué este objetivo</div><div class="txt">${esc(plan.explanation)}</div></div>`);
 
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
     <title>Plan de medios — ${esc(clientName)} ${esc(fmtMonth(month))}</title>
@@ -236,7 +230,7 @@ export default function MediaPlan({ onBack }) {
 
       ${sections.join('')}
 
-      <div class="disc">⚠ Esto es una proyección, no una garantía.</div>
+      <div class="disc">⚠ ${DISCLAIMER}</div>
       <div class="foot">Generado por alquimia. · ${new Date().toLocaleDateString('es-AR')}</div>
     </body></html>`;
 
@@ -247,8 +241,6 @@ export default function MediaPlan({ onBack }) {
     w.focus();
     setTimeout(() => w.print(), 400);
   };
-
-  const tgl = (key) => upd((p) => { p.include[key] = !p.include[key]; });
 
   return (
     <div className="ad-page">
@@ -270,11 +262,9 @@ export default function MediaPlan({ onBack }) {
         <div className="ad-field">
           <label>Mes del plan</label>
           <select value={month} onChange={(e) => setMonth(e.target.value)}>
-            {!months.includes(month) && month && <option value={month}>{fmtMonth(month)} (nuevo)</option>}
-            {months.map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
+            {monthOptions.map((m) => <option key={m} value={m}>{fmtMonth(m)}{months.includes(m) ? '' : ' (vacío)'}</option>)}
           </select>
         </div>
-        <button className="ad-btn ad-btn--ghost" onClick={newMonth}>+ Nuevo mes</button>
         <div className="ad-save">
           {msg && <span className="ad-msg">{msg}</span>}
           <button className="ad-btn ad-btn--ghost" onClick={exportPdf} disabled={!plan}>Exportar PDF</button>
@@ -286,7 +276,7 @@ export default function MediaPlan({ onBack }) {
 
       {plan && !loading && (
         <div className="ad-plan">
-          {/* OBJETIVO — primero, va arriba del entregable */}
+          {/* OBJETIVO — siempre arriba, sin tilde */}
           <Section title="Objetivo propuesto" tone="objective">
             <div className="ad-row">
               <Num label="Facturación objetivo (ARS)" value={plan.objective.facturacion} onChange={(v) => upd((p) => { p.objective.facturacion = v; })} />
@@ -295,19 +285,19 @@ export default function MediaPlan({ onBack }) {
             <div className="mp-calc">
               Inversión en pauta necesaria (facturación ÷ ROAS): <strong>{money(inv)}</strong>
             </div>
-            <Area label="Por qué este objetivo (explicación)" value={plan.explanation} onChange={(v) => upd((p) => { p.explanation = v; })} ph="Por qué el objetivo es viable (estacionalidad, stock, acciones, contenido, estrategia…)" />
-            <ShowToggle on={plan.include.explanation} onClick={() => tgl('explanation')} label="Mostrar la explicación al cliente" />
           </Section>
 
           <div className="mp-internal-banner">
-            ↓ Lo de abajo es <strong>trabajo interno</strong> para definir el objetivo. Solo aparece en el entregable lo que tildes con <em>"Mostrar al cliente"</em>.
+            ↓ Lo de abajo es <strong>trabajo interno</strong> para definir el objetivo. En el entregable van siempre el mes pasado y el año pasado; el resto solo si lo tildás con <em>"Mostrar al cliente"</em>.
           </div>
 
-          <Section title="Qué pidió el cliente" internal include={plan.include.clientInput} onToggle={() => tgl('clientInput')}>
-            <Area value={plan.clientInput} onChange={(v) => upd((p) => { p.clientInput = v; })} ph="Qué busca el cliente este mes (volumen, acciones, eventos, etc.)" />
+          {/* Interno puro, nunca al cliente */}
+          <Section title="Qué pidió el cliente" internal>
+            <Area value={plan.clientInput} onChange={(v) => upd((p) => { p.clientInput = v; })} ph="Qué busca el cliente este mes (objetivo, volumen, acciones, eventos…). Si propone un objetivo, cargalo arriba; se puede ajustar luego." />
           </Section>
 
-          <Section title="Cómo nos fue el mes pasado (Meta)" internal include={plan.include.lastMonthMeta} onToggle={() => tgl('lastMonthMeta')}>
+          {/* Obligatorios en el entregable, sin tilde */}
+          <Section title="Cómo nos fue el mes pasado (Meta)" required>
             <div className="ad-row">
               <Num label="Facturación (ARS)" value={plan.lastMonthMeta.facturacion} onChange={(v) => upd((p) => { p.lastMonthMeta.facturacion = v; })} />
               <Num label="Inversión en pauta (ARS)" value={plan.lastMonthMeta.inversion} onChange={(v) => upd((p) => { p.lastMonthMeta.inversion = v; })} />
@@ -315,14 +305,18 @@ export default function MediaPlan({ onBack }) {
             </div>
           </Section>
 
-          <Section title="Mismo período del año pasado (Meta)" internal include={plan.include.lastYearMeta} onToggle={() => tgl('lastYearMeta')}>
+          <Section title="Mismo período del año pasado (Meta)" required>
             <div className="ad-row">
               <Num label="Facturación (ARS)" value={plan.lastYearMeta.facturacion} onChange={(v) => upd((p) => { p.lastYearMeta.facturacion = v; })} />
               <Num label="Inversión en pauta (ARS)" value={plan.lastYearMeta.inversion} onChange={(v) => upd((p) => { p.lastYearMeta.inversion = v; })} />
               <Num label="ROAS" value={plan.lastYearMeta.roas} onChange={(v) => upd((p) => { p.lastYearMeta.roas = v; })} />
             </div>
+            {!lastYearComparable && (
+              <p className="mp-rule-note">Sin inversión el año pasado → en el entregable aparece: <em>"No se puede comparar con el mismo período del año pasado ya que no hubo inversión publicitaria."</em></p>
+            )}
           </Section>
 
+          {/* Opcionales con tilde */}
           <Section title="Tendencia últimos 3 meses (Meta)" internal include={plan.include.trend} onToggle={() => tgl('trend')}>
             <p className="ad-muted mp-hint">Cargá los 3 meses. Más adelante esto se va a traer solo desde Meta.</p>
             <table className="mp-trend-table">
@@ -331,14 +325,23 @@ export default function MediaPlan({ onBack }) {
                 {plan.trend.map((row, i) => (
                   <tr key={i}>
                     <td><input value={row.label} placeholder={`Mes ${i + 1}`} onChange={(e) => upd((p) => { p.trend[i].label = e.target.value; })} /></td>
-                    <td><input type="number" value={row.roas ?? ''} onChange={(e) => upd((p) => { p.trend[i].roas = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
-                    <td><input type="number" value={row.ventas ?? ''} onChange={(e) => upd((p) => { p.trend[i].ventas = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
-                    <td><input type="number" value={row.facturacion ?? ''} onChange={(e) => upd((p) => { p.trend[i].facturacion = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
+                    <td><input type="number" value={row.roas === 0 ? '' : row.roas} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].roas = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
+                    <td><input type="number" value={row.ventas === 0 ? '' : row.ventas} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].ventas = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
+                    <td><input type="number" value={row.facturacion === 0 ? '' : row.facturacion} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].facturacion = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <TrendPreview points={plan.trend} />
+            <TrendPreview points={plan.trend} only={trendView} />
+            <div className="mp-trend-view">
+              <span className="mp-trend-view-lbl">Ver</span>
+              <select value={trendView} onChange={(e) => setTrendView(e.target.value)}>
+                <option value="all">Todas las métricas</option>
+                <option value="roas">Solo ROAS</option>
+                <option value="ventas">Solo ventas</option>
+                <option value="facturacion">Solo facturación</option>
+              </select>
+            </div>
             <Area label="Conclusión breve (qué se ve en el gráfico)" value={plan.trendNote} onChange={(v) => upd((p) => { p.trendNote = v; })} ph="Ej. ROAS estable, facturación creciendo, ventas en alza…" />
           </Section>
 
@@ -357,8 +360,6 @@ export default function MediaPlan({ onBack }) {
             <button className="ad-add" onClick={() => upd((p) => { p.considerations = p.considerations || []; p.considerations.push(''); })}>+ Consideración</button>
           </Section>
 
-          <div className="mp-disclaimer">⚠ Esto es una proyección, no una garantía.</div>
-
           <div className="ad-save-bottom">
             {msg && <span className="ad-msg">{msg}</span>}
             <button className="ad-btn ad-btn--ghost" onClick={exportPdf}>Exportar PDF</button>
@@ -370,27 +371,28 @@ export default function MediaPlan({ onBack }) {
   );
 }
 
-function TrendPreview({ points }) {
-  const svg = buildTrendSvg(points);
+function TrendPreview({ points, only }) {
+  const svg = buildTrendSvg(points, { only });
   if (!svg) return <p className="ad-muted mp-hint">Cargá al menos 2 meses para ver el gráfico.</p>;
   return <div className="mp-chart" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
-function ShowToggle({ on, onClick, label }) {
+function ShowToggle({ on, onClick }) {
   return (
-    <label className={`mp-show ${on ? 'mp-show--on' : ''}`} onClick={(e) => { e.preventDefault(); onClick(); }}>
-      <input type="checkbox" checked={on} readOnly />
-      <span>{label || 'Mostrar al cliente'}</span>
-    </label>
+    <button type="button" className={`mp-show ${on ? 'mp-show--on' : ''}`} onClick={onClick}>
+      <span className="mp-show-dot">{on ? '✓' : ''}</span>
+      {on ? 'Se muestra al cliente' : 'Mostrar al cliente'}
+    </button>
   );
 }
 
-function Section({ title, children, internal, include, onToggle, tone }) {
+function Section({ title, children, internal, required, include, onToggle, tone }) {
   return (
-    <section className={`ad-section ${internal ? 'mp-sec--internal' : ''} ${tone === 'objective' ? 'mp-sec--objective' : ''}`}>
+    <section className={`ad-section ${internal ? 'mp-sec--internal' : ''} ${tone === 'objective' ? 'mp-sec--objective' : ''} ${required ? 'mp-sec--required' : ''}`}>
       <div className="mp-sec-head">
         <h3 className="ad-section-title">{title}</h3>
-        {internal && <ShowToggle on={include} onClick={onToggle} />}
+        {onToggle && <ShowToggle on={include} onClick={onToggle} />}
+        {required && <span className="mp-req-tag">Siempre en el entregable</span>}
       </div>
       {children}
     </section>
@@ -403,5 +405,5 @@ function Area({ label, value, onChange, ph }) {
   return <div className="ad-field ad-field--grow"><label>{label || ''}</label><textarea value={value} placeholder={ph || ''} onChange={(e) => onChange(e.target.value)} /></div>;
 }
 function Num({ label, value, onChange }) {
-  return <div className="ad-field"><label>{label}</label><input type="number" value={value ?? ''} onChange={(e) => onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))} /></div>;
+  return <div className="ad-field"><label>{label}</label><input className="mp-num" type="number" value={value === 0 || value == null ? '' : value} placeholder="0" onChange={(e) => onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))} /></div>;
 }
