@@ -4,6 +4,23 @@ import './Admin.css';
 
 const ALL_AMS = ['Juan Ignacio', 'Franco', 'Agustín', 'Chachi'];
 
+// Catálogo de secciones del panel del cliente (elegibles por cliente).
+const PANEL_SECTIONS = [
+  { key: 'macro', label: 'Estrategia macro (largo plazo)' },
+  { key: 'estrategiaMes', label: 'Estrategia del mes' },
+  { key: 'facturacion', label: 'Facturación ecommerce' },
+  { key: 'ritmo', label: 'Ritmo del mes' },
+  { key: 'presupuestoTotal', label: 'Presupuesto total del mes' },
+  { key: 'pagos', label: 'Pagos del mes' },
+  { key: 'performanceMeta', label: 'Performance Meta' },
+  { key: 'roadmap', label: 'Roadmap del mes' },
+  { key: 'productos', label: 'Productos estratégicos' },
+  { key: 'justificacion', label: 'Justificación de objetivos' },
+  { key: 'consideraciones', label: 'Consideraciones y riesgos' },
+  { key: 'planificacion', label: 'Planificación de próximos meses' },
+  { key: 'tareas', label: 'Tareas' },
+];
+
 const STATUS_OPTS = [
   { v: 'pendiente', l: 'Pendiente' },
   { v: 'en_curso', l: 'En curso' },
@@ -463,6 +480,19 @@ function ClientConfigEditor({ slug }) {
           </div>
           <div className="ad-sublabel">Capacidades</div>
           <CapsEditor caps={cfg.capabilities || {}} onToggle={(k) => setCfg({ ...cfg, capabilities: { ...(cfg.capabilities || {}), [k]: !(cfg.capabilities || {})[k] } })} />
+
+          <div className="ad-sublabel">Secciones del panel del cliente</div>
+          <div className="ad-caps">
+            {PANEL_SECTIONS.map((s) => {
+              const on = !!(cfg.panel?.sections || {})[s.key];
+              return (
+                <label key={s.key} className="ad-cap">
+                  <input type="checkbox" checked={on} onChange={() => setCfg({ ...cfg, panel: { ...(cfg.panel || {}), sections: { ...((cfg.panel || {}).sections || {}), [s.key]: !on } } })} />
+                  <span>{s.label}</span>
+                </label>
+              );
+            })}
+          </div>
           {(cfg.capabilities || {}).variable && (
             <NumField label="Base fija del variable (ARS)" value={cfg.variable?.base} onChange={(v) => setCfg({ ...cfg, variable: { ...(cfg.variable || { rate: 0.03 }), base: v } })} />
           )}
