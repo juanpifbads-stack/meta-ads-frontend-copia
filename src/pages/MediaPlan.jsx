@@ -18,62 +18,68 @@ function money(n) {
   if (n == null || isNaN(n) || n === 0) return '—';
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
 }
+function roasFmt(v) { return v ? `${v}×` : '—'; }
 
-// ---- Series del gráfico de tendencia ----
+// ---- Series del gráfico de tendencia (sin ventas) ----
 const SERIES = [
-  { key: 'roas', label: 'ROAS', color: '#1b1fe8', fmt: (v) => `${v}×` },
-  { key: 'ventas', label: 'Ventas (u)', color: '#16a34a', fmt: (v) => new Intl.NumberFormat('es-AR').format(v) },
-  { key: 'facturacion', label: 'Facturación', color: '#f59e0b', fmt: (v) => money(v) },
+  { key: 'roas', label: 'ROAS', color: '#1b1fe8', fmt: roasFmt },
+  { key: 'facturacion', label: 'Facturación', color: '#f59e0b', fmt: money },
+  { key: 'inversion', label: 'Inversión', color: '#16a34a', fmt: money },
 ];
 
 const blank = () => ({
-  // INTERNO (no va al entregable)
   clientInput: '',
-  // OBLIGATORIOS en el entregable
+  metaSource: false, // true cuando los números vienen de Meta (no editables)
   lastMonthMeta: { facturacion: 0, inversion: 0, roas: 0 },
   lastYearMeta: { facturacion: 0, inversion: 0, roas: 0 },
   objective: { facturacion: 0, roas: 0 },
-  // OPCIONALES (tilde)
   trend: [
-    { label: '', roas: 0, ventas: 0, facturacion: 0 },
-    { label: '', roas: 0, ventas: 0, facturacion: 0 },
-    { label: '', roas: 0, ventas: 0, facturacion: 0 },
+    { label: '', roas: 0, facturacion: 0, inversion: 0 },
+    { label: '', roas: 0, facturacion: 0, inversion: 0 },
+    { label: '', roas: 0, facturacion: 0, inversion: 0 },
   ],
+  trendLastYear: [],
   trendNote: '',
-  context: { dates: '', products: '' },
+  context: { dates: '', dateItems: [], products: '' },
   considerations: [''],
-  include: { trend: true, context: true, considerations: true },
+  include: { trend: true, contextDates: true, contextProducts: true, considerations: true },
 });
 
 function normalize(raw) {
   const b = blank();
   const p = raw || {};
+  const inc = p.include || {};
   return {
     ...b,
     ...p,
     lastMonthMeta: { ...b.lastMonthMeta, ...(p.lastMonthMeta || p.lastMonth || {}) },
     lastYearMeta: { ...b.lastYearMeta, ...(p.lastYearMeta || {}) },
-    trend: Array.isArray(p.trend) && p.trend.length ? p.trend : b.trend,
-    context: { ...b.context, ...(p.context || {}) },
+    trend: Array.isArray(p.trend) && p.trend.length ? p.trend.map((t) => ({ label: t.label || '', roas: t.roas || 0, facturacion: t.facturacion || 0, inversion: t.inversion || 0 })) : b.trend,
+    trendLastYear: Array.isArray(p.trendLastYear) ? p.trendLastYear : [],
+    context: { ...b.context, ...(p.context || {}), dateItems: Array.isArray(p.context?.dateItems) ? p.context.dateItems : [] },
     considerations: Array.isArray(p.considerations) ? p.considerations : b.considerations,
     objective: { ...b.objective, ...(p.objective || {}) },
-    include: { ...b.include, ...(p.include || {}) },
+    include: {
+      ...b.include,
+      ...inc,
+      contextDates: inc.contextDates != null ? inc.contextDates : (inc.context != null ? inc.context : true),
+      contextProducts: inc.contextProducts != null ? inc.contextProducts : (inc.context != null ? inc.context : true),
+    },
   };
 }
 
-// ---- Gráfico de tendencia (SVG puro, reutilizable en pantalla y PDF) ----
-function buildTrendSvg(points, { w = 620, h = 230, only = 'all' } = {}) {
-  const pts = (points || []).filter((p) => (p.label || '').trim() || p.roas || p.ventas || p.facturacion);
+// ---- Gráfico de tendencia (SVG puro) ----
+function buildTrendSvg(points, { w = 640, h = 240, visible = ['roas', 'facturacion', 'inversion'] } = {}) {
+  const pts = (points || []).filter((p) => (p.label || '').trim() || p.roas || p.facturacion || p.inversion);
   if (pts.length < 2) return '';
-  const series = only === 'all' ? SERIES : SERIES.filter((s) => s.key === only);
-  const showVals = only !== 'all';
-  const padL = 16, padR = 16, padT = 22, padB = 34;
+  const series = SERIES.filter((s) => visible.includes(s.key));
+  const padL = 16, padR = 16, padT = 24, padB = 34;
   const cw = w - padL - padR, ch = h - padT - padB;
   const n = pts.length;
   const x = (i) => padL + (n === 1 ? cw / 2 : (cw * i) / (n - 1));
 
   let body = '';
-  for (const s of series) {
+  series.forEach((s, si) => {
     const vals = pts.map((p) => Number(p[s.key]) || 0);
     const min = Math.min(...vals), max = Math.max(...vals);
     const range = max - min || 1;
@@ -83,16 +89,18 @@ function buildTrendSvg(points, { w = 620, h = 230, only = 'all' } = {}) {
     coords.forEach((c, i) => {
       const [cx, cy] = c.split(',');
       body += `<circle cx="${cx}" cy="${cy}" r="3" fill="${s.color}" />`;
-      if (showVals) body += `<text x="${cx}" y="${(parseFloat(cy) - 8).toFixed(1)}" font-size="10" fill="${s.color}" text-anchor="middle" font-family="monospace">${s.fmt(vals[i])}</text>`;
+      // stagger vertical para no encimar etiquetas
+      const dy = -8 - (si * 12);
+      body += `<text x="${cx}" y="${(parseFloat(cy) + dy).toFixed(1)}" font-size="9.5" fill="${s.color}" text-anchor="middle" font-family="monospace">${s.fmt(vals[i])}</text>`;
     });
-  }
+  });
   let labels = '';
   pts.forEach((p, i) => {
     labels += `<text x="${x(i).toFixed(1)}" y="${h - 12}" font-size="11" fill="#5b5e66" text-anchor="middle">${(p.label || `Mes ${i + 1}`)}</text>`;
   });
   let legend = '';
   series.forEach((s, i) => {
-    const lx = padL + i * 150;
+    const lx = padL + i * 130;
     legend += `<rect x="${lx}" y="2" width="9" height="9" rx="2" fill="${s.color}" /><text x="${lx + 14}" y="10" font-size="9.5" fill="#15161a" font-family="monospace">${s.label}</text>`;
   });
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" xmlns="http://www.w3.org/2000/svg">${legend}${body}${labels}</svg>`;
@@ -108,7 +116,9 @@ export default function MediaPlan({ onBack }) {
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
-  const [trendView, setTrendView] = useState('all');
+  const [pulling, setPulling] = useState(false);
+  const [visibleSeries, setVisibleSeries] = useState({ roas: true, facturacion: true, inversion: true });
+  const [trendCompare, setTrendCompare] = useState('current'); // 'current' | 'lastyear'
 
   useEffect(() => {
     apiClient.get('/admin/clients').then((r) => {
@@ -118,9 +128,7 @@ export default function MediaPlan({ onBack }) {
   }, []);
 
   const loadMonths = useCallback((s) => {
-    apiClient.get(`/admin/${s}/media-months`).then((r) => {
-      setMonths(r.data.months || []);
-    }).catch(() => setMonths([]));
+    apiClient.get(`/admin/${s}/media-months`).then((r) => setMonths(r.data.months || [])).catch(() => setMonths([]));
   }, []);
 
   useEffect(() => { if (slug) { loadMonths(slug); setMonth(currentYM()); } }, [slug, loadMonths]);
@@ -143,17 +151,6 @@ export default function MediaPlan({ onBack }) {
       .catch(() => setMsg('Error al guardar'));
   };
 
-  // Todos los meses del año actual + cualquier mes ya guardado
-  const year = new Date().getFullYear();
-  const allMonths = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
-  const monthOptions = Array.from(new Set([...allMonths, ...months])).sort();
-
-  const inv = plan && plan.objective.roas > 0 ? plan.objective.facturacion / plan.objective.roas : 0;
-  const lastYearComparable = plan && (plan.lastYearMeta.inversion || 0) > 0;
-
-  const tgl = (key) => upd((p) => { p.include[key] = !p.include[key]; });
-
-  const [pulling, setPulling] = useState(false);
   const pullMeta = () => {
     if (!slug || !month) return;
     setPulling(true);
@@ -162,9 +159,11 @@ export default function MediaPlan({ onBack }) {
       .then((r) => {
         const d = r.data || {};
         upd((p) => {
+          p.metaSource = true;
           if (d.lastMonth) p.lastMonthMeta = { ...p.lastMonthMeta, ...d.lastMonth };
           if (d.lastYear) p.lastYearMeta = { ...p.lastYearMeta, ...d.lastYear };
           if (Array.isArray(d.trend) && d.trend.length) p.trend = d.trend;
+          if (Array.isArray(d.trendLastYear)) p.trendLastYear = d.trendLastYear;
         });
         setMsg('✓ Datos traídos de Meta'); setTimeout(() => setMsg(''), 2500);
       })
@@ -172,38 +171,50 @@ export default function MediaPlan({ onBack }) {
       .finally(() => setPulling(false));
   };
 
+  const year = new Date().getFullYear();
+  const allMonths = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
+  const monthOptions = Array.from(new Set([...allMonths, ...months])).sort();
+
+  const inv = plan && plan.objective.roas > 0 ? plan.objective.facturacion / plan.objective.roas : 0;
+  const lastYearComparable = plan && (plan.lastYearMeta.inversion || 0) > 0;
+  const visibleKeys = SERIES.map((s) => s.key).filter((k) => visibleSeries[k]);
+  const trendData = plan ? (trendCompare === 'lastyear' ? plan.trendLastYear : plan.trend) : [];
+
+  const tgl = (key) => upd((p) => { p.include[key] = !p.include[key]; });
+
   const exportPdf = () => {
     if (!plan) return;
     const clientName = clients.find((c) => c.slug === slug)?.name || slug;
     const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const inc = plan.include;
     const cons = (plan.considerations || []).filter((c) => c.trim()).map((c) => `<li>${esc(c)}</li>`).join('');
+    const fmtDate = (d) => { if (!d) return ''; const [y, m, dd] = d.split('-'); return `${dd}/${m}`; };
 
     const sections = [];
-    // Cómo nos fue el mes pasado — obligatorio
     sections.push(`<div class="sec"><div class="sec-t">Cómo nos fue el mes pasado</div><div class="kpis">
       <div class="kpi"><div class="lbl">Facturación</div><div class="val">${money(plan.lastMonthMeta.facturacion)}</div></div>
       <div class="kpi"><div class="lbl">Inversión pauta</div><div class="val">${money(plan.lastMonthMeta.inversion)}</div></div>
-      <div class="kpi"><div class="lbl">ROAS</div><div class="val">${plan.lastMonthMeta.roas || '—'}×</div></div></div></div>`);
-    // Mismo período del año pasado — obligatorio, con regla de inversión nula
+      <div class="kpi"><div class="lbl">ROAS</div><div class="val">${roasFmt(plan.lastMonthMeta.roas)}</div></div></div></div>`);
     if (lastYearComparable) {
       sections.push(`<div class="sec"><div class="sec-t">Mismo período del año pasado</div><div class="kpis">
         <div class="kpi"><div class="lbl">Facturación</div><div class="val">${money(plan.lastYearMeta.facturacion)}</div></div>
         <div class="kpi"><div class="lbl">Inversión pauta</div><div class="val">${money(plan.lastYearMeta.inversion)}</div></div>
-        <div class="kpi"><div class="lbl">ROAS</div><div class="val">${plan.lastYearMeta.roas || '—'}×</div></div></div></div>`);
+        <div class="kpi"><div class="lbl">ROAS</div><div class="val">${roasFmt(plan.lastYearMeta.roas)}</div></div></div></div>`);
     } else {
       sections.push(`<div class="sec"><div class="sec-t">Mismo período del año pasado</div><div class="txt">No se puede comparar con el mismo período del año pasado ya que no hubo inversión publicitaria.</div></div>`);
     }
     if (inc.trend) {
-      const svg = buildTrendSvg(plan.trend, { only: trendView });
-      if (svg) sections.push(`<div class="sec"><div class="sec-t">Tendencia últimos 3 meses</div><div class="chart">${svg}</div>${plan.trendNote?.trim() ? `<div class="txt" style="margin-top:8px">${esc(plan.trendNote)}</div>` : ''}</div>`);
+      const svg = buildTrendSvg(trendData, { visible: visibleKeys });
+      if (svg) sections.push(`<div class="sec"><div class="sec-t">Tendencia ${trendCompare === 'lastyear' ? '(año pasado)' : 'últimos 3 meses'}</div><div class="chart">${svg}</div>${plan.trendNote?.trim() ? `<div class="txt" style="margin-top:8px">${esc(plan.trendNote)}</div>` : ''}</div>`);
     }
-    if (inc.context && (plan.context.dates?.trim() || plan.context.products?.trim())) {
-      let c = '';
-      if (plan.context.dates?.trim()) c += `<div class="block"><div class="lbl">Fechas importantes del mes</div><div class="txt">${esc(plan.context.dates)}</div></div>`;
-      if (plan.context.products?.trim()) c += `<div class="block"><div class="lbl">Stock y reposición de productos clave</div><div class="txt">${esc(plan.context.products)}</div></div>`;
-      sections.push(`<div class="sec"><div class="sec-t">Contexto</div>${c}</div>`);
+    if (inc.contextDates && (plan.context.dates?.trim() || (plan.context.dateItems || []).length)) {
+      let c = plan.context.dates?.trim() ? `<div class="txt">${esc(plan.context.dates)}</div>` : '';
+      const items = (plan.context.dateItems || []).filter((it) => it.date || it.name);
+      if (items.length) c += `<ul>${items.map((it) => `<li><strong>${fmtDate(it.date)}</strong> — ${esc(it.name)}</li>`).join('')}</ul>`;
+      sections.push(`<div class="sec"><div class="sec-t">Fechas importantes del mes</div>${c}</div>`);
     }
+    if (inc.contextProducts && plan.context.products?.trim())
+      sections.push(`<div class="sec"><div class="sec-t">Stock y reposición de productos clave</div><div class="txt">${esc(plan.context.products)}</div></div>`);
     if (inc.considerations && cons)
       sections.push(`<div class="sec"><div class="sec-t">Consideraciones</div><ul>${cons}</ul></div>`);
 
@@ -221,12 +232,11 @@ export default function MediaPlan({ onBack }) {
       .sec { margin-bottom: 22px; page-break-inside: avoid; }
       .sec-t { font-family: 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.05em; font-size: 13px; font-weight: 700; border-bottom: 2px solid #15161a; padding-bottom: 5px; margin-bottom: 10px; }
       .txt { white-space: pre-wrap; font-size: 14px; }
-      .block { margin-bottom: 10px; }
       .lbl { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #8a8d96; margin-bottom: 2px; }
       ul { margin: 0; padding-left: 18px; } li { font-size: 14px; margin-bottom: 4px; }
       .kpis { display: flex; gap: 12px; }
       .kpi { flex: 1; border: 1.5px solid #e5e6ea; border-radius: 12px; padding: 14px; }
-      .kpi .lbl { margin-bottom: 6px; } .kpi .val { font-size: 20px; font-weight: 700; }
+      .kpi .lbl { margin-bottom: 6px; } .kpi .val { font-size: 22px; font-weight: 700; }
       .chart { border: 1.5px solid #e5e6ea; border-radius: 12px; padding: 12px; }
       .obj { background: #1b1fe8; color: #fff; border-radius: 14px; padding: 20px; display: flex; gap: 20px; margin-bottom: 26px; }
       .obj .val { font-size: 24px; font-weight: 700; } .obj .lbl { color: #c7c9ff; }
@@ -242,7 +252,7 @@ export default function MediaPlan({ onBack }) {
       <div class="sec"><div class="sec-t">Objetivo propuesto</div>
         <div class="obj">
           <div><div class="lbl">Facturación objetivo</div><div class="val">${money(plan.objective.facturacion)}</div></div>
-          <div><div class="lbl">ROAS objetivo</div><div class="val">${plan.objective.roas || '—'}×</div></div>
+          <div><div class="lbl">ROAS objetivo</div><div class="val">${roasFmt(plan.objective.roas)}</div></div>
           <div><div class="lbl">Inversión necesaria</div><div class="val">${money(inv)}</div></div>
         </div>
       </div>
@@ -296,84 +306,120 @@ export default function MediaPlan({ onBack }) {
 
       {plan && !loading && (
         <div className="ad-plan">
-          {/* OBJETIVO — siempre arriba, sin tilde */}
+          {/* OBJETIVO — siempre arriba */}
           <Section title="Objetivo propuesto" tone="objective">
             <div className="ad-row">
               <Num label="Facturación objetivo (ARS)" value={plan.objective.facturacion} onChange={(v) => upd((p) => { p.objective.facturacion = v; })} />
               <Num label="ROAS objetivo (×)" value={plan.objective.roas} onChange={(v) => upd((p) => { p.objective.roas = v; })} />
             </div>
-            <div className="mp-calc">
-              Inversión en pauta necesaria (facturación ÷ ROAS): <strong>{money(inv)}</strong>
-            </div>
+            <div className="mp-calc">Inversión en pauta necesaria (facturación ÷ ROAS): <strong>{money(inv)}</strong></div>
           </Section>
 
           <div className="mp-internal-banner">
-            ↓ Lo de abajo es <strong>trabajo interno</strong> para definir el objetivo. En el entregable van siempre el mes pasado y el año pasado; el resto solo si lo tildás con <em>"Mostrar al cliente"</em>.
+            ↓ <strong>Trabajo interno</strong> para definir el objetivo. En el entregable van siempre el mes pasado y el año pasado; el resto solo si lo tildás.
           </div>
 
-          {/* Interno puro, nunca al cliente */}
           <Section title="Qué pidió el cliente" internal>
             <Area value={plan.clientInput} onChange={(v) => upd((p) => { p.clientInput = v; })} ph="Qué busca el cliente este mes (objetivo, volumen, acciones, eventos…). Si propone un objetivo, cargalo arriba; se puede ajustar luego." />
           </Section>
 
-          {/* Obligatorios en el entregable, sin tilde */}
-          <Section title="Cómo nos fue el mes pasado (Meta)" required>
-            <div className="ad-row">
-              <Num label="Facturación (ARS)" value={plan.lastMonthMeta.facturacion} onChange={(v) => upd((p) => { p.lastMonthMeta.facturacion = v; })} />
-              <Num label="Inversión en pauta (ARS)" value={plan.lastMonthMeta.inversion} onChange={(v) => upd((p) => { p.lastMonthMeta.inversion = v; })} />
-              <Num label="ROAS" value={plan.lastMonthMeta.roas} onChange={(v) => upd((p) => { p.lastMonthMeta.roas = v; })} />
-            </div>
+          {/* Mes pasado */}
+          <Section title="Cómo nos fue el mes pasado (Meta)" required
+            action={plan.metaSource ? <button className="mp-edit-link" onClick={() => upd((p) => { p.metaSource = false; })}>✎ Editar a mano</button> : null}>
+            {plan.metaSource
+              ? <KpiCards data={plan.lastMonthMeta} />
+              : (
+                <div className="ad-row">
+                  <Num label="Facturación (ARS)" value={plan.lastMonthMeta.facturacion} onChange={(v) => upd((p) => { p.lastMonthMeta.facturacion = v; })} />
+                  <Num label="Inversión en pauta (ARS)" value={plan.lastMonthMeta.inversion} onChange={(v) => upd((p) => { p.lastMonthMeta.inversion = v; })} />
+                  <Num label="ROAS" value={plan.lastMonthMeta.roas} onChange={(v) => upd((p) => { p.lastMonthMeta.roas = v; })} />
+                </div>
+              )}
           </Section>
 
+          {/* Año pasado */}
           <Section title="Mismo período del año pasado (Meta)" required>
-            <div className="ad-row">
-              <Num label="Facturación (ARS)" value={plan.lastYearMeta.facturacion} onChange={(v) => upd((p) => { p.lastYearMeta.facturacion = v; })} />
-              <Num label="Inversión en pauta (ARS)" value={plan.lastYearMeta.inversion} onChange={(v) => upd((p) => { p.lastYearMeta.inversion = v; })} />
-              <Num label="ROAS" value={plan.lastYearMeta.roas} onChange={(v) => upd((p) => { p.lastYearMeta.roas = v; })} />
+            {plan.metaSource
+              ? (lastYearComparable ? <KpiCards data={plan.lastYearMeta} /> : <p className="mp-rule-note">No hubo inversión el año pasado → en el entregable aparece: <em>"No se puede comparar con el mismo período del año pasado ya que no hubo inversión publicitaria."</em></p>)
+              : (
+                <>
+                  <div className="ad-row">
+                    <Num label="Facturación (ARS)" value={plan.lastYearMeta.facturacion} onChange={(v) => upd((p) => { p.lastYearMeta.facturacion = v; })} />
+                    <Num label="Inversión en pauta (ARS)" value={plan.lastYearMeta.inversion} onChange={(v) => upd((p) => { p.lastYearMeta.inversion = v; })} />
+                    <Num label="ROAS" value={plan.lastYearMeta.roas} onChange={(v) => upd((p) => { p.lastYearMeta.roas = v; })} />
+                  </div>
+                  {!lastYearComparable && <p className="mp-rule-note">Sin inversión el año pasado → en el entregable aparece el texto explicativo.</p>}
+                </>
+              )}
+          </Section>
+
+          {/* Tendencia */}
+          <Section title="Tendencia (Meta)" internal include={plan.include.trend} onToggle={() => tgl('trend')}>
+            <div className="mp-trend-toggle">
+              <button className={`mp-seg ${trendCompare === 'current' ? 'mp-seg--on' : ''}`} onClick={() => setTrendCompare('current')}>Últimos 3 meses</button>
+              <button className={`mp-seg ${trendCompare === 'lastyear' ? 'mp-seg--on' : ''}`} onClick={() => setTrendCompare('lastyear')}>Mismo tramo del año pasado</button>
             </div>
-            {!lastYearComparable && (
-              <p className="mp-rule-note">Sin inversión el año pasado → en el entregable aparece: <em>"No se puede comparar con el mismo período del año pasado ya que no hubo inversión publicitaria."</em></p>
-            )}
-          </Section>
 
-          {/* Opcionales con tilde */}
-          <Section title="Tendencia últimos 3 meses (Meta)" internal include={plan.include.trend} onToggle={() => tgl('trend')}>
-            <p className="ad-muted mp-hint">Usá <strong>"↧ Traer de Meta"</strong> arriba para autocompletar, o cargá los 3 meses a mano.</p>
-            <table className="mp-trend-table">
-              <thead><tr><th>Mes</th><th>ROAS</th><th>Ventas (u)</th><th>Facturación (ARS)</th></tr></thead>
-              <tbody>
-                {plan.trend.map((row, i) => (
-                  <tr key={i}>
-                    <td><input value={row.label} placeholder={`Mes ${i + 1}`} onChange={(e) => upd((p) => { p.trend[i].label = e.target.value; })} /></td>
-                    <td><input type="number" value={row.roas === 0 ? '' : row.roas} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].roas = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
-                    <td><input type="number" value={row.ventas === 0 ? '' : row.ventas} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].ventas = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
-                    <td><input type="number" value={row.facturacion === 0 ? '' : row.facturacion} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].facturacion = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <TrendPreview points={plan.trend} only={trendView} />
-            <div className="mp-trend-view">
-              <span className="mp-trend-view-lbl">Ver</span>
-              <select value={trendView} onChange={(e) => setTrendView(e.target.value)}>
-                <option value="all">Todas las métricas</option>
-                <option value="roas">Solo ROAS</option>
-                <option value="ventas">Solo ventas</option>
-                <option value="facturacion">Solo facturación</option>
-              </select>
+            {plan.metaSource
+              ? <TrendReadonly rows={trendData} />
+              : (
+                <table className="mp-trend-table">
+                  <thead><tr><th>Mes</th><th>ROAS</th><th>Facturación (ARS)</th><th>Inversión (ARS)</th></tr></thead>
+                  <tbody>
+                    {plan.trend.map((row, i) => (
+                      <tr key={i}>
+                        <td><input value={row.label} placeholder={`Mes ${i + 1}`} onChange={(e) => upd((p) => { p.trend[i].label = e.target.value; })} /></td>
+                        <td><input type="number" value={row.roas === 0 ? '' : row.roas} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].roas = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
+                        <td><input type="number" value={row.facturacion === 0 ? '' : row.facturacion} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].facturacion = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
+                        <td><input type="number" value={row.inversion === 0 ? '' : row.inversion} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].inversion = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+            <div className="mp-series-checks">
+              {SERIES.map((s) => (
+                <label key={s.key} className="mp-check">
+                  <input type="checkbox" checked={!!visibleSeries[s.key]} onChange={() => setVisibleSeries((v) => ({ ...v, [s.key]: !v[s.key] }))} />
+                  <span className="mp-check-dot" style={{ background: s.color }} />{s.label}
+                </label>
+              ))}
             </div>
-            <Area label="Conclusión breve (qué se ve en el gráfico)" value={plan.trendNote} onChange={(v) => upd((p) => { p.trendNote = v; })} ph="Ej. ROAS estable, facturación creciendo, ventas en alza…" />
+
+            <TrendPreview points={trendData} visible={visibleKeys} />
+            {trendCompare === 'lastyear' && !(plan.trendLastYear || []).length && <p className="ad-muted mp-hint">Tocá "↧ Traer de Meta" para cargar la comparación del año pasado.</p>}
+            <Area label="Conclusión breve (qué se ve en el gráfico)" value={plan.trendNote} onChange={(v) => upd((p) => { p.trendNote = v; })} ph="Ej. ROAS estable, facturación creciendo, inversión en alza…" />
           </Section>
 
-          <Section title="Contexto" internal include={plan.include.context} onToggle={() => tgl('context')}>
-            <Area label="¿Hay fechas importantes este mes? (negocio o macro: día del padre, navidad, hot sale…)" value={plan.context.dates} onChange={(v) => upd((p) => { p.context.dates = v; })} />
-            <Area label="Productos clave: ¿hay stock? ¿capacidad de reposición?" value={plan.context.products} onChange={(v) => upd((p) => { p.context.products = v; })} />
+          {/* Contexto — fechas */}
+          <Section title="Fechas importantes del mes" internal include={plan.include.contextDates} onToggle={() => tgl('contextDates')}>
+            <Area label="¿Hay fechas importantes? (negocio o macro: día del padre, navidad, hot sale…)" value={plan.context.dates} onChange={(v) => upd((p) => { p.context.dates = v; })} />
+            <div className="mp-dates">
+              {(plan.context.dateItems || []).map((it, i) => (
+                <div key={i} className="ad-row mp-date-row">
+                  <div className="ad-field"><label>Fecha</label><input type="date" value={it.date || ''} onChange={(e) => upd((p) => { p.context.dateItems[i].date = e.target.value; })} /></div>
+                  <div className="ad-field ad-field--grow"><label>Nombre</label><input value={it.name || ''} placeholder="Ej. Día del padre" onChange={(e) => upd((p) => { p.context.dateItems[i].name = e.target.value; })} /></div>
+                  <button className="ad-del" onClick={() => upd((p) => { p.context.dateItems.splice(i, 1); })}>×</button>
+                </div>
+              ))}
+              <button className="ad-add" onClick={() => upd((p) => { p.context.dateItems = p.context.dateItems || []; p.context.dateItems.push({ date: '', name: '' }); })}>+ Sumar fecha</button>
+            </div>
           </Section>
 
+          {/* Contexto — productos */}
+          <Section title="Stock y reposición de productos clave" internal include={plan.include.contextProducts} onToggle={() => tgl('contextProducts')}>
+            <Area label="¿Hay stock de los productos que mueven la aguja? ¿Capacidad de reposición?" value={plan.context.products} onChange={(v) => upd((p) => { p.context.products = v; })} />
+          </Section>
+
+          {/* Consideraciones */}
           <Section title="Consideraciones extra" internal include={plan.include.considerations} onToggle={() => tgl('considerations')}>
             {(plan.considerations || []).map((c, i) => (
               <div key={i} className="ad-row">
-                <Input label={`Punto ${i + 1}`} value={c} onChange={(v) => upd((p) => { p.considerations[i] = v; })} />
+                <div className="ad-field ad-field--grow">
+                  <label>{`Punto ${i + 1}`}</label>
+                  <input value={c} placeholder="Ej. contexto país (elecciones, inflación) o particularidad del dueño (viaje, licencia)…" onChange={(e) => upd((p) => { p.considerations[i] = e.target.value; })} />
+                </div>
                 <button className="ad-del" onClick={() => upd((p) => { p.considerations.splice(i, 1); })}>×</button>
               </div>
             ))}
@@ -391,8 +437,37 @@ export default function MediaPlan({ onBack }) {
   );
 }
 
-function TrendPreview({ points, only }) {
-  const svg = buildTrendSvg(points, { only });
+function KpiCards({ data }) {
+  return (
+    <div className="mp-kpis">
+      <div className="mp-kpi"><div className="mp-kpi-lbl">Facturación</div><div className="mp-kpi-val">{money(data.facturacion)}</div></div>
+      <div className="mp-kpi"><div className="mp-kpi-lbl">Inversión pauta</div><div className="mp-kpi-val">{money(data.inversion)}</div></div>
+      <div className="mp-kpi"><div className="mp-kpi-lbl">ROAS</div><div className="mp-kpi-val">{roasFmt(data.roas)}</div></div>
+    </div>
+  );
+}
+
+function TrendReadonly({ rows }) {
+  if (!rows || !rows.length) return <p className="ad-muted mp-hint">Sin datos. Tocá "↧ Traer de Meta".</p>;
+  return (
+    <table className="mp-trend-table mp-trend-table--ro">
+      <thead><tr><th>Mes</th><th>ROAS</th><th>Facturación</th><th>Inversión</th></tr></thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i}>
+            <td className="mp-ro-month">{r.label || `Mes ${i + 1}`}</td>
+            <td className="mp-ro-val">{roasFmt(r.roas)}</td>
+            <td className="mp-ro-val">{money(r.facturacion)}</td>
+            <td className="mp-ro-val">{money(r.inversion)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function TrendPreview({ points, visible }) {
+  const svg = buildTrendSvg(points, { visible });
   if (!svg) return <p className="ad-muted mp-hint">Cargá al menos 2 meses para ver el gráfico.</p>;
   return <div className="mp-chart" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
@@ -406,20 +481,20 @@ function ShowToggle({ on, onClick }) {
   );
 }
 
-function Section({ title, children, internal, required, include, onToggle, tone }) {
+function Section({ title, children, internal, required, include, onToggle, tone, action }) {
   return (
     <section className={`ad-section ${internal ? 'mp-sec--internal' : ''} ${tone === 'objective' ? 'mp-sec--objective' : ''} ${required ? 'mp-sec--required' : ''}`}>
       <div className="mp-sec-head">
         <h3 className="ad-section-title">{title}</h3>
-        {onToggle && <ShowToggle on={include} onClick={onToggle} />}
-        {required && <span className="mp-req-tag">Siempre en el entregable</span>}
+        <div className="mp-sec-head-right">
+          {action}
+          {onToggle && <ShowToggle on={include} onClick={onToggle} />}
+          {required && <span className="mp-req-tag">Siempre en el entregable</span>}
+        </div>
       </div>
       {children}
     </section>
   );
-}
-function Input({ label, value, onChange }) {
-  return <div className="ad-field ad-field--grow"><label>{label}</label><input value={value} onChange={(e) => onChange(e.target.value)} /></div>;
 }
 function Area({ label, value, onChange, ph }) {
   return <div className="ad-field ad-field--grow"><label>{label || ''}</label><textarea value={value} placeholder={ph || ''} onChange={(e) => onChange(e.target.value)} /></div>;

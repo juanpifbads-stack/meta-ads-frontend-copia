@@ -84,3 +84,34 @@
 
 /* Gráfico */
 .mp-chart { border: 1px solid var(--color-gray-light); border-radius: var(--radius-md); padding: 12px; margin-bottom: 12px; background: #fff; }
+
+/* Encabezado de sección: lado derecho con acciones */
+.mp-sec-head-right { display: inline-flex; align-items: center; gap: 10px; }
+.mp-edit-link { background: none; border: none; cursor: pointer; font-family: var(--font-mono); font-size: 11px; color: #64748b; text-decoration: underline; }
+.mp-edit-link:hover { color: #15161a; }
+
+/* KPI cards (datos de Meta, no editables) */
+.mp-kpis { display: flex; gap: 12px; flex-wrap: wrap; }
+.mp-kpi { flex: 1; min-width: 150px; border: 1.5px solid var(--color-gray-light); border-radius: var(--radius-md); padding: 16px 18px; background: #fafafa; }
+.mp-kpi-lbl { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #8a8d96; margin-bottom: 6px; }
+.mp-kpi-val { font-size: 26px; font-weight: 700; color: #15161a; }
+
+/* Segmented toggle año */
+.mp-trend-toggle { display: inline-flex; gap: 6px; margin-bottom: 12px; }
+.mp-seg { font-family: var(--font-mono); font-size: 11px; padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; color: #64748b; cursor: pointer; transition: all .12s; }
+.mp-seg--on { background: var(--color-brand-blue); color: #fff; border-color: var(--color-brand-blue); }
+
+/* Checkboxes de series */
+.mp-series-checks { display: flex; gap: 16px; flex-wrap: wrap; margin: 10px 0; }
+.mp-check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; color: #334155; }
+.mp-check input { width: 16px; height: 16px; cursor: pointer; }
+.mp-check-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+/* Tabla de tendencia read-only */
+.mp-trend-table--ro td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; }
+.mp-ro-month { font-weight: 600; color: #15161a; }
+.mp-ro-val { font-family: var(--font-mono); font-size: 14px; color: #15161a; }
+
+/* Fechas específicas */
+.mp-dates { margin-top: 6px; }
+.mp-date-row { align-items: flex-end; }
