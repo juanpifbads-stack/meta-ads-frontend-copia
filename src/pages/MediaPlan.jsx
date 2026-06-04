@@ -153,6 +153,25 @@ export default function MediaPlan({ onBack }) {
 
   const tgl = (key) => upd((p) => { p.include[key] = !p.include[key]; });
 
+  const [pulling, setPulling] = useState(false);
+  const pullMeta = () => {
+    if (!slug || !month) return;
+    setPulling(true);
+    setMsg('Trayendo de Meta…');
+    apiClient.get(`/admin/${slug}/meta-trend`, { params: { month } })
+      .then((r) => {
+        const d = r.data || {};
+        upd((p) => {
+          if (d.lastMonth) p.lastMonthMeta = { ...p.lastMonthMeta, ...d.lastMonth };
+          if (d.lastYear) p.lastYearMeta = { ...p.lastYearMeta, ...d.lastYear };
+          if (Array.isArray(d.trend) && d.trend.length) p.trend = d.trend;
+        });
+        setMsg('✓ Datos traídos de Meta'); setTimeout(() => setMsg(''), 2500);
+      })
+      .catch((e) => setMsg(e.response?.data?.message || 'No se pudo traer de Meta'))
+      .finally(() => setPulling(false));
+  };
+
   const exportPdf = () => {
     if (!plan) return;
     const clientName = clients.find((c) => c.slug === slug)?.name || slug;
@@ -265,6 +284,7 @@ export default function MediaPlan({ onBack }) {
             {monthOptions.map((m) => <option key={m} value={m}>{fmtMonth(m)}{months.includes(m) ? '' : ' (vacío)'}</option>)}
           </select>
         </div>
+        <button className="ad-btn ad-btn--ghost" onClick={pullMeta} disabled={!plan || pulling}>{pulling ? 'Trayendo…' : '↧ Traer de Meta'}</button>
         <div className="ad-save">
           {msg && <span className="ad-msg">{msg}</span>}
           <button className="ad-btn ad-btn--ghost" onClick={exportPdf} disabled={!plan}>Exportar PDF</button>
@@ -318,7 +338,7 @@ export default function MediaPlan({ onBack }) {
 
           {/* Opcionales con tilde */}
           <Section title="Tendencia últimos 3 meses (Meta)" internal include={plan.include.trend} onToggle={() => tgl('trend')}>
-            <p className="ad-muted mp-hint">Cargá los 3 meses. Más adelante esto se va a traer solo desde Meta.</p>
+            <p className="ad-muted mp-hint">Usá <strong>"↧ Traer de Meta"</strong> arriba para autocompletar, o cargá los 3 meses a mano.</p>
             <table className="mp-trend-table">
               <thead><tr><th>Mes</th><th>ROAS</th><th>Ventas (u)</th><th>Facturación (ARS)</th></tr></thead>
               <tbody>

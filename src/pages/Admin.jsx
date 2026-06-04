@@ -313,6 +313,30 @@ const CAPS = [
   { k: 'web', l: 'Email mkt + gestión web' },
 ];
 
+function AdAccountSelect({ value, onChange, label }) {
+  const [accounts, setAccounts] = useState(null);
+  useEffect(() => {
+    apiClient.get('/accounts').then((r) => setAccounts(r.data || [])).catch(() => setAccounts([]));
+  }, []);
+  const norm = (v) => String(v || '').replace('act_', '');
+  const cur = norm(value);
+  const inList = accounts && accounts.some((a) => norm(a.id) === cur);
+  return (
+    <div className="ad-field ad-field--grow">
+      <label>{label || 'Cuenta publicitaria (Meta)'}</label>
+      {accounts === null
+        ? <input value="Cargando cuentas…" readOnly />
+        : (
+          <select value={cur} onChange={(e) => onChange(e.target.value)}>
+            <option value="">— Sin cuenta —</option>
+            {accounts.map((a) => <option key={a.id} value={norm(a.id)}>{a.name} ({norm(a.id)})</option>)}
+            {cur && !inList && <option value={cur}>{cur} (guardada)</option>}
+          </select>
+        )}
+    </div>
+  );
+}
+
 function CapsEditor({ caps, onToggle }) {
   return (
     <div className="ad-caps">
@@ -364,7 +388,7 @@ function NewClientForm({ onClose, onCreated }) {
         <Field label="Clave de acceso (cliente)" value={f.accessKey} onChange={(v) => set('accessKey', v)} />
         <Field label="Clave de pagos (admin)" value={f.paymentsKey} onChange={(v) => set('paymentsKey', v)} />
       </div>
-      <Field label="ID de cuenta de Meta (solo números)" value={f.metaAccountId} onChange={(v) => set('metaAccountId', v)} />
+      <AdAccountSelect value={f.metaAccountId} onChange={(v) => set('metaAccountId', v)} />
       <div className="ad-sublabel">¿Qué le ofrecés?</div>
       <CapsEditor caps={f.capabilities} onToggle={toggleCap} />
       {f.capabilities.variable && <NumField label="Base fija del variable (ARS)" value={f.variableBase} onChange={(v) => set('variableBase', v)} />}
@@ -412,7 +436,7 @@ function ClientConfigEditor({ slug }) {
         <div className="ad-macro-body">
           <div className="ad-row">
             <Field label="Nombre" value={cfg.name || ''} onChange={(v) => setCfg({ ...cfg, name: v })} />
-            <Field label="ID cuenta Meta" value={cfg.metaAccountId || ''} onChange={(v) => setCfg({ ...cfg, metaAccountId: v })} />
+            <AdAccountSelect value={cfg.metaAccountId || ''} onChange={(v) => setCfg({ ...cfg, metaAccountId: v })} />
           </div>
           <div className="ad-row">
             <Field label="Clave de acceso" value={cfg.accessKey || ''} onChange={(v) => setCfg({ ...cfg, accessKey: v })} />
