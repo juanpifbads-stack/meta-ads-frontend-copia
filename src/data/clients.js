@@ -73,24 +73,25 @@ export const CLIENTS = {
       items: [
         {
           id: 'fee_pauta', concept: 'Fee alquimia Pauta', detail: 'TikTok + Meta Ads', phase: 'inicio',
+          bankInfo: { titular: 'alquimia · Pauta', alias: 'dunk.mp', observaciones: 'Se agradecería la posibilidad de retirar en efectivo la parte correspondiente al componente variable.' },
           breakdown: [
             { concept: 'Meta Ads', amount: 1100, currency: 'USD' },
             { concept: 'TikTok Ads', amount: 400, currency: 'USD', bonificado: 'Bonificado junio' },
             { concept: 'Componente variable', detail: '3% de (facturación mes pasado − base)', isVariable: true, currency: 'ARS' },
           ],
         },
-        { id: 'fee_web', concept: 'Fee alquimia Web', detail: 'Email mkt + gestión web', amount: 350, currency: 'USD', phase: 'inicio' },
-        { id: 'fee_contenido', concept: 'Fee alquimia Contenido', detail: 'Creación de 3 sesiones de 2 hs c/u', amount: 1000, currency: 'USD', phase: 'inicio' },
+        { id: 'fee_web', concept: 'Fee alquimia Web', detail: 'Email mkt + gestión web', amount: 350, currency: 'USD', phase: 'inicio', bankInfo: { titular: 'alquimia · Web + Email mkt', alias: 'francobordigoni.mp' } },
+        { id: 'fee_contenido', concept: 'Fee alquimia Contenido', detail: 'Creación de 3 sesiones de 2 hs c/u', amount: 1000, currency: 'USD', phase: 'inicio', bankInfo: { titular: 'alquimia · Contenido', alias: 'barbacoa.com' } },
         {
           id: 'actrices', concept: 'Actrices', phase: 'inicio',
           breakdown: [
             {
               concept: 'Delfina', detail: '2 sesiones · 2 hs', amount: 500000, currency: 'ARS',
-              bankInfo: { titular: 'Delfina (apellido)', alias: 'delfina.alias', cbu: '0000000000000000000000', observaciones: 'Datos de la actriz — completar con los reales.' },
+              bankInfo: { titular: 'Delfina', alias: 'Delfina.dn' },
             },
             {
               concept: 'Karina — sesión 1', detail: '2 hs · $225.000 por sesión', amount: 225000, currency: 'ARS',
-              bankInfo: { titular: 'Karina (apellido)', alias: 'karina.alias', cbu: '0000000000000000000000', observaciones: 'Datos de la actriz — completar con los reales.' },
+              bankInfo: { titular: 'Carina Fernanda Monteleone', alias: 'CMONTELEO3932.NX.ARS', cbu: '4530000800018728023346', cuenta: 'Caja de ahorro en pesos · 1872802334', banco: 'Naranja X', cuil: '27291149494' },
             },
             { concept: 'Karina — sesión 2', detail: '2 hs · $225.000 por sesión', amount: 225000, currency: 'ARS', bonificado: 'Bonificado junio' },
           ],

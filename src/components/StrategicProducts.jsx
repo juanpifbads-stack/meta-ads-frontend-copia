@@ -39,6 +39,7 @@ export default function StrategicProducts({ slug, accessKey, products }) {
   const [sortKey, setSortKey] = useState('units');
   const [sortDir, setSortDir] = useState('desc');
   const [expanded, setExpanded] = useState({});
+  const [vsort, setVsort] = useState({}); // por sku: { key, dir }
 
   const nameBySku = useMemo(() => {
     const m = {};
@@ -93,6 +94,47 @@ export default function StrategicProducts({ slug, accessKey, products }) {
   };
   const arrow = (key) => (sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '');
 
+  // --- Orden de variantes dentro de un producto ---
+  const vSortVal = (v, key) => {
+    if (key && key.startsWith('prop:')) {
+      const i = parseInt(key.slice(5), 10);
+      return (v.values?.[i] || '').toString().toLowerCase();
+    }
+    switch (key) {
+      case 'stock': return v.stock == null ? -1 : v.stock;
+      case 'units': return v.windows[win]?.units || 0;
+      case 'revenue': return v.windows[win]?.revenue || 0;
+      case 'stockout':
+        if (v.soldOut || (v.stock != null && v.stock <= 0)) return -1; // urgencia máxima
+        return v.daysToStockout == null ? Infinity : v.daysToStockout;
+      default: return 0;
+    }
+  };
+  const sortedVariants = (p) => {
+    const vs = p.variants || [];
+    const conf = vsort[p.sku];
+    if (!conf) return vs;
+    const dir = conf.dir === 'asc' ? 1 : -1;
+    return [...vs].sort((a, b) => {
+      const va = vSortVal(a, conf.key);
+      const vb = vSortVal(b, conf.key);
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+  };
+  const toggleVsort = (sku, key, defaultDir) => {
+    setVsort((s) => {
+      const cur = s[sku];
+      const dir = cur && cur.key === key ? (cur.dir === 'asc' ? 'desc' : 'asc') : defaultDir;
+      return { ...s, [sku]: { key, dir } };
+    });
+  };
+  const vArrow = (sku, key) => {
+    const c = vsort[sku];
+    return c && c.key === key ? (c.dir === 'asc' ? ' ▲' : ' ▼') : '';
+  };
+
   return (
     <div className="cp-card">
       <div className="sp-head">
@@ -143,7 +185,25 @@ export default function StrategicProducts({ slug, accessKey, products }) {
                       <td className="sp-r">{fmtMoney(p.windows[win]?.revenue || 0)}</td>
                       <td className="sp-r">{stockoutCell(p)}</td>
                     </tr>
-                    {isOpen && vs.map((v, i) => (
+                    {isOpen && vs.length > 0 && (
+                      <tr className="sp-vsort-row">
+                        <td colSpan={6}>
+                          <div className="sp-vsort">
+                            <span className="sp-vsort-lbl">Ordenar variantes por:</span>
+                            {(p.attributes || []).map((attr, ai) => (
+                              <button key={ai} className={`sp-vchip ${vsort[p.sku]?.key === `prop:${ai}` ? 'sp-vchip--active' : ''}`}
+                                onClick={() => toggleVsort(p.sku, `prop:${ai}`, 'asc')}>
+                                {attr || `Propiedad ${ai + 1}`}{vArrow(p.sku, `prop:${ai}`)}
+                              </button>
+                            ))}
+                            <button className={`sp-vchip ${vsort[p.sku]?.key === 'stock' ? 'sp-vchip--active' : ''}`} onClick={() => toggleVsort(p.sku, 'stock', 'desc')}>Stock{vArrow(p.sku, 'stock')}</button>
+                            <button className={`sp-vchip ${vsort[p.sku]?.key === 'units' ? 'sp-vchip--active' : ''}`} onClick={() => toggleVsort(p.sku, 'units', 'desc')}>Ventas{vArrow(p.sku, 'units')}</button>
+                            <button className={`sp-vchip ${vsort[p.sku]?.key === 'stockout' ? 'sp-vchip--active' : ''}`} onClick={() => toggleVsort(p.sku, 'stockout', 'asc')}>Quiebre{vArrow(p.sku, 'stockout')}</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {isOpen && sortedVariants(p).map((v, i) => (
                       <tr key={p.sku + '-' + i} className="sp-vrow">
                         <td className="sp-vlabel">↳ {v.label}</td>
                         <td></td>
