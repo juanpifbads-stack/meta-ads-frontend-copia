@@ -27,6 +27,28 @@ export default function CampaignCard({ campaign, accountId, onAction }) {
   const [actionPanel, setActionPanel] = useState(null); // 'increase' | 'decrease' | null
   const [showSecondaryMetrics, setShowSecondaryMetrics] = useState(false);
   const [showTrend, setShowTrend] = useState(false);
+  const [postEdit, setPostEdit] = useState(null);
+  const [postEditLoading, setPostEditLoading] = useState(false);
+  const [postEditError, setPostEditError] = useState(null);
+
+  const entityId = campaign.campaign_id || campaign.id;
+  const fetchPostEdit = async () => {
+    if (!campaign.updated_time) return;
+    setPostEditLoading(true);
+    setPostEditError(null);
+    try {
+      const since = String(campaign.updated_time).slice(0, 10);
+      const res = await apiClient.get(`/accounts/${accountId}/entity/${entityId}/insights-since`, {
+        params: { since, objective: campaign.objective || '' },
+        timeout: 30000,
+      });
+      setPostEdit(res.data);
+    } catch (err) {
+      setPostEditError(err.response?.data?.message || 'No se pudieron traer las métricas.');
+    } finally {
+      setPostEditLoading(false);
+    }
+  };
 
   const budget = campaign.campaign_budget || campaign.daily_budget || 0;
   const budgetLabel = (campaign.campaign_budget || campaign.daily_budget) ? 'diario' : 'total';
@@ -79,8 +101,8 @@ export default function CampaignCard({ campaign, accountId, onAction }) {
             <div className="card-subtitle">{campaign.objective}</div>
           )}
           {updatedAt && (
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '3px' }}>
-              editado {updatedAt}
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', marginTop: '4px', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#92400e', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '6px', padding: '2px 8px' }}>
+              ✎ Última edición: <strong>{updatedAt}</strong>
             </div>
           )}
         </div>
@@ -115,6 +137,31 @@ export default function CampaignCard({ campaign, accountId, onAction }) {
         metrics_14d={metrics_14d}
         metrics_30d={metrics_30d}
       />
+
+      {/* Métricas post última edición */}
+      {campaign.updated_time && (
+        <div style={{ marginTop: '10px' }}>
+          <button className="btn btn-secondary" onClick={fetchPostEdit} disabled={postEditLoading} style={{ fontSize: '11px', padding: '7px 12px', width: '100%' }}>
+            {postEditLoading ? <><span className="spinner spinner-sm" /> Trayendo…</> : '📊 Ver métricas post última edición'}
+          </button>
+          {postEditError && <div className="alert alert-error" style={{ marginTop: '8px' }}>{postEditError}</div>}
+          {postEdit && (
+            <div style={{ marginTop: '10px', border: '1px solid var(--color-gray-light)', borderRadius: 'var(--radius-md)', padding: '12px', background: '#fafafa' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
+                Desde la última edición ({postEdit.since} → hoy · {postEdit.days} día{postEdit.days > 1 ? 's' : ''})
+              </div>
+              <div className="metric-windows">
+                <div className="metric-window">
+                  <div className="metric-row"><span className="metric-label">Gasto</span><span className="metric-value" style={{ fontSize: '13px' }}>{formatCurrency(postEdit.spend)}</span></div>
+                  <div className="metric-row"><span className="metric-label">Conversiones</span><span className="metric-value" style={{ fontSize: '13px' }}>{Number(postEdit.conversions || 0).toLocaleString('es-AR')}</span></div>
+                  <div className="metric-row"><span className="metric-label">Costo/conv.</span><span className="metric-value" style={{ fontSize: '13px' }}>{formatCurrency(postEdit.cost_per_conversion)}</span></div>
+                  <div className="metric-row"><span className="metric-label">ROAS</span><span className="metric-value" style={{ fontSize: '13px', fontWeight: 700 }}>{Number(postEdit.roas || 0).toFixed(2)}×</span></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Secondary metrics collapsible */}
       <button

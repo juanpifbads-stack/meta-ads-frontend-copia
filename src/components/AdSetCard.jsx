@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import apiClient from '../api/client.js';
 import MetricsTable from './MetricsTable.jsx';
 import TrendChart from './TrendChart.jsx';
 import BudgetActionPanel from './BudgetActionPanel.jsx';
@@ -33,6 +34,9 @@ export default function AdSetCard({ adset, accountId, onAction }) {
   const [pauseSuccess, setPauseSuccess] = useState(false);
   const [currentBudgetOverride, setCurrentBudgetOverride] = useState(null);
   const [updatedAtOverride, setUpdatedAtOverride] = useState(null);
+  const [postEdit, setPostEdit] = useState(null);
+  const [postEditLoading, setPostEditLoading] = useState(false);
+  const [postEditError, setPostEditError] = useState(null);
 
   const budget = currentBudgetOverride ?? adset.daily_budget ?? adset.lifetime_budget ?? 0;
   const budgetLabel = adset.daily_budget ? 'diario' : 'total';
@@ -83,7 +87,26 @@ export default function AdSetCard({ adset, accountId, onAction }) {
   const metrics_14d = adset.metrics_14d || adset.metrics?.['14d'];
   const metrics_30d = adset.metrics_30d || adset.metrics?.['30d'];
   const trendData = adset.daily_trend || adset.trend_data || adset.daily_data || [];
-  const updatedAt = formatUpdatedTime(updatedAtOverride || adset.updated_time);
+  const updatedIso = updatedAtOverride || adset.updated_time;
+  const updatedAt = formatUpdatedTime(updatedIso);
+
+  const fetchPostEdit = async () => {
+    if (!updatedIso) return;
+    setPostEditLoading(true);
+    setPostEditError(null);
+    try {
+      const since = String(updatedIso).slice(0, 10);
+      const res = await apiClient.get(`/accounts/${accountId}/entity/${adset.id}/insights-since`, {
+        params: { since, objective: adset.campaign_objective || '' },
+        timeout: 30000,
+      });
+      setPostEdit(res.data);
+    } catch (err) {
+      setPostEditError(err.response?.data?.message || 'No se pudieron traer las métricas.');
+    } finally {
+      setPostEditLoading(false);
+    }
+  };
 
   return (
     <>
@@ -118,8 +141,8 @@ export default function AdSetCard({ adset, accountId, onAction }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="card-title">{adset.name}</div>
             {updatedAt && (
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '3px' }}>
-                editado {updatedAt}
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', marginTop: '4px', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#92400e', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '6px', padding: '2px 8px' }}>
+                ✎ Última edición: <strong>{updatedAt}</strong>
               </div>
             )}
           </div>
@@ -152,6 +175,36 @@ export default function AdSetCard({ adset, accountId, onAction }) {
           metrics_14d={metrics_14d}
           metrics_30d={metrics_30d}
         />
+
+        {/* Métricas post última edición */}
+        {updatedIso && (
+          <div style={{ marginTop: '10px' }} onClick={(e) => e.stopPropagation()}>
+            <button
+              className="btn btn-secondary"
+              onClick={fetchPostEdit}
+              disabled={postEditLoading}
+              style={{ fontSize: '11px', padding: '7px 12px', width: '100%' }}
+            >
+              {postEditLoading ? <><span className="spinner spinner-sm" /> Trayendo…</> : '📊 Ver métricas post última edición'}
+            </button>
+            {postEditError && <div className="alert alert-error" style={{ marginTop: '8px' }}>{postEditError}</div>}
+            {postEdit && (
+              <div style={{ marginTop: '10px', border: '1px solid var(--color-gray-light)', borderRadius: 'var(--radius-md)', padding: '12px', background: '#fafafa' }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
+                  Desde la última edición ({postEdit.since} → hoy · {postEdit.days} día{postEdit.days > 1 ? 's' : ''})
+                </div>
+                <div className="metric-windows">
+                  <div className="metric-window">
+                    <div className="metric-row"><span className="metric-label">Gasto</span><span className="metric-value" style={{ fontSize: '13px' }}>{formatCurrency(postEdit.spend)}</span></div>
+                    <div className="metric-row"><span className="metric-label">Conversiones</span><span className="metric-value" style={{ fontSize: '13px' }}>{Number(postEdit.conversions || 0).toLocaleString('es-AR')}</span></div>
+                    <div className="metric-row"><span className="metric-label">Costo/conv.</span><span className="metric-value" style={{ fontSize: '13px' }}>{formatCurrency(postEdit.cost_per_conversion)}</span></div>
+                    <div className="metric-row"><span className="metric-label">ROAS</span><span className="metric-value" style={{ fontSize: '13px', fontWeight: 700 }}>{Number(postEdit.roas || 0).toFixed(2)}×</span></div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Secondary metrics collapsible */}
         <button
