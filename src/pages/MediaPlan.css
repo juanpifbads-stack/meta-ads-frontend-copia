@@ -1,0 +1,19 @@
+.mp-calc {
+  background: var(--color-background);
+  border: 1px solid var(--color-gray-light);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+.mp-calc strong { color: var(--color-brand-blue); font-size: 16px; }
+.mp-disclaimer {
+  background: #fef9c3;
+  color: #854d0e;
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}

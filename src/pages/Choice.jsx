@@ -56,6 +56,15 @@ export default function Choice({ onPick }) {
             </div>
             <div className="choice-arrow">Ir al admin →</div>
           </div>
+          <div className="choice-card" onClick={() => onPick('media')}>
+            <div className="choice-num">— 06</div>
+            <div className="choice-name">Plan de medios</div>
+            <div className="choice-desc">
+              Armá el plan de medios del mes: contexto, análisis, objetivo de
+              facturación y ROAS, con la inversión calculada. Por cliente y mes.
+            </div>
+            <div className="choice-arrow">Armar plan →</div>
+          </div>
         </div>
         <button className="choice-logout" onClick={logout}>Cerrar sesión</button>
       </div>

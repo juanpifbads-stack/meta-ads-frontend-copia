@@ -10,6 +10,7 @@ import Analyze from './pages/Analyze.jsx';
 import ClientPortal, { PaymentsPortal } from './pages/ClientPortal.jsx';
 import ClientsList from './pages/ClientsList.jsx';
 import Admin from './pages/Admin.jsx';
+import MediaPlan from './pages/MediaPlan.jsx';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -57,6 +58,7 @@ function AppShell() {
   if (view === 'analyze') return <Analyze onBack={() => setView('choice')} />;
   if (view === 'clients') return <ClientsList onBack={() => setView('choice')} />;
   if (view === 'admin') return <Admin onBack={() => setView('choice')} />;
+  if (view === 'media') return <MediaPlan onBack={() => setView('choice')} />;
   return <Choice onPick={(mode) => setView(mode)} />;
 }
 
