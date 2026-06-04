@@ -73,21 +73,21 @@ export const CLIENTS = {
       items: [
         {
           id: 'fee_pauta', concept: 'Fee alquimia Pauta', detail: 'TikTok + Meta Ads', phase: 'inicio',
-          bankInfo: { titular: 'alquimia · Pauta', alias: 'dunk.mp', observaciones: 'Se agradecería la posibilidad de retirar en efectivo la parte correspondiente al componente variable.' },
+          bankInfo: { titular: 'Juan Ignacio de Vido', alias: 'dunk.mp', banco: 'Mercado Pago', observaciones: 'Se agradecería la posibilidad de retirar en efectivo la parte correspondiente al componente variable.' },
           breakdown: [
             { concept: 'Meta Ads', amount: 1100, currency: 'USD' },
             { concept: 'TikTok Ads', amount: 400, currency: 'USD', bonificado: 'Bonificado junio' },
             { concept: 'Componente variable', detail: '3% de (facturación mes pasado − base)', isVariable: true, currency: 'ARS' },
           ],
         },
-        { id: 'fee_web', concept: 'Fee alquimia Web', detail: 'Email mkt + gestión web', amount: 350, currency: 'USD', phase: 'inicio', bankInfo: { titular: 'alquimia · Web + Email mkt', alias: 'francobordigoni.mp' } },
-        { id: 'fee_contenido', concept: 'Fee alquimia Contenido', detail: 'Creación de 3 sesiones de 2 hs c/u', amount: 1000, currency: 'USD', phase: 'inicio', bankInfo: { titular: 'alquimia · Contenido', alias: 'barbacoa.com' } },
+        { id: 'fee_web', concept: 'Fee alquimia Web', detail: 'Email mkt + gestión web', amount: 350, currency: 'USD', phase: 'inicio', bankInfo: { titular: 'Franco Leon Bordigoni Brea', alias: 'francobordigoni.mp', banco: 'Mercado Pago' } },
+        { id: 'fee_contenido', concept: 'Fee alquimia Contenido', detail: 'Creación de 3 sesiones de 2 hs c/u', amount: 1000, currency: 'USD', phase: 'inicio', bankInfo: { titular: 'Jos Agustin De Vido', alias: 'barbacoa.com', banco: 'Personal Pay' } },
         {
           id: 'actrices', concept: 'Actrices', phase: 'inicio',
           breakdown: [
             {
               concept: 'Delfina', detail: '2 sesiones · 2 hs', amount: 500000, currency: 'ARS',
-              bankInfo: { titular: 'Delfina', alias: 'Delfina.dn' },
+              bankInfo: { titular: 'De Nicola Delfina', alias: 'delfina.dn', cuil: '27-40513041-1', banco: 'Banco Santander' },
             },
             {
               concept: 'Karina — sesión 1', detail: '2 hs · $225.000 por sesión', amount: 225000, currency: 'ARS',
