@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../api/client.js';
 import './Admin.css';
 
+const ALL_AMS = ['Juan Ignacio', 'Franco', 'Agustín', 'Chachi'];
+
 const STATUS_OPTS = [
   { v: 'pendiente', l: 'Pendiente' },
   { v: 'en_curso', l: 'En curso' },
@@ -31,9 +33,9 @@ const blankPlan = () => ({
   budgetItems: [],
 });
 
-export default function Admin({ onBack }) {
+export default function Admin({ onBack, lockedSlug }) {
   const [clients, setClients] = useState([]);
-  const [slug, setSlug] = useState('');
+  const [slug, setSlug] = useState(lockedSlug || '');
   const [clientData, setClientData] = useState(null);
   const [month, setMonth] = useState('');
   const [plan, setPlan] = useState(null);
@@ -45,10 +47,11 @@ export default function Admin({ onBack }) {
   const loadClients = useCallback((selectSlug) => {
     apiClient.get('/admin/clients').then((r) => {
       setClients(r.data.clients || []);
-      if (selectSlug) setSlug(selectSlug);
+      if (lockedSlug) setSlug(lockedSlug);
+      else if (selectSlug) setSlug(selectSlug);
       else if (!slug && r.data.clients?.[0]) setSlug(r.data.clients[0].slug);
     }).catch(() => {});
-  }, [slug]);
+  }, [slug, lockedSlug]);
 
   useEffect(() => { loadClients(); /* eslint-disable-next-line */ }, []);
 
@@ -109,12 +112,14 @@ export default function Admin({ onBack }) {
       </header>
 
       <div className="ad-controls">
-        <div className="ad-field">
-          <label>Cliente</label>
-          <select value={slug} onChange={(e) => setSlug(e.target.value)}>
-            {clients.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-          </select>
-        </div>
+        {!lockedSlug && (
+          <div className="ad-field">
+            <label>Cliente</label>
+            <select value={slug} onChange={(e) => setSlug(e.target.value)}>
+              {clients.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
         <div className="ad-field">
           <label>Mes</label>
           <select value={month} onChange={(e) => setMonth(e.target.value)}>
@@ -123,7 +128,7 @@ export default function Admin({ onBack }) {
         </div>
         <button className="ad-btn ad-btn--ghost" onClick={duplicate}>Duplicar mes →</button>
         <button className="ad-btn ad-btn--ghost" onClick={newMonth}>+ Mes en blanco</button>
-        <button className="ad-btn ad-btn--ghost" onClick={() => setShowNew(true)}>+ Nuevo cliente</button>
+        {!lockedSlug && <button className="ad-btn ad-btn--ghost" onClick={() => setShowNew(true)}>+ Nuevo cliente</button>}
         <div className="ad-save">
           {msg && <span className="ad-msg">{msg}</span>}
           <button className="ad-btn" onClick={savePlan} disabled={!plan}>Guardar plan</button>
@@ -352,7 +357,7 @@ function CapsEditor({ caps, onToggle }) {
 
 function NewClientForm({ onClose, onCreated }) {
   const [f, setF] = useState({
-    name: '', slug: '', accessKey: '', paymentsKey: '', metaAccountId: '',
+    name: '', slug: '', accessKey: '', paymentsKey: '', metaAccountId: '', am: '',
     capabilities: { meta: true, ecommerce: true, tiktok: true, contenido: true, variable: true, web: true },
     variableBase: 0,
     bankInfo: { titular: '', alias: '', cbu: '', observaciones: '' },
@@ -366,7 +371,7 @@ function NewClientForm({ onClose, onCreated }) {
     if (!f.name || !f.slug || !f.accessKey) { setErr('Nombre, slug y clave son obligatorios.'); return; }
     const config = {
       name: f.name, accessKey: f.accessKey, paymentsKey: f.paymentsKey || f.accessKey,
-      metaAccountId: f.metaAccountId || null, capabilities: f.capabilities,
+      metaAccountId: f.metaAccountId || null, am: f.am || '', capabilities: f.capabilities,
       variable: { base: Number(f.variableBase) || 0, rate: 0.03 }, bankInfo: f.bankInfo,
     };
     apiClient.post('/admin/clients', { slug: f.slug, config })
@@ -389,6 +394,13 @@ function NewClientForm({ onClose, onCreated }) {
         <Field label="Clave de pagos (admin)" value={f.paymentsKey} onChange={(v) => set('paymentsKey', v)} />
       </div>
       <AdAccountSelect value={f.metaAccountId} onChange={(v) => set('metaAccountId', v)} />
+      <div className="ad-field">
+        <label>Responsable (AM)</label>
+        <select value={f.am} onChange={(e) => set('am', e.target.value)}>
+          <option value="">— Sin asignar —</option>
+          {ALL_AMS.map((a) => <option key={a} value={a}>{a}</option>)}
+        </select>
+      </div>
       <div className="ad-sublabel">¿Qué le ofrecés?</div>
       <CapsEditor caps={f.capabilities} onToggle={toggleCap} />
       {f.capabilities.variable && <NumField label="Base fija del variable (ARS)" value={f.variableBase} onChange={(v) => set('variableBase', v)} />}
@@ -437,6 +449,13 @@ function ClientConfigEditor({ slug }) {
           <div className="ad-row">
             <Field label="Nombre" value={cfg.name || ''} onChange={(v) => setCfg({ ...cfg, name: v })} />
             <AdAccountSelect value={cfg.metaAccountId || ''} onChange={(v) => setCfg({ ...cfg, metaAccountId: v })} />
+            <div className="ad-field">
+              <label>Responsable (AM)</label>
+              <select value={cfg.am || ''} onChange={(e) => setCfg({ ...cfg, am: e.target.value })}>
+                <option value="">— Sin asignar —</option>
+                {ALL_AMS.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
           </div>
           <div className="ad-row">
             <Field label="Clave de acceso" value={cfg.accessKey || ''} onChange={(v) => setCfg({ ...cfg, accessKey: v })} />

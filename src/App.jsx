@@ -4,13 +4,10 @@ import { useAuth } from './context/AuthContext.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Audit from './pages/Audit.jsx';
-import Choice from './pages/Choice.jsx';
-import Control from './pages/Control.jsx';
-import Analyze from './pages/Analyze.jsx';
-import ClientPortal, { PaymentsPortal } from './pages/ClientPortal.jsx';
-import ClientsList from './pages/ClientsList.jsx';
+import Home from './pages/Home.jsx';
+import ClientHub from './pages/ClientHub.jsx';
 import Admin from './pages/Admin.jsx';
-import MediaPlan from './pages/MediaPlan.jsx';
+import ClientPortal, { PaymentsPortal } from './pages/ClientPortal.jsx';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -51,15 +48,19 @@ function PublicRoute({ children }) {
 }
 
 function AppShell() {
-  const [view, setView] = useState('choice');
+  const [view, setView] = useState('home');
+  const [slug, setSlug] = useState(null);
 
-  if (view === 'optimize') return <Dashboard onBack={() => setView('choice')} />;
-  if (view === 'control') return <Control onBack={() => setView('choice')} />;
-  if (view === 'analyze') return <Analyze onBack={() => setView('choice')} />;
-  if (view === 'clients') return <ClientsList onBack={() => setView('choice')} />;
-  if (view === 'admin') return <Admin onBack={() => setView('choice')} />;
-  if (view === 'media') return <MediaPlan onBack={() => setView('choice')} />;
-  return <Choice onPick={(mode) => setView(mode)} />;
+  if (view === 'optimize') return <Dashboard onBack={() => setView('home')} />;
+  if (view === 'admin') return <Admin onBack={() => setView('home')} />;
+  if (view === 'client' && slug) return <ClientHub slug={slug} onBack={() => { setView('home'); setSlug(null); }} />;
+  return (
+    <Home
+      onOpenClient={(s) => { setSlug(s); setView('client'); }}
+      onOptimize={() => setView('optimize')}
+      onNewClient={() => setView('admin')}
+    />
+  );
 }
 
 export default function App() {
