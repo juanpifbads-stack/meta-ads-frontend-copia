@@ -17,3 +17,41 @@
   font-weight: 600;
   margin-bottom: 8px;
 }
+
+/* Banner interno */
+.mp-internal-banner {
+  background: #f1f5f9;
+  border: 1px dashed #94a3b8;
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #475569;
+  margin: 18px 0 8px;
+}
+
+/* Encabezado de sección con toggle */
+.mp-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+
+/* Secciones internas vs entregable */
+.mp-sec--internal { border-left: 3px solid #cbd5e1; padding-left: 14px; }
+.mp-sec--objective { border-left: 3px solid var(--color-brand-blue); padding-left: 14px; }
+
+/* Toggle "Mostrar al cliente" */
+.mp-show {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+  color: #64748b; border: 1px solid #cbd5e1; border-radius: 999px; padding: 4px 10px; white-space: nowrap;
+  transition: all .12s; user-select: none;
+}
+.mp-show input { pointer-events: none; }
+.mp-show--on { color: #fff; background: var(--color-brand-blue); border-color: var(--color-brand-blue); }
+
+/* Tabla de tendencia */
+.mp-hint { font-size: 12px; margin: 0 0 8px; }
+.mp-trend-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+.mp-trend-table th { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: #8a8d96; text-align: left; padding: 4px 6px; }
+.mp-trend-table td { padding: 3px 6px; }
+.mp-trend-table input { width: 100%; padding: 7px 9px; border: 1px solid var(--color-gray-light); border-radius: var(--radius-sm); font-size: 13px; }
+
+/* Gráfico */
+.mp-chart { border: 1px solid var(--color-gray-light); border-radius: var(--radius-md); padding: 12px; margin-bottom: 12px; background: #fff; }
