@@ -13,6 +13,7 @@ function fmtMoney(n) {
 }
 function daysElapsed() { return new Date().getDate(); }
 function daysInMonth() { const n = new Date(); return new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate(); }
+function currentYM() { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; }
 
 const TABS = [
   { k: 'resumen', l: 'Resumen' },
@@ -27,6 +28,7 @@ export default function ClientHub({ slug, onBack }) {
   const [cfg, setCfg] = useState(null);
   const [health, setHealth] = useState(null);
   const [goals, setGoals] = useState({ revenue: '', roas: '' });
+  const [planObjective, setPlanObjective] = useState(null); // objetivo del plan de medios del mes actual
   const [tab, setTab] = useState('resumen');
   const [msg, setMsg] = useState('');
 
@@ -42,6 +44,9 @@ export default function ClientHub({ slug, onBack }) {
           .then((ri) => setHealth(ri.data)).catch(() => setHealth(null));
       }
     }).catch(() => {});
+    apiClient.get(`/admin/${slug}/media/${currentYM()}`)
+      .then((r) => { const o = r.data.plan?.objective; setPlanObjective(o && (o.facturacion || o.roas) ? o : null); })
+      .catch(() => setPlanObjective(null));
   }, [slug]);
 
   useEffect(() => { load(); }, [load]);
@@ -63,8 +68,8 @@ export default function ClientHub({ slug, onBack }) {
   const spend = health?.spend || 0;
   const purchaseValue = health?.purchaseValue || 0;
   const roas = health?.roas || (spend > 0 ? purchaseValue / spend : 0);
-  const revGoal = parseFloat(goals.revenue) || 0;
-  const roasGoal = parseFloat(goals.roas) || 0;
+  const revGoal = planObjective ? (planObjective.facturacion || 0) : (parseFloat(goals.revenue) || 0);
+  const roasGoal = planObjective ? (planObjective.roas || 0) : (parseFloat(goals.roas) || 0);
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const portalLink = `${origin}/cliente/${slug}`;
 
@@ -102,12 +107,24 @@ export default function ClientHub({ slug, onBack }) {
 
           <div className="hub-goals-card">
             <div className="hub-goals-title">Metas del mes</div>
-            <div className="hub-goals-row">
-              <div className="ad-field"><label>Meta facturación (ARS)</label><input type="number" value={goals.revenue} placeholder="ej. 5000000" onChange={(e) => setGoals((g) => ({ ...g, revenue: e.target.value }))} /></div>
-              <div className="ad-field"><label>Meta ROAS (×)</label><input type="number" step="0.1" value={goals.roas} placeholder="ej. 3.5" onChange={(e) => setGoals((g) => ({ ...g, roas: e.target.value }))} /></div>
-              <button className="ctrl-btn" onClick={saveGoals}>Guardar metas</button>
-              {msg && <span className="ad-msg">{msg}</span>}
-            </div>
+            {planObjective ? (
+              <div className="hub-goals-row">
+                <div className="hub-metric" style={{ minWidth: 180 }}><div className="hub-metric-lbl">Meta facturación</div><div className="hub-metric-val">{fmtMoney(revGoal)}</div></div>
+                <div className="hub-metric" style={{ minWidth: 140 }}><div className="hub-metric-lbl">Meta ROAS</div><div className="hub-metric-val">{roasGoal ? roasGoal + '×' : '—'}</div></div>
+                <div style={{ alignSelf: 'center' }}>
+                  <span className="ad-muted">Viene del Plan de medios de este mes. </span>
+                  <button className="hub-quick-btn" style={{ display: 'inline', padding: '4px 10px', minWidth: 0 }} onClick={() => setTab('media')}>Editar en Plan de medios →</button>
+                </div>
+              </div>
+            ) : (
+              <div className="hub-goals-row">
+                <div className="ad-field"><label>Meta facturación (ARS)</label><input type="number" value={goals.revenue} placeholder="ej. 5000000" onChange={(e) => setGoals((g) => ({ ...g, revenue: e.target.value }))} /></div>
+                <div className="ad-field"><label>Meta ROAS (×)</label><input type="number" step="0.1" value={goals.roas} placeholder="ej. 3.5" onChange={(e) => setGoals((g) => ({ ...g, roas: e.target.value }))} /></div>
+                <button className="ctrl-btn" onClick={saveGoals}>Guardar metas</button>
+                {msg && <span className="ad-msg">{msg}</span>}
+                <span className="ad-muted" style={{ flexBasis: '100%' }}>Tip: si cargás el objetivo en el Plan de medios, la meta se completa sola.</span>
+              </div>
+            )}
             {(revGoal > 0 || roasGoal > 0) && (
               <div className="hub-progress">
                 {revGoal > 0 && <div className="hub-prog-row"><span>Facturación</span><strong>{Math.min((purchaseValue / revGoal) * 100, 999).toFixed(0)}%</strong></div>}
