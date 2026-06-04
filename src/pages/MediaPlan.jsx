@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import apiClient from '../api/client.js';
 import './Admin.css';
 import './MediaPlan.css';
@@ -42,6 +42,7 @@ const blank = () => ({
   trendNote: '',
   context: { dates: '', dateItems: [], products: '' },
   considerations: [''],
+  nextPlanning: '',
   include: { trend: true, contextDates: true, contextProducts: true, considerations: true },
 });
 
@@ -69,7 +70,7 @@ function normalize(raw) {
 }
 
 // ---- Gráfico de tendencia (SVG puro) ----
-function buildTrendSvg(points, { w = 640, h = 240, visible = ['roas', 'facturacion', 'inversion'] } = {}) {
+function buildTrendSvg(points, { w = 640, h = 240, visible = ['roas', 'facturacion', 'inversion'], staticLabels = false } = {}) {
   const pts = (points || []).filter((p) => (p.label || '').trim() || p.roas || p.facturacion || p.inversion);
   if (pts.length < 2) return '';
   const series = SERIES.filter((s) => visible.includes(s.key));
@@ -88,10 +89,13 @@ function buildTrendSvg(points, { w = 640, h = 240, visible = ['roas', 'facturaci
     body += `<polyline fill="none" stroke="${s.color}" stroke-width="2.5" points="${coords.join(' ')}" />`;
     coords.forEach((c, i) => {
       const [cx, cy] = c.split(',');
+      // punto con tooltip nativo al pasar el cursor + área de hover invisible más grande
       body += `<circle cx="${cx}" cy="${cy}" r="3" fill="${s.color}" />`;
-      // stagger vertical para no encimar etiquetas
-      const dy = -8 - (si * 12);
-      body += `<text x="${cx}" y="${(parseFloat(cy) + dy).toFixed(1)}" font-size="9.5" fill="${s.color}" text-anchor="middle" font-family="monospace">${s.fmt(vals[i])}</text>`;
+      body += `<circle cx="${cx}" cy="${cy}" r="9" fill="transparent"><title>${s.label}: ${s.fmt(vals[i])}</title></circle>`;
+      if (staticLabels) {
+        const dy = -8 - (si * 11);
+        body += `<text x="${cx}" y="${(parseFloat(cy) + dy).toFixed(1)}" font-size="8.5" fill="${s.color}" text-anchor="middle" font-family="monospace">${s.fmt(vals[i])}</text>`;
+      }
     });
   });
   let labels = '';
@@ -204,7 +208,7 @@ export default function MediaPlan({ onBack }) {
       sections.push(`<div class="sec"><div class="sec-t">Mismo período del año pasado</div><div class="txt">No se puede comparar con el mismo período del año pasado ya que no hubo inversión publicitaria.</div></div>`);
     }
     if (inc.trend) {
-      const svg = buildTrendSvg(trendData, { visible: visibleKeys });
+      const svg = buildTrendSvg(trendData, { visible: visibleKeys, staticLabels: true });
       if (svg) sections.push(`<div class="sec"><div class="sec-t">Tendencia ${trendCompare === 'lastyear' ? '(año pasado)' : 'últimos 3 meses'}</div><div class="chart">${svg}</div>${plan.trendNote?.trim() ? `<div class="txt" style="margin-top:8px">${esc(plan.trendNote)}</div>` : ''}</div>`);
     }
     if (inc.contextDates && (plan.context.dates?.trim() || (plan.context.dateItems || []).length)) {
@@ -215,8 +219,11 @@ export default function MediaPlan({ onBack }) {
     }
     if (inc.contextProducts && plan.context.products?.trim())
       sections.push(`<div class="sec"><div class="sec-t">Stock y reposición de productos clave</div><div class="txt">${esc(plan.context.products)}</div></div>`);
-    if (inc.considerations && cons)
-      sections.push(`<div class="sec"><div class="sec-t">Consideraciones</div><ul>${cons}</ul></div>`);
+    if (inc.considerations && (cons || plan.nextPlanning?.trim())) {
+      let c = cons ? `<ul>${cons}</ul>` : '';
+      if (plan.nextPlanning?.trim()) c += `<div class="block" style="margin-top:8px"><div class="lbl">Planificación de próximos meses</div><div class="txt">${esc(plan.nextPlanning)}</div></div>`;
+      sections.push(`<div class="sec"><div class="sec-t">Consideraciones</div>${c}</div>`);
+    }
 
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
     <title>Plan de medios — ${esc(clientName)} ${esc(fmtMonth(month))}</title>
@@ -308,11 +315,12 @@ export default function MediaPlan({ onBack }) {
         <div className="ad-plan">
           {/* OBJETIVO — siempre arriba */}
           <Section title="Objetivo propuesto" tone="objective">
-            <div className="ad-row">
-              <Num label="Facturación objetivo (ARS)" value={plan.objective.facturacion} onChange={(v) => upd((p) => { p.objective.facturacion = v; })} />
-              <Num label="ROAS objetivo (×)" value={plan.objective.roas} onChange={(v) => upd((p) => { p.objective.roas = v; })} />
+            <div className="mp-kpis">
+              <KpiEditable label="Facturación objetivo" kind="money" value={plan.objective.facturacion} onChange={(v) => upd((p) => { p.objective.facturacion = v; })} />
+              <KpiEditable label="ROAS objetivo" kind="roas" value={plan.objective.roas} onChange={(v) => upd((p) => { p.objective.roas = v; })} />
+              <div className="mp-kpi"><div className="mp-kpi-lbl">Inversión necesaria</div><div className="mp-kpi-val">{money(inv)}</div></div>
             </div>
-            <div className="mp-calc">Inversión en pauta necesaria (facturación ÷ ROAS): <strong>{money(inv)}</strong></div>
+            <div className="mp-calc">Inversión en pauta necesaria = facturación ÷ ROAS</div>
           </Section>
 
           <div className="mp-internal-banner">
@@ -363,17 +371,34 @@ export default function MediaPlan({ onBack }) {
             {plan.metaSource
               ? <TrendReadonly rows={trendData} />
               : (
-                <table className="mp-trend-table">
-                  <thead><tr><th>Mes</th><th>ROAS</th><th>Facturación (ARS)</th><th>Inversión (ARS)</th></tr></thead>
+                <table className="mp-trend-table mp-trend-table--t">
+                  <thead>
+                    <tr>
+                      <th className="mp-t-corner"></th>
+                      {plan.trend.map((row, i) => (
+                        <th key={i}><input value={row.label} placeholder={`Mes ${i + 1}`} onChange={(e) => upd((p) => { p.trend[i].label = e.target.value; })} /></th>
+                      ))}
+                    </tr>
+                  </thead>
                   <tbody>
-                    {plan.trend.map((row, i) => (
-                      <tr key={i}>
-                        <td><input value={row.label} placeholder={`Mes ${i + 1}`} onChange={(e) => upd((p) => { p.trend[i].label = e.target.value; })} /></td>
-                        <td><input type="number" value={row.roas === 0 ? '' : row.roas} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].roas = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
-                        <td><input type="number" value={row.facturacion === 0 ? '' : row.facturacion} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].facturacion = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
-                        <td><input type="number" value={row.inversion === 0 ? '' : row.inversion} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].inversion = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
-                      </tr>
-                    ))}
+                    <tr>
+                      <td className="mp-t-rowlbl">ROAS</td>
+                      {plan.trend.map((row, i) => (
+                        <td key={i}><input type="number" value={row.roas === 0 ? '' : row.roas} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].roas = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="mp-t-rowlbl">Facturación (ARS)</td>
+                      {plan.trend.map((row, i) => (
+                        <td key={i}><input type="number" value={row.facturacion === 0 ? '' : row.facturacion} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].facturacion = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="mp-t-rowlbl">Inversión (ARS)</td>
+                      {plan.trend.map((row, i) => (
+                        <td key={i}><input type="number" value={row.inversion === 0 ? '' : row.inversion} placeholder="0" onChange={(e) => upd((p) => { p.trend[i].inversion = e.target.value === '' ? 0 : parseFloat(e.target.value); })} /></td>
+                      ))}
+                    </tr>
                   </tbody>
                 </table>
               )}
@@ -398,7 +423,7 @@ export default function MediaPlan({ onBack }) {
             <div className="mp-dates">
               {(plan.context.dateItems || []).map((it, i) => (
                 <div key={i} className="ad-row mp-date-row">
-                  <div className="ad-field"><label>Fecha</label><input type="date" value={it.date || ''} onChange={(e) => upd((p) => { p.context.dateItems[i].date = e.target.value; })} /></div>
+                  <div className="ad-field"><label>Fecha</label><input type="date" value={it.date || ''} onChange={(e) => upd((p) => { p.context.dateItems[i].date = e.target.value; p.context.dateItems.sort((a, b) => { if (!a.date) return 1; if (!b.date) return -1; return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }); })} /></div>
                   <div className="ad-field ad-field--grow"><label>Nombre</label><input value={it.name || ''} placeholder="Ej. Día del padre" onChange={(e) => upd((p) => { p.context.dateItems[i].name = e.target.value; })} /></div>
                   <button className="ad-del" onClick={() => upd((p) => { p.context.dateItems.splice(i, 1); })}>×</button>
                 </div>
@@ -414,6 +439,7 @@ export default function MediaPlan({ onBack }) {
 
           {/* Consideraciones */}
           <Section title="Consideraciones extra" internal include={plan.include.considerations} onToggle={() => tgl('considerations')}>
+            <Area label="¿Hay que empezar a planificar algo de los próximos meses?" value={plan.nextPlanning} onChange={(v) => upd((p) => { p.nextPlanning = v; })} ph="Ej. preparar campaña de día de la madre, anticipar reposición de temporada, lanzamiento previsto…" />
             {(plan.considerations || []).map((c, i) => (
               <div key={i} className="ad-row">
                 <div className="ad-field ad-field--grow">
@@ -437,6 +463,22 @@ export default function MediaPlan({ onBack }) {
   );
 }
 
+function KpiEditable({ label, value, onChange, kind }) {
+  const [edit, setEdit] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => { if (edit && ref.current) ref.current.focus(); }, [edit]);
+  const display = kind === 'roas' ? roasFmt(value) : money(value);
+  return (
+    <div className="mp-kpi mp-kpi--edit">
+      <div className="mp-kpi-lbl">{label}</div>
+      {edit
+        ? <input ref={ref} className="mp-kpi-input" type="number" value={value === 0 || value == null ? '' : value} placeholder="0"
+            onChange={(e) => onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))} onBlur={() => setEdit(false)} />
+        : <div className="mp-kpi-val mp-kpi-val--clickable" onClick={() => setEdit(true)}>{display === '—' ? <span className="mp-kpi-ph">Cargar</span> : display}</div>}
+    </div>
+  );
+}
+
 function KpiCards({ data }) {
   return (
     <div className="mp-kpis">
@@ -450,17 +492,17 @@ function KpiCards({ data }) {
 function TrendReadonly({ rows }) {
   if (!rows || !rows.length) return <p className="ad-muted mp-hint">Sin datos. Tocá "↧ Traer de Meta".</p>;
   return (
-    <table className="mp-trend-table mp-trend-table--ro">
-      <thead><tr><th>Mes</th><th>ROAS</th><th>Facturación</th><th>Inversión</th></tr></thead>
+    <table className="mp-trend-table mp-trend-table--ro mp-trend-table--t">
+      <thead>
+        <tr>
+          <th className="mp-t-corner"></th>
+          {rows.map((r, i) => <th key={i} className="mp-ro-month">{r.label || `Mes ${i + 1}`}</th>)}
+        </tr>
+      </thead>
       <tbody>
-        {rows.map((r, i) => (
-          <tr key={i}>
-            <td className="mp-ro-month">{r.label || `Mes ${i + 1}`}</td>
-            <td className="mp-ro-val">{roasFmt(r.roas)}</td>
-            <td className="mp-ro-val">{money(r.facturacion)}</td>
-            <td className="mp-ro-val">{money(r.inversion)}</td>
-          </tr>
-        ))}
+        <tr><td className="mp-t-rowlbl">ROAS</td>{rows.map((r, i) => <td key={i} className="mp-ro-val">{roasFmt(r.roas)}</td>)}</tr>
+        <tr><td className="mp-t-rowlbl">Facturación</td>{rows.map((r, i) => <td key={i} className="mp-ro-val">{money(r.facturacion)}</td>)}</tr>
+        <tr><td className="mp-t-rowlbl">Inversión</td>{rows.map((r, i) => <td key={i} className="mp-ro-val">{money(r.inversion)}</td>)}</tr>
       </tbody>
     </table>
   );

@@ -115,3 +115,17 @@
 /* Fechas específicas */
 .mp-dates { margin-top: 6px; }
 .mp-date-row { align-items: flex-end; }
+
+/* Objetivo: KPIs editables grandes */
+.mp-kpi--edit { cursor: text; }
+.mp-kpi-val--clickable { cursor: text; }
+.mp-kpi-input { width: 100%; border: none; background: transparent; font-size: 26px; font-weight: 700; color: #15161a; padding: 0; outline: none; }
+.mp-kpi-input::-webkit-inner-spin-button, .mp-kpi-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.mp-kpi-input { -moz-appearance: textfield; appearance: textfield; }
+.mp-kpi-ph { font-size: 18px; font-weight: 500; color: #b0b6bf; }
+
+/* Tabla de tendencia transpuesta */
+.mp-trend-table--t th, .mp-trend-table--t td { text-align: center; }
+.mp-trend-table--t .mp-t-rowlbl { text-align: left; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: #475569; font-weight: 600; white-space: nowrap; padding-right: 12px; }
+.mp-trend-table--t thead th input { text-align: center; font-weight: 600; }
+.mp-trend-table--t .mp-t-corner { width: 130px; }
