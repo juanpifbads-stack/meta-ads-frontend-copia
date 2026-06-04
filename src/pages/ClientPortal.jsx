@@ -206,6 +206,21 @@ function ClientDashboard({ client }) {
   const months = content?.months || [];
   const caps = data.capabilities || { ecommerce: true, meta: true, contenido: true, variable: true, web: true, tiktok: true };
 
+  // Composición del panel: si el cliente tiene `panel.sections`, gobierna qué se muestra.
+  // Si no (ej. Moka), `show` devuelve true → comportamiento actual intacto.
+  const panelSections = data.panel?.sections || null;
+  const generic = !!panelSections;
+  const show = (key) => (panelSections ? !!panelSections[key] : true);
+
+  // Contenido alimentado por el plan de medios (solo para portales genéricos).
+  const mediaObjective = generic ? data.mediaObjective : null;
+  const mediaJustification = generic ? (data.justificationText || '') : '';
+  const mediaConsiderations = generic ? (data.considerationsList || []) : [];
+  const mediaPlanning = generic ? (data.planningText || '') : '';
+  const effMetaGoal = (generic && mediaObjective)
+    ? { revenueTarget: mediaObjective.facturacion || 0, roasTarget: mediaObjective.roas || 0, spendTarget: mediaObjective.inversion || 0 }
+    : metaGoal;
+
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [meta, setMeta] = useState(null);
   const [metaLoading, setMetaLoading] = useState(true);
@@ -260,23 +275,27 @@ function ClientDashboard({ client }) {
       </header>
 
       {/* Estrategia macro — período bien grande */}
+      {show('macro') && strategyMacro && (
       <section className="cp-hero">
         <div className="cp-hero-period">{strategyMacro.period}</div>
         <div className="cp-hero-label">Estrategia de largo plazo</div>
         <h1 className="cp-hero-title">{strategyMacro.objective}</h1>
         <p className="cp-hero-desc">{strategyMacro.description}</p>
       </section>
+      )}
 
       {/* Banner de mes — super claro */}
+      {show('estrategiaMes') && strategyMonthly && (
       <div className="cp-month-banner">
         <div className="cp-month-banner-big">{strategyMonthly.month}</div>
         <div className="cp-month-banner-obj">{strategyMonthly.objective}</div>
       </div>
+      )}
 
       {/* KPI Cards */}
       <section className="cp-kpis cp-kpis--3">
         {/* Facturación ecommerce — objetivo claro */}
-        {caps.ecommerce && (
+        {caps.ecommerce && show('facturacion') && (
         <div className="cp-kpi cp-kpi--hero">
           <div className="cp-kpi-label">Facturación ecommerce</div>
           <div className="cp-kpi-value">{ecomReady ? fmtMoney(ecomCurrent) : <span className="dots">Cargando</span>}</div>
@@ -294,7 +313,7 @@ function ClientDashboard({ client }) {
         )}
 
         {/* Ritmo del mes */}
-        {caps.ecommerce && (
+        {caps.ecommerce && show('ritmo') && (
         <div className="cp-kpi">
           <div className="cp-kpi-label">Ritmo del mes</div>
           <div className="cp-ritmo">
@@ -318,19 +337,23 @@ function ClientDashboard({ client }) {
         )}
 
         {/* Presupuesto — botón a modal */}
+        {show('presupuestoTotal') && (
         <button className="cp-kpi cp-kpi--button" onClick={() => setShowBudgetModal(true)}>
           <div className="cp-kpi-label">Presupuesto total mes</div>
           <div className="cp-kpi-value cp-kpi-value--budget">{fmtTotals(budgetTotals)}</div>
           <div className="cp-kpi-cta">Ver detalle →</div>
         </button>
+        )}
       </section>
 
       {/* PAGOS — línea de tiempo del mes (desplegable) */}
+      {show('pagos') && (
       <section className="cp-section">
         <Collapsible title="Presupuesto financiero del mes — ver pagos">
           <PaymentsTimeline budget={budget} slug={client.slug} accessKey={client.accessKey} />
         </Collapsible>
       </section>
+      )}
 
       {/* Modal de presupuesto */}
       {showBudgetModal && (
@@ -340,21 +363,25 @@ function ClientDashboard({ client }) {
       )}
 
       {/* Tareas */}
+      {show('tareas') && (
       <section className="cp-section">
         <h2 className="cp-section-title">Tareas</h2>
         <TasksSection slug={client.slug} accessKey={client.accessKey} />
       </section>
+      )}
 
       {/* Roadmap semanal */}
+      {show('roadmap') && (roadmap || []).length > 0 && (
       <section className="cp-section">
         <h2 className="cp-section-title">Roadmap del mes</h2>
         <div className="cp-roadmap">
           {roadmap.map((r, i) => <WeekCard key={i} week={r} />)}
         </div>
       </section>
+      )}
 
       {/* Performance Meta */}
-      {caps.meta && (
+      {caps.meta && show('performanceMeta') && (
       <section className="cp-section">
         <h2 className="cp-section-title">Performance Meta · junio</h2>
         <div className="cp-card">
@@ -366,10 +393,10 @@ function ClientDashboard({ client }) {
             <p className="cp-placeholder">Meta no devolvió datos: {meta.metaError}</p>
           )}
           {!metaLoading && meta && !meta.metaError && (() => {
-            const roasStatus = meta.roas >= metaGoal.roasTarget ? 'good' : meta.roas >= metaGoal.roasTarget * 0.7 ? 'warn' : 'bad';
-            const revPct = metaGoal.revenueTarget > 0 ? (meta.purchaseValue / metaGoal.revenueTarget) * 100 : 0;
+            const roasStatus = meta.roas >= effMetaGoal.roasTarget ? 'good' : meta.roas >= effMetaGoal.roasTarget * 0.7 ? 'warn' : 'bad';
+            const revPct = effMetaGoal.revenueTarget > 0 ? (meta.purchaseValue / effMetaGoal.revenueTarget) * 100 : 0;
             // Desvío de facturación atribuida vs ritmo esperado del mes
-            const revExpected = (metaGoal.revenueTarget / daysInMonth()) * daysElapsed();
+            const revExpected = (effMetaGoal.revenueTarget / daysInMonth()) * daysElapsed();
             const revDeviation = revExpected > 0 ? ((meta.purchaseValue - revExpected) / revExpected) * 100 : 0;
             const revOnTrack = revDeviation >= -10;
             return (
@@ -378,17 +405,17 @@ function ClientDashboard({ client }) {
                   <div className="cp-meta-cell">
                     <div className="cp-meta-lbl">Facturación atribuida</div>
                     <div className="cp-meta-val">{fmtMoney(meta.purchaseValue)}</div>
-                    <div className="cp-meta-sub">obj. {fmtMoney(metaGoal.revenueTarget)} · {revPct.toFixed(0)}%</div>
+                    <div className="cp-meta-sub">obj. {fmtMoney(effMetaGoal.revenueTarget)} · {revPct.toFixed(0)}%</div>
                   </div>
                   <div className="cp-meta-cell">
                     <div className="cp-meta-lbl">Inversión</div>
                     <div className="cp-meta-val">{fmtMoney(meta.spend)}</div>
-                    <div className="cp-meta-sub">obj. {fmtMoney(metaGoal.spendTarget)}</div>
+                    <div className="cp-meta-sub">obj. {fmtMoney(effMetaGoal.spendTarget)}</div>
                   </div>
                   <div className="cp-meta-cell">
                     <div className="cp-meta-lbl">ROAS</div>
                     <div className={`cp-meta-val cp-meta-val--${roasStatus}`}>{meta.roas.toFixed(2)}×</div>
-                    <div className="cp-meta-sub">obj. {metaGoal.roasTarget}×</div>
+                    <div className="cp-meta-sub">obj. {effMetaGoal.roasTarget}×</div>
                   </div>
                   <div className="cp-meta-cell">
                     <div className="cp-meta-lbl">Compras</div>
@@ -398,10 +425,10 @@ function ClientDashboard({ client }) {
                 </div>
                 <div className={`cp-meta-verdict cp-verdict--${roasStatus === 'good' ? 'good' : 'bad'}`}>
                   {roasStatus === 'good'
-                    ? `✓ En línea: ROAS por encima del objetivo de ${metaGoal.roasTarget}×`
+                    ? `✓ En línea: ROAS por encima del objetivo de ${effMetaGoal.roasTarget}×`
                     : roasStatus === 'warn'
-                    ? `⚠ Levemente desviado del objetivo de ROAS ${metaGoal.roasTarget}×`
-                    : `⚠ Crítico: ROAS por debajo del objetivo de ${metaGoal.roasTarget}×`}
+                    ? `⚠ Levemente desviado del objetivo de ROAS ${effMetaGoal.roasTarget}×`
+                    : `⚠ Crítico: ROAS por debajo del objetivo de ${effMetaGoal.roasTarget}×`}
                 </div>
 
                 {/* Desvío de facturación atribuida vs ritmo */}
@@ -428,7 +455,7 @@ function ClientDashboard({ client }) {
       )}
 
       {/* Productos estratégicos */}
-      {caps.ecommerce && (
+      {caps.ecommerce && show('productos') && (strategicProducts || []).length > 0 && (
       <section className="cp-section">
         <h2 className="cp-section-title">Productos estratégicos</h2>
         <StrategicProducts slug={client.slug} accessKey={client.accessKey} products={strategicProducts} />
@@ -436,26 +463,47 @@ function ClientDashboard({ client }) {
       )}
 
       {/* Justificación de objetivos */}
+      {show('justificacion') && (generic ? !!mediaJustification.trim() : !!((hypotheses?.points || []).length || (hypotheses?.conclusion || '').trim())) && (
       <section className="cp-section">
         <Collapsible title="Justificación de objetivos">
-          <ul className="cp-list">
-            {hypotheses.points.map((p, i) => <li key={i}>{p}</li>)}
-          </ul>
-          <p className="cp-conclusion">{hypotheses.conclusion}</p>
+          {generic
+            ? <p className="cp-conclusion">{mediaJustification}</p>
+            : (
+              <>
+                <ul className="cp-list">
+                  {hypotheses.points.map((p, i) => <li key={i}>{p}</li>)}
+                </ul>
+                <p className="cp-conclusion">{hypotheses.conclusion}</p>
+              </>
+            )}
         </Collapsible>
       </section>
+      )}
 
       {/* Consideraciones y riesgos */}
+      {show('consideraciones') && (generic ? mediaConsiderations.length > 0 : (considerations || []).length > 0) && (
       <section className="cp-section">
         <Collapsible title="Consideraciones y riesgos">
-          {considerations.map((c, i) => (
-            <div key={i} className="cp-risk">
-              <div className="cp-risk-title">{c.title}</div>
-              <div className="cp-risk-text">{c.text}</div>
-            </div>
-          ))}
+          {generic
+            ? <ul className="cp-list">{mediaConsiderations.map((c, i) => <li key={i}>{c}</li>)}</ul>
+            : considerations.map((c, i) => (
+              <div key={i} className="cp-risk">
+                <div className="cp-risk-title">{c.title}</div>
+                <div className="cp-risk-text">{c.text}</div>
+              </div>
+            ))}
         </Collapsible>
       </section>
+      )}
+
+      {/* Planificación de próximos meses (solo portales genéricos, desde el plan de medios) */}
+      {generic && show('planificacion') && !!mediaPlanning.trim() && (
+      <section className="cp-section">
+        <Collapsible title="Planificación de próximos meses">
+          <p className="cp-conclusion">{mediaPlanning}</p>
+        </Collapsible>
+      </section>
+      )}
 
       <footer className="cp-footer">panel by alquimia.</footer>
     </div>
