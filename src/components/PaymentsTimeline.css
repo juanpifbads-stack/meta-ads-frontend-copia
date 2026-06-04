@@ -185,3 +185,5 @@
 .pt-calc-total { padding-top: 6px; border-top: 2px solid var(--color-text-primary); font-size: 13px; }
 .pt-calc-total strong { color: var(--color-brand-blue); }
 .pt-note--fx { background: #eef0ff; border-color: var(--color-brand-blue); }
+
+.pt-item-warn { display: block; margin-top: 4px; font-size: 11.5px; line-height: 1.35; color: #92400e; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 6px; padding: 5px 8px; }

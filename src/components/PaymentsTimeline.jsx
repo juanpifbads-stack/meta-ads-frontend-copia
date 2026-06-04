@@ -91,6 +91,7 @@ function ItemLine({ item, ctx }) {
   const [showTransfer, setShowTransfer] = useState(false);
   const bankInfo = item.bankInfo || ctx.bankInfo;
   const subHaveBank = item.breakdown && item.breakdown.some((b) => b.bankInfo);
+  const hasVariable = item.breakdown && item.breakdown.some((b) => b.isVariable);
   const canTransfer = bankInfo && !item.media && !item.editable && !subHaveBank;
   const paid = !!ctx.paid[item.id];
 
@@ -140,6 +141,11 @@ function ItemLine({ item, ctx }) {
             <span className="pt-item-concept">{item.concept}</span>
           </div>
           {item.detail && <span className="pt-item-detail">{item.detail}</span>}
+          {hasVariable && (
+            <span className="pt-item-warn">
+              ⚠ Abrí <strong>"Ver desglose"</strong> y esperá a que cargue el componente variable antes de transferir. El total no queda actualizado hasta que se calcula.
+            </span>
+          )}
           {item.period && (
             <span className={`pt-period pt-period--${item.period}`}>
               {item.period === 'pasado' ? 'Corresponde al mes pasado' : 'Corresponde a junio (mes presente)'}
