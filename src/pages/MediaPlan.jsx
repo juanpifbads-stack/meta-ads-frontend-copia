@@ -80,6 +80,86 @@ export default function MediaPlan({ onBack }) {
 
   const inv = plan && plan.objective.roas > 0 ? plan.objective.facturacion / plan.objective.roas : 0;
 
+  const exportPdf = () => {
+    if (!plan) return;
+    const clientName = clients.find((c) => c.slug === slug)?.name || slug;
+    const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const cons = (plan.considerations || []).filter((c) => c.trim()).map((c) => `<li>${esc(c)}</li>`).join('');
+    const analysisRows = [
+      ['Tendencia últimos 3 meses', plan.analysis.last3],
+      ['Mismo período del año pasado', plan.analysis.lastYear],
+      ['Stock / reposición', plan.analysis.stock],
+      ['Benchmark / contexto', plan.analysis.benchmark],
+    ].filter(([, v]) => (v || '').trim())
+      .map(([k, v]) => `<div class="block"><div class="lbl">${k}</div><div class="txt">${esc(v)}</div></div>`).join('');
+
+    const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
+    <title>Plan de medios — ${esc(clientName)} ${esc(fmtMonth(month))}</title>
+    <style>
+      @page { margin: 36px; }
+      * { box-sizing: border-box; }
+      body { font-family: -apple-system, system-ui, Helvetica, Arial, sans-serif; color: #15161a; margin: 0; padding: 40px; line-height: 1.5; }
+      .mono { font-family: 'SF Mono', Menlo, Consolas, monospace; }
+      .brand { font-family: 'SF Mono', Menlo, Consolas, monospace; color: #1b1fe8; font-weight: 700; font-size: 15px; letter-spacing: 0.04em; }
+      .eyebrow { font-family: 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: #8a8d96; margin-top: 4px; }
+      h1 { font-size: 30px; margin: 6px 0 2px; }
+      .sub { color: #5b5e66; font-size: 14px; margin-bottom: 26px; }
+      .rule { height: 3px; background: #15161a; margin: 14px 0 26px; }
+      .sec { margin-bottom: 22px; page-break-inside: avoid; }
+      .sec-t { font-family: 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.05em; font-size: 13px; font-weight: 700; border-bottom: 2px solid #15161a; padding-bottom: 5px; margin-bottom: 10px; }
+      .txt { white-space: pre-wrap; font-size: 14px; }
+      .block { margin-bottom: 10px; }
+      .lbl { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #8a8d96; margin-bottom: 2px; }
+      ul { margin: 0; padding-left: 18px; } li { font-size: 14px; margin-bottom: 4px; }
+      .kpis { display: flex; gap: 12px; }
+      .kpi { flex: 1; border: 1.5px solid #e5e6ea; border-radius: 12px; padding: 14px; }
+      .kpi .lbl { margin-bottom: 6px; } .kpi .val { font-size: 20px; font-weight: 700; }
+      .obj { background: #1b1fe8; color: #fff; border-radius: 14px; padding: 20px; display: flex; gap: 20px; }
+      .obj .val { font-size: 24px; font-weight: 700; } .obj .lbl { color: #c7c9ff; }
+      .disc { background: #fef9c3; color: #854d0e; border-radius: 10px; padding: 12px 16px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; font-weight: 600; margin-top: 22px; }
+      .foot { margin-top: 28px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; color: #b0b2ba; text-align: center; }
+    </style></head><body>
+      <div class="brand">alquimia.</div>
+      <div class="eyebrow">Plan de medios</div>
+      <h1>${esc(clientName)}</h1>
+      <div class="sub">${esc(fmtMonth(month))}</div>
+      <div class="rule"></div>
+
+      ${plan.clientInput?.trim() ? `<div class="sec"><div class="sec-t">Qué pidió el cliente</div><div class="txt">${esc(plan.clientInput)}</div></div>` : ''}
+
+      <div class="sec"><div class="sec-t">Cómo nos fue el mes pasado</div>
+        <div class="kpis">
+          <div class="kpi"><div class="lbl">Facturación</div><div class="val">${money(plan.lastMonth.facturacion)}</div></div>
+          <div class="kpi"><div class="lbl">Inversión pauta</div><div class="val">${money(plan.lastMonth.inversion)}</div></div>
+          <div class="kpi"><div class="lbl">ROAS</div><div class="val">${plan.lastMonth.roas || '—'}×</div></div>
+        </div>
+      </div>
+
+      ${cons ? `<div class="sec"><div class="sec-t">Contexto y consideraciones</div><ul>${cons}</ul></div>` : ''}
+      ${analysisRows ? `<div class="sec"><div class="sec-t">Análisis</div>${analysisRows}</div>` : ''}
+
+      <div class="sec"><div class="sec-t">Objetivo propuesto</div>
+        <div class="obj">
+          <div><div class="lbl">Facturación objetivo</div><div class="val">${money(plan.objective.facturacion)}</div></div>
+          <div><div class="lbl">ROAS objetivo</div><div class="val">${plan.objective.roas || '—'}×</div></div>
+          <div><div class="lbl">Inversión necesaria</div><div class="val">${money(inv)}</div></div>
+        </div>
+      </div>
+
+      ${plan.explanation?.trim() ? `<div class="sec"><div class="sec-t">Explicación</div><div class="txt">${esc(plan.explanation)}</div></div>` : ''}
+
+      <div class="disc">⚠ Esto es una proyección, no una garantía.</div>
+      <div class="foot">Generado por alquimia. · ${new Date().toLocaleDateString('es-AR')}</div>
+    </body></html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) { alert('Permití las ventanas emergentes para exportar el PDF.'); return; }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 400);
+  };
+
   return (
     <div className="ad-page">
       <header className="ad-header">
@@ -107,6 +187,7 @@ export default function MediaPlan({ onBack }) {
         <button className="ad-btn ad-btn--ghost" onClick={newMonth}>+ Nuevo mes</button>
         <div className="ad-save">
           {msg && <span className="ad-msg">{msg}</span>}
+          <button className="ad-btn ad-btn--ghost" onClick={exportPdf} disabled={!plan}>Exportar PDF</button>
           <button className="ad-btn" onClick={save} disabled={!plan}>Guardar plan de medios</button>
         </div>
       </div>
@@ -162,6 +243,7 @@ export default function MediaPlan({ onBack }) {
 
           <div className="ad-save-bottom">
             {msg && <span className="ad-msg">{msg}</span>}
+            <button className="ad-btn ad-btn--ghost" onClick={exportPdf}>Exportar PDF</button>
             <button className="ad-btn" onClick={save}>Guardar plan de medios</button>
           </div>
         </div>
