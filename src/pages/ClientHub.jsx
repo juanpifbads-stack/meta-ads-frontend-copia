@@ -50,6 +50,8 @@ export default function ClientHub({ slug, onBack }) {
   }, [slug]);
 
   useEffect(() => { load(); }, [load]);
+  // Al volver a "Resumen" (ej. después de guardar el plan), refrescar metas/datos.
+  useEffect(() => { if (tab === 'resumen') load(); }, [tab, load]);
 
   const saveGoals = () => {
     setMsg('Guardando…');
