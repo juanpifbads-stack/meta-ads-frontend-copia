@@ -41,6 +41,7 @@ const blank = () => ({
   trendLastYear: [],
   trendNote: '',
   context: { dates: '', dateItems: [], products: '' },
+  objectiveJustification: '',
   considerations: [''],
   nextPlanning: '',
   include: { trend: true, contextDates: true, contextProducts: true, considerations: true },
@@ -220,10 +221,12 @@ export default function MediaPlan({ onBack, lockedSlug }) {
     }
     if (inc.contextProducts && plan.context.products?.trim())
       sections.push(`<div class="sec"><div class="sec-t">Stock y reposición de productos clave</div><div class="txt">${esc(plan.context.products)}</div></div>`);
-    if (inc.considerations && (cons || plan.nextPlanning?.trim())) {
-      let c = cons ? `<ul>${cons}</ul>` : '';
+    if (inc.considerations && (plan.objectiveJustification?.trim() || cons || plan.nextPlanning?.trim())) {
+      let c = '';
+      if (plan.objectiveJustification?.trim()) c += `<div class="block"><div class="lbl">Justificación de objetivos</div><div class="txt">${esc(plan.objectiveJustification)}</div></div>`;
+      if (cons) c += `<div class="block" style="margin-top:8px"><div class="lbl">Consideraciones y riesgos</div><ul>${cons}</ul></div>`;
       if (plan.nextPlanning?.trim()) c += `<div class="block" style="margin-top:8px"><div class="lbl">Planificación de próximos meses</div><div class="txt">${esc(plan.nextPlanning)}</div></div>`;
-      sections.push(`<div class="sec"><div class="sec-t">Consideraciones</div>${c}</div>`);
+      sections.push(`<div class="sec"><div class="sec-t">Justificación y consideraciones</div>${c}</div>`);
     }
 
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
@@ -441,8 +444,10 @@ export default function MediaPlan({ onBack, lockedSlug }) {
           </Section>
 
           {/* Consideraciones */}
-          <Section title="Consideraciones extra" internal include={plan.include.considerations} onToggle={() => tgl('considerations')}>
-            <Area label="¿Hay que empezar a planificar algo de los próximos meses?" value={plan.nextPlanning} onChange={(v) => upd((p) => { p.nextPlanning = v; })} ph="Ej. preparar campaña de día de la madre, anticipar reposición de temporada, lanzamiento previsto…" />
+          <Section title="Justificación, consideraciones y planificación" internal include={plan.include.considerations} onToggle={() => tgl('considerations')}>
+            <Area label="Justificación de objetivos" value={plan.objectiveJustification} onChange={(v) => upd((p) => { p.objectiveJustification = v; })} ph="Por qué el objetivo es viable (estacionalidad, stock, acciones, contenido, estrategia…)" />
+
+            <div className="ad-sublabel">Consideraciones y riesgos</div>
             {(plan.considerations || []).map((c, i) => (
               <div key={i} className="ad-row">
                 <div className="ad-field ad-field--grow">
@@ -453,6 +458,8 @@ export default function MediaPlan({ onBack, lockedSlug }) {
               </div>
             ))}
             <button className="ad-add" onClick={() => upd((p) => { p.considerations = p.considerations || []; p.considerations.push(''); })}>+ Consideración</button>
+
+            <Area label="¿Hay que empezar a planificar algo de los próximos meses?" value={plan.nextPlanning} onChange={(v) => upd((p) => { p.nextPlanning = v; })} ph="Ej. preparar campaña de día de la madre, anticipar reposición de temporada, lanzamiento previsto…" />
           </Section>
 
           <div className="ad-save-bottom">
