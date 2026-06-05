@@ -251,6 +251,7 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
             <datalist id="ad-actrices">
               <option value="Delfina" />
               <option value="Karina" />
+              <option value="Carina" />
             </datalist>
             {(plan.roadmap || []).map((w, i) => (
               <div key={i} className="ad-row-box">
