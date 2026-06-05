@@ -74,11 +74,11 @@ const MONTH_RANGE = (() => {
   return out;
 })();
 function MonthSelect({ label, value, onChange }) {
+  const cur = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   return (
     <div className="ad-field">
       <label>{label}</label>
-      <select value={value || ''} onChange={(e) => onChange(e.target.value)}>
-        <option value="">— Elegí —</option>
+      <select value={value || cur} onChange={(e) => onChange(e.target.value)}>
         {MONTH_RANGE.map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
       </select>
     </div>
@@ -197,23 +197,26 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
       {!showNew && clientData && (
         <div className="ad-strategy-head">
           <h2 className="ad-strategy-title">Estrategia</h2>
-          <p className="ad-muted">La <strong>macro</strong> (largo plazo, por temporada) + los <strong>meses (micro)</strong>. Cada mes se alimenta de su Plan de medios, tareas, roadmap y productos. Elegí el mes para editar su contenido micro.</p>
-          <div className="ad-row" style={{ marginTop: 10 }}>
-            <div className="ad-field">
-              <label>Mes (micro)</label>
-              <select value={month} onChange={(e) => setMonth(e.target.value)}>
-                {(clientData?.months || []).map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
-              </select>
-            </div>
-            <div className="ad-save" style={{ marginLeft: 'auto' }}>
-              {msg && <span className="ad-msg">{msg}</span>}
-              <button className="ad-btn" onClick={savePlan} disabled={!plan}>Guardar mes</button>
-            </div>
-          </div>
+          <p className="ad-muted">La <strong>macro</strong> (largo plazo, por temporada) + los <strong>meses (micro)</strong> que la componen. Lo micro de cada mes se alimenta de su Plan de medios; acá solo cargás lo que NO está en el plan (estrategia del mes, objetivo ecommerce, roadmap, productos, presupuesto).</p>
         </div>
       )}
 
       {!showNew && clientData && <MacroEditor slug={slug} macros={clientData.macros} reload={() => loadClient(slug)} />}
+
+      {!showNew && clientData && (clientData.months || []).length > 0 && (
+        <div className="ad-controls">
+          <div className="ad-field">
+            <label>Mes (micro)</label>
+            <select value={month} onChange={(e) => setMonth(e.target.value)}>
+              {(clientData?.months || []).map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
+            </select>
+          </div>
+          <div className="ad-save" style={{ marginLeft: 'auto' }}>
+            {msg && <span className="ad-msg">{msg}</span>}
+            <button className="ad-btn" onClick={savePlan} disabled={!plan}>Guardar mes</button>
+          </div>
+        </div>
+      )}
 
       {!showNew && loading && <p className="ad-muted">Cargando plan…</p>}
 
@@ -226,12 +229,10 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
             <Field label="Descripción" textarea value={plan.strategyMonthly?.description || ''} onChange={(v) => upd((p) => { p.strategyMonthly = { ...p.strategyMonthly, description: v }; })} />
           </Section>
 
-          {/* Objetivos */}
-          <Section title="Objetivos">
+          {/* Objetivo ecommerce (el objetivo Meta viene del Plan de medios) */}
+          <Section title="Objetivo ecommerce">
             <NumField label="Objetivo facturación ecommerce (ARS)" value={plan.ecommerceGoal?.target} onChange={(v) => upd((p) => { p.ecommerceGoal = { ...p.ecommerceGoal, target: v }; })} />
-            <NumField label="Meta — facturación objetivo (ARS)" value={plan.metaGoal?.revenueTarget} onChange={(v) => upd((p) => { p.metaGoal = { ...p.metaGoal, revenueTarget: v }; })} />
-            <NumField label="Meta — ROAS objetivo (×)" value={plan.metaGoal?.roasTarget} onChange={(v) => upd((p) => { p.metaGoal = { ...p.metaGoal, roasTarget: v }; })} />
-            <NumField label="Meta — inversión objetivo (ARS)" value={plan.metaGoal?.spendTarget} onChange={(v) => upd((p) => { p.metaGoal = { ...p.metaGoal, spendTarget: v }; })} />
+            <p className="ad-muted">El objetivo de Meta (facturación / ROAS / inversión), la justificación y las consideraciones se cargan en el <strong>Plan de medios</strong> de este mes.</p>
           </Section>
 
           {/* Roadmap */}
@@ -306,32 +307,6 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
                 )}
               </div>
             ))}
-          </Section>
-
-          {/* Hipótesis */}
-          <Section title="Justificación de objetivos (hipótesis)">
-            {(plan.hypotheses?.points || []).map((pt, i) => (
-              <div key={i} className="ad-row">
-                <Field label={`Punto ${i + 1}`} value={pt} onChange={(v) => upd((p) => { p.hypotheses.points[i] = v; })} />
-                <button className="ad-del" onClick={() => upd((p) => { p.hypotheses.points.splice(i, 1); })}>×</button>
-              </div>
-            ))}
-            <button className="ad-add" onClick={() => upd((p) => { p.hypotheses = p.hypotheses || { points: [], conclusion: '' }; p.hypotheses.points.push(''); })}>+ Punto</button>
-            <Field label="Conclusión" value={plan.hypotheses?.conclusion || ''} onChange={(v) => upd((p) => { p.hypotheses = { ...p.hypotheses, conclusion: v }; })} />
-          </Section>
-
-          {/* Consideraciones */}
-          <Section title="Consideraciones y riesgos">
-            {(plan.considerations || []).map((c, i) => (
-              <div key={i} className="ad-row-box">
-                <div className="ad-row">
-                  <Field label="Título" value={c.title} onChange={(v) => upd((p) => { p.considerations[i].title = v; })} />
-                  <button className="ad-del" onClick={() => upd((p) => { p.considerations.splice(i, 1); })}>×</button>
-                </div>
-                <Field label="Texto" textarea value={c.text} onChange={(v) => upd((p) => { p.considerations[i].text = v; })} />
-              </div>
-            ))}
-            <button className="ad-add" onClick={() => upd((p) => { p.considerations = p.considerations || []; p.considerations.push({ title: '', text: '' }); })}>+ Consideración</button>
           </Section>
 
           <div className="ad-save-bottom">
@@ -416,7 +391,7 @@ function NewClientForm({ onClose, onCreated }) {
     caps: { meta: true, tiktok: false, contenido: false, web: false },
     fees: { meta: 0, tiktok: 0, contenido: 0, web: 0 },
     variable: { mode: 'none', base: 0, rate: 0.03 },
-    macroFrom: '', macroTo: '',
+    macroFrom: currentYM(), macroTo: currentYM(),
     sections: {},
     bankInfo: { titular: '', alias: '', cbu: '', observaciones: '' },
   });
@@ -616,12 +591,18 @@ function ClientConfigEditor({ slug }) {
   );
 }
 
+const periodLabel = (a, b) => (a && b ? `${fmtMonth(a)} – ${fmtMonth(b)}` : '');
+
 function MacroEditor({ slug, macros, reload }) {
-  const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(null);
+  // Si el cliente no tiene macro, mostramos el formulario directamente (parado sobre el mes actual).
+  useEffect(() => {
+    if (macros.length === 0 && !draft) setDraft({ start_ym: currentYM(), end_ym: currentYM(), objective: '', description: '' });
+    // eslint-disable-next-line
+  }, [macros.length]);
 
   const save = (m) => {
-    const body = { start_ym: m.start_ym, end_ym: m.end_ym, period: m.period, objective: m.objective, description: m.description };
+    const body = { start_ym: m.start_ym, end_ym: m.end_ym, period: periodLabel(m.start_ym, m.end_ym), objective: m.objective, description: m.description };
     const req = m.id ? apiClient.put(`/admin/${slug}/macro/${m.id}`, body) : apiClient.post(`/admin/${slug}/macro`, body);
     req.then(() => { setDraft(null); reload(); }).catch(() => {});
   };
@@ -629,40 +610,36 @@ function MacroEditor({ slug, macros, reload }) {
 
   return (
     <div className="ad-macro">
-      <button className="ad-macro-head" onClick={() => setOpen(!open)}>
-        <span>{open ? '▾' : '▸'}</span> Estrategia macro ({macros.length})
-      </button>
-      {open && (
-        <div className="ad-macro-body">
-          {macros.map((m) => (
-            <div key={m.id} className="ad-row-box">
-              <div className="ad-row">
-                <MonthSelect label="Desde" value={m.start_ym} onChange={(v) => save({ ...m, start_ym: v })} />
-                <MonthSelect label="Hasta" value={m.end_ym} onChange={(v) => save({ ...m, end_ym: v })} />
-                <button className="ad-del" onClick={() => del(m.id)}>×</button>
-              </div>
-              <Field label="Período (ej. Junio – Julio 2026)" value={m.period} onChange={(v) => save({ ...m, period: v })} />
-              <Field label="Objetivo macro" value={m.objective || ''} onChange={(v) => save({ ...m, objective: v })} />
-              <Field label="Descripción" textarea value={m.description || ''} onChange={(v) => save({ ...m, description: v })} />
+      <div className="ad-macro-head" style={{ cursor: 'default' }}>Estrategia macro</div>
+      <div className="ad-macro-body">
+        {macros.map((m) => (
+          <div key={m.id} className="ad-row-box">
+            <div className="ad-row">
+              <MonthSelect label="Desde" value={m.start_ym} onChange={(v) => save({ ...m, start_ym: v })} />
+              <MonthSelect label="Hasta" value={m.end_ym} onChange={(v) => save({ ...m, end_ym: v })} />
+              <span className="ad-muted" style={{ alignSelf: 'center' }}>{periodLabel(m.start_ym, m.end_ym)}</span>
+              <button className="ad-del" onClick={() => del(m.id)}>×</button>
             </div>
-          ))}
-          {draft
-            ? (
-              <div className="ad-row-box">
-                <div className="ad-row">
-                  <MonthSelect label="Desde" value={draft.start_ym} onChange={(v) => setDraft({ ...draft, start_ym: v })} />
-                  <MonthSelect label="Hasta" value={draft.end_ym} onChange={(v) => setDraft({ ...draft, end_ym: v })} />
-                </div>
-                <Field label="Período" value={draft.period} onChange={(v) => setDraft({ ...draft, period: v })} />
-                <Field label="Objetivo macro" value={draft.objective} onChange={(v) => setDraft({ ...draft, objective: v })} />
-                <Field label="Descripción" textarea value={draft.description} onChange={(v) => setDraft({ ...draft, description: v })} />
-                <button className="ad-btn" onClick={() => save(draft)}>Crear macro</button>
-              </div>
-            )
-            : <button className="ad-add" onClick={() => setDraft({ start_ym: '', end_ym: '', period: '', objective: '', description: '' })}>+ Nueva macro</button>}
-          <p className="ad-muted">Los cambios en macro se guardan al editar cada campo.</p>
-        </div>
-      )}
+            <Field label="Objetivo macro" value={m.objective || ''} onChange={(v) => save({ ...m, objective: v })} />
+            <Field label="Descripción" textarea value={m.description || ''} onChange={(v) => save({ ...m, description: v })} />
+          </div>
+        ))}
+        {draft && (
+          <div className="ad-row-box">
+            <div className="ad-row">
+              <MonthSelect label="Desde" value={draft.start_ym} onChange={(v) => setDraft({ ...draft, start_ym: v })} />
+              <MonthSelect label="Hasta" value={draft.end_ym} onChange={(v) => setDraft({ ...draft, end_ym: v })} />
+              <span className="ad-muted" style={{ alignSelf: 'center' }}>{periodLabel(draft.start_ym, draft.end_ym)}</span>
+            </div>
+            <Field label="Objetivo macro" value={draft.objective} onChange={(v) => setDraft({ ...draft, objective: v })} />
+            <Field label="Descripción" textarea value={draft.description} onChange={(v) => setDraft({ ...draft, description: v })} />
+            <button className="ad-btn" onClick={() => save(draft)}>Guardar macro</button>
+          </div>
+        )}
+        {!draft && macros.length > 0 && (
+          <button className="ad-add" onClick={() => setDraft({ start_ym: currentYM(), end_ym: currentYM(), objective: '', description: '' })}>+ Otra macro</button>
+        )}
+      </div>
     </div>
   );
 }
