@@ -32,9 +32,15 @@ function statusByRatio(r) {
   if (r >= 0.70) return { key: 'alejado', label: 'Alejado', color: '#c2410c', bg: '#ffedd5' };
   return { key: 'emergencia', label: 'Emergencia', color: '#b91c1c', bg: '#fee2e2' };
 }
-function Badge({ band, prefix }) {
+// Etiquetas distintas por métrica: en ROAS "con margen" tiene sentido; en facturación es "adelantada".
+function bandLabel(key, kind) {
+  const fact = { margen: 'Adelantada', objetivo: 'En objetivo', cerca: 'Cerca', alejado: 'Alejada', emergencia: 'Emergencia' };
+  const roas = { margen: 'En objetivo y con margen', objetivo: 'En objetivo', cerca: 'Cerca', alejado: 'Alejado', emergencia: 'Emergencia' };
+  return (kind === 'fact' ? fact : roas)[key] || '';
+}
+function Badge({ band, prefix, kind }) {
   if (!band) return null;
-  return <span className="hm-badge" style={{ color: band.color, background: band.bg }}>{prefix ? `${prefix} ` : ''}{band.label}</span>;
+  return <span className="hm-badge" style={{ color: band.color, background: band.bg }}>{prefix ? `${prefix} ` : ''}{bandLabel(band.key, kind)}</span>;
 }
 
 function ClientCard({ c, onOpen }) {
@@ -60,8 +66,8 @@ function ClientCard({ c, onOpen }) {
           <div className="ctrl-card-am">👤 {c.am || '—'} · {c.type === 'servicios' ? 'Servicios' : 'Ecommerce'}</div>
         </div>
         <div className="ctrl-card-badges">
-          <Badge band={roasBand} prefix="ROAS" />
-          <Badge band={paceBand} prefix="Fact." />
+          <Badge band={roasBand} prefix="ROAS" kind="roas" />
+          <Badge band={paceBand} prefix="Fact." kind="fact" />
         </div>
       </div>
 
