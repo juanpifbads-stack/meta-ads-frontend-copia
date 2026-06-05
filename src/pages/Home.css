@@ -16,3 +16,11 @@
 .hm-card:hover { border-color: var(--color-brand-blue, #1b1fe8); box-shadow: 0 6px 22px rgba(0,0,0,.06); transform: translateY(-2px); }
 .hm-noaccount { font-size: 13px; color: #94a3b8; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 12px; }
 .hm-card-cta { margin-top: auto; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--color-brand-blue, #1b1fe8); }
+
+.hm-badge { display: inline-block; font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.hm-pace { font-family: var(--font-mono); font-size: 12px; border-radius: 8px; padding: 8px 12px; font-weight: 600; }
+.hm-pace-exp { opacity: .75; font-weight: 500; }
+.hm-hide-panel { margin-top: 14px; border: 1px solid var(--color-gray-light, #e3e3e8); border-radius: 12px; padding: 14px; background: #fafafa; }
+.hm-hide-title { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #8a8d96; margin-bottom: 10px; }
+.hm-hide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px 14px; }
+.hm-hide-item { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; color: #334155; }

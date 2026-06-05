@@ -4,6 +4,11 @@ import './Control.css';
 import './Home.css';
 
 const ALL_AMS = ['Todos', 'Juan Ignacio', 'Franco', 'Agustín', 'Chachi'];
+const TYPES = [
+  { k: 'todos', l: 'Ver todos' },
+  { k: 'ecommerce', l: 'Ecommerce' },
+  { k: 'servicios', l: 'Servicios' },
+];
 
 function fmtMoney(n) {
   if (n == null || isNaN(n)) return '—';
@@ -12,6 +17,20 @@ function fmtMoney(n) {
 function daysElapsed() { return new Date().getDate(); }
 function daysInMonth() { const n = new Date(); return new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate(); }
 
+// Bandas de estado según el ratio (valor / objetivo).
+function statusByRatio(r) {
+  if (r == null || !isFinite(r)) return null;
+  if (r >= 1.10) return { key: 'margen', label: 'En objetivo y con margen', color: '#166534', bg: '#bbf7d0' };
+  if (r >= 1.00) return { key: 'objetivo', label: 'En objetivo', color: '#15803d', bg: '#dcfce7' };
+  if (r >= 0.80) return { key: 'cerca', label: 'Cerca', color: '#a16207', bg: '#fef9c3' };
+  if (r >= 0.70) return { key: 'alejado', label: 'Alejado', color: '#c2410c', bg: '#ffedd5' };
+  return { key: 'emergencia', label: 'Emergencia', color: '#b91c1c', bg: '#fee2e2' };
+}
+function Badge({ band, prefix }) {
+  if (!band) return null;
+  return <span className="hm-badge" style={{ color: band.color, background: band.bg }}>{prefix ? `${prefix} ` : ''}{band.label}</span>;
+}
+
 function ClientCard({ c, onOpen }) {
   const health = c.health;
   const revGoal = parseFloat(c.goals?.revenue) || 0;
@@ -19,27 +38,24 @@ function ClientCard({ c, onOpen }) {
   const spend = health?.spend || 0;
   const purchaseValue = health?.purchaseValue || 0;
   const roas = health?.roas || 0;
+
+  const expected = revGoal > 0 ? (revGoal / daysInMonth()) * daysElapsed() : 0;
+  const pacePct = expected > 0 ? (purchaseValue / expected) * 100 : null; // % del ritmo esperado
+  const roasBand = roasGoal > 0 && health ? statusByRatio(roas / roasGoal) : null;
+  const paceBand = expected > 0 && health ? statusByRatio(purchaseValue / expected) : null;
   const revPct = revGoal > 0 ? Math.min((purchaseValue / revGoal) * 100, 999) : 0;
   const roasPct = roasGoal > 0 ? Math.min((roas / roasGoal) * 100, 999) : 0;
-  const revStatus = revGoal > 0 ? (revPct >= 100 ? 'good' : revPct >= 70 ? 'warn' : 'bad') : null;
-  const roasStatus = roasGoal > 0 ? (roas >= roasGoal ? 'good' : roas >= roasGoal * 0.7 ? 'warn' : 'bad') : null;
-
-  let pace = null;
-  if (revGoal > 0) {
-    const expected = (revGoal / daysInMonth()) * daysElapsed();
-    pace = { expected, pct: expected > 0 ? (purchaseValue / expected) * 100 : 0, onTrack: expected > 0 && (purchaseValue / expected) >= 0.9 };
-  }
 
   return (
     <button className="hm-card" onClick={() => onOpen(c.slug)}>
       <div className="ctrl-card-head">
         <div className="ctrl-card-info">
           <div className="ctrl-card-brand">{c.name}</div>
-          <div className="ctrl-card-am">👤 {c.am || '—'}</div>
+          <div className="ctrl-card-am">👤 {c.am || '—'} · {c.type === 'servicios' ? 'Servicios' : 'Ecommerce'}</div>
         </div>
         <div className="ctrl-card-badges">
-          {roasStatus && <span className={`ctrl-badge ctrl-badge--${roasStatus}`}>{roasStatus === 'good' ? 'En meta ROAS' : roasStatus === 'warn' ? 'ROAS cerca' : 'ROAS bajo'}</span>}
-          {revStatus && <span className={`ctrl-badge ctrl-badge--${revStatus}`}>{revStatus === 'good' ? 'En meta fact.' : revStatus === 'warn' ? 'Fact. cerca' : 'Fact. baja'}</span>}
+          <Badge band={roasBand} prefix="ROAS" />
+          <Badge band={paceBand} prefix="Fact." />
         </div>
       </div>
 
@@ -52,12 +68,16 @@ function ClientCard({ c, onOpen }) {
           <div className="ctrl-metrics">
             <div className="ctrl-metric"><div className="ctrl-metric-label">Gasto</div><div className="ctrl-metric-value">{fmtMoney(spend)}</div></div>
             <div className="ctrl-metric"><div className="ctrl-metric-label">Valor compras</div><div className="ctrl-metric-value">{purchaseValue ? fmtMoney(purchaseValue) : '—'}</div></div>
-            <div className="ctrl-metric"><div className="ctrl-metric-label">ROAS</div><div className={`ctrl-metric-value ${roasStatus ? 'ctrl-metric-value--' + roasStatus : ''}`}>{roas > 0 ? roas.toFixed(2) + '×' : '—'}</div></div>
+            <div className="ctrl-metric"><div className="ctrl-metric-label">ROAS</div><div className="ctrl-metric-value" style={roasBand ? { color: roasBand.color } : undefined}>{roas > 0 ? roas.toFixed(2) + '×' : '—'}</div></div>
           </div>
-          {pace && (
-            <div className={`ctrl-pace ${pace.onTrack ? 'ctrl-pace--ok' : 'ctrl-pace--warn'}`}>
-              {pace.onTrack ? `✓ En ritmo (día ${daysElapsed()}/${daysInMonth()})` : `⚠ Desviado — esperado ${fmtMoney(pace.expected)}`}
-              <span className="ctrl-pace-pct">{pace.pct.toFixed(0)}%</span>
+          {paceBand && (
+            <div className="hm-pace" style={{ background: paceBand.bg, color: paceBand.color }}>
+              <span>
+                {pacePct >= 100
+                  ? `✓ Vas al ${pacePct.toFixed(0)}% del ritmo esperado`
+                  : `⚠ Vas al ${pacePct.toFixed(0)}% del ritmo esperado`}
+                <span className="hm-pace-exp"> · esperado {fmtMoney(expected)}</span>
+              </span>
             </div>
           )}
           {(revGoal > 0 || roasGoal > 0) && (
@@ -65,13 +85,13 @@ function ClientCard({ c, onOpen }) {
               {revGoal > 0 && (
                 <div className="ctrl-goal-row">
                   <div className="ctrl-goal-top"><span>Objetivo facturación</span><span>{revPct.toFixed(0)}%</span></div>
-                  <div className="ctrl-bar"><div className={`ctrl-bar-fill ctrl-bar-fill--${revStatus || 'none'}`} style={{ width: Math.min(revPct, 100) + '%' }} /></div>
+                  <div className="ctrl-bar"><div className="ctrl-bar-fill" style={{ width: Math.min(revPct, 100) + '%', background: (paceBand || {}).color }} /></div>
                 </div>
               )}
               {roasGoal > 0 && (
                 <div className="ctrl-goal-row">
                   <div className="ctrl-goal-top"><span>Objetivo ROAS</span><span>{roasPct.toFixed(0)}%</span></div>
-                  <div className="ctrl-bar"><div className={`ctrl-bar-fill ctrl-bar-fill--${roasStatus || 'none'}`} style={{ width: Math.min(roasPct, 100) + '%' }} /></div>
+                  <div className="ctrl-bar"><div className="ctrl-bar-fill" style={{ width: Math.min(roasPct, 100) + '%', background: (roasBand || {}).color }} /></div>
                 </div>
               )}
             </div>
@@ -88,7 +108,11 @@ export default function Home({ onOpenClient, onOptimize, onNewClient }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedAM, setSelectedAM] = useState('Todos');
-  const [migrating, setMigrating] = useState(false);
+  const [type, setType] = useState('todos');
+  const [showHide, setShowHide] = useState(false);
+  const [hidden, setHidden] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('home_hidden_clients')) || []; } catch { return []; }
+  });
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -102,16 +126,21 @@ export default function Home({ onOpenClient, onOptimize, onNewClient }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const migrate = () => {
-    if (!window.confirm('Crear los clientes a partir de las marcas existentes? (no pisa los ya creados)')) return;
-    setMigrating(true);
-    apiClient.post('/admin/migrate-brands').then((r) => {
-      alert(`Listo: ${r.data.created} creados, ${r.data.skipped} ya existían.`);
-      load();
-    }).catch((e) => alert(e.response?.data?.message || 'Error')).finally(() => setMigrating(false));
+  const toggleHidden = (slug) => {
+    setHidden((h) => {
+      const next = h.includes(slug) ? h.filter((s) => s !== slug) : [...h, slug];
+      localStorage.setItem('home_hidden_clients', JSON.stringify(next));
+      return next;
+    });
   };
 
-  const visible = useMemo(() => clients.filter((c) => selectedAM === 'Todos' || c.am === selectedAM), [clients, selectedAM]);
+  const visible = useMemo(() => clients.filter((c) => {
+    if (hidden.includes(c.slug)) return false;
+    if (selectedAM !== 'Todos' && c.am !== selectedAM) return false;
+    if (type !== 'todos' && (c.type || 'ecommerce') !== type) return false;
+    return true;
+  }), [clients, hidden, selectedAM, type]);
+
   const monthName = new Date().toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
 
   return (
@@ -131,6 +160,14 @@ export default function Home({ onOpenClient, onOptimize, onNewClient }) {
         </div>
         <div className="ctrl-filters">
           <div className="ctrl-filter-group">
+            <span className="ctrl-filter-label">Tipo</span>
+            <div className="ctrl-filter-pills">
+              {TYPES.map((t) => (
+                <button key={t.k} className={`ctrl-pill ${type === t.k ? 'ctrl-pill--active' : ''}`} onClick={() => setType(t.k)}>{t.l}</button>
+              ))}
+            </div>
+          </div>
+          <div className="ctrl-filter-group">
             <span className="ctrl-filter-label">Responsable</span>
             <div className="ctrl-filter-pills">
               {ALL_AMS.map((am) => (
@@ -138,15 +175,31 @@ export default function Home({ onOpenClient, onOptimize, onNewClient }) {
               ))}
             </div>
           </div>
-          <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={migrate} disabled={migrating}>{migrating ? 'Migrando…' : 'Migrar marcas existentes'}</button>
+          <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => setShowHide((v) => !v)}>
+            {showHide ? 'Ocultar filtro' : `Ocultar marcas${hidden.length ? ` (${hidden.length})` : ''}`}
+          </button>
         </div>
+
+        {showHide && (
+          <div className="hm-hide-panel">
+            <div className="hm-hide-title">Mostrar / ocultar marcas</div>
+            <div className="hm-hide-grid">
+              {clients.map((c) => (
+                <label key={c.slug} className="hm-hide-item">
+                  <input type="checkbox" checked={!hidden.includes(c.slug)} onChange={() => toggleHidden(c.slug)} />
+                  <span>{c.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="ctrl-divider" />
 
       {error && <div className="ctrl-error">⚠ {error}</div>}
       {loading && <div className="ctrl-loading">Consultando Meta…</div>}
-      {!loading && visible.length === 0 && <div className="ctrl-loading">No hay clientes. Tocá "Migrar marcas existentes" o creá uno nuevo.</div>}
+      {!loading && visible.length === 0 && <div className="ctrl-loading">No hay clientes para mostrar. Creá uno con "+ Nuevo cliente".</div>}
 
       <div className="ctrl-grid">
         {visible.map((c) => <ClientCard key={c.slug} c={c} onOpen={onOpenClient} />)}

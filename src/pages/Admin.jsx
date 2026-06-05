@@ -50,7 +50,7 @@ const blankPlan = () => ({
   budgetItems: [],
 });
 
-export default function Admin({ onBack, lockedSlug }) {
+export default function Admin({ onBack, lockedSlug, autoNew }) {
   const [clients, setClients] = useState([]);
   const [slug, setSlug] = useState(lockedSlug || '');
   const [clientData, setClientData] = useState(null);
@@ -59,7 +59,7 @@ export default function Admin({ onBack, lockedSlug }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
 
-  const [showNew, setShowNew] = useState(false);
+  const [showNew, setShowNew] = useState(!!autoNew);
 
   const loadClients = useCallback((selectSlug) => {
     apiClient.get('/admin/clients').then((r) => {
@@ -155,6 +155,13 @@ export default function Admin({ onBack, lockedSlug }) {
       {showNew && <NewClientForm onClose={() => setShowNew(false)} onCreated={(s) => { setShowNew(false); loadClients(s); }} />}
 
       {slug && <ClientConfigEditor slug={slug} />}
+
+      {clientData && (
+        <div className="ad-strategy-head">
+          <h2 className="ad-strategy-title">Estrategia</h2>
+          <p className="ad-muted">La <strong>macro</strong> (largo plazo, por temporada) + los <strong>meses (micro)</strong>. Lo micro de cada mes se alimenta de su Plan de medios. Elegí el mes arriba para editar su contenido.</p>
+        </div>
+      )}
 
       {clientData && <MacroEditor slug={slug} macros={clientData.macros} reload={() => loadClient(slug)} />}
 
@@ -372,28 +379,38 @@ function CapsEditor({ caps, onToggle }) {
   );
 }
 
+const slugify = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const YEAR_NOW = new Date().getFullYear();
+const MONTH_OPTS = Array.from({ length: 12 }, (_, i) => `${YEAR_NOW}-${String(i + 1).padStart(2, '0')}`);
+
 function NewClientForm({ onClose, onCreated }) {
   const [f, setF] = useState({
-    name: '', slug: '', accessKey: '', paymentsKey: '', metaAccountId: '', am: '',
+    name: '', slug: '', accessKey: '', paymentsKey: '', metaAccountId: '', am: '', type: 'ecommerce',
     capabilities: { meta: true, ecommerce: true, tiktok: true, contenido: true, variable: true, web: true },
     variableBase: 0,
     bankInfo: { titular: '', alias: '', cbu: '', observaciones: '' },
+    months: [`${YEAR_NOW}-${String(new Date().getMonth() + 1).padStart(2, '0')}`],
   });
   const [err, setErr] = useState('');
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
+  const setName = (v) => setF((s) => ({ ...s, name: v, slug: slugify(v), accessKey: s.accessKey || `${slugify(v)}2026` }));
   const setBank = (k, v) => setF((s) => ({ ...s, bankInfo: { ...s.bankInfo, [k]: v } }));
   const toggleCap = (k) => setF((s) => ({ ...s, capabilities: { ...s.capabilities, [k]: !s.capabilities[k] } }));
+  const toggleMonth = (m) => setF((s) => ({ ...s, months: s.months.includes(m) ? s.months.filter((x) => x !== m) : [...s.months, m] }));
 
   const create = () => {
-    if (!f.name || !f.slug || !f.accessKey) { setErr('Nombre, slug y clave son obligatorios.'); return; }
+    if (!f.name) { setErr('Poné el nombre del cliente.'); return; }
+    if (!f.metaAccountId) { setErr('Tenés que asociar una cuenta publicitaria de tu portfolio.'); return; }
+    if (!f.accessKey) { setErr('Falta la clave de acceso.'); return; }
     const config = {
       name: f.name, accessKey: f.accessKey, paymentsKey: f.paymentsKey || f.accessKey,
-      metaAccountId: f.metaAccountId || null, am: f.am || '', capabilities: f.capabilities,
+      metaAccountId: f.metaAccountId || null, am: f.am || '', type: f.type,
+      capabilities: { ...f.capabilities, ecommerce: f.type === 'ecommerce' ? f.capabilities.ecommerce : false },
       variable: { base: Number(f.variableBase) || 0, rate: 0.03 }, bankInfo: f.bankInfo,
     };
-    apiClient.post('/admin/clients', { slug: f.slug, config })
+    apiClient.post('/admin/clients', { slug: f.slug, config, months: f.months })
       .then(() => onCreated(f.slug))
-      .catch((e) => setErr(e.message || 'Error al crear'));
+      .catch((e) => setErr(e.response?.data?.message || e.message || 'Error al crear'));
   };
 
   return (
@@ -402,22 +419,44 @@ function NewClientForm({ onClose, onCreated }) {
         <h3 className="ad-section-title">Nuevo cliente</h3>
         <button className="ad-del" onClick={onClose}>×</button>
       </div>
+      <Field label="Nombre del cliente" value={f.name} onChange={setName} />
+      {f.slug && <p className="ad-muted" style={{ margin: '-4px 0 8px' }}>URL: /cliente/<strong>{f.slug}</strong></p>}
+
       <div className="ad-row">
-        <Field label="Nombre" value={f.name} onChange={(v) => set('name', v)} />
-        <Field label="Slug (URL, ej. cameo)" value={f.slug} onChange={(v) => set('slug', v.toLowerCase().replace(/[^a-z0-9-]/g, ''))} />
+        <div className="ad-field">
+          <label>Tipo de cliente</label>
+          <select value={f.type} onChange={(e) => set('type', e.target.value)}>
+            <option value="ecommerce">Ecommerce</option>
+            <option value="servicios">Servicios</option>
+          </select>
+        </div>
+        <div className="ad-field">
+          <label>Responsable (AM)</label>
+          <select value={f.am} onChange={(e) => set('am', e.target.value)}>
+            <option value="">— Sin asignar —</option>
+            {ALL_AMS.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
       </div>
+
+      <AdAccountSelect value={f.metaAccountId} onChange={(v) => set('metaAccountId', v)} label="Cuenta publicitaria (Meta) — obligatoria" />
+
       <div className="ad-row">
         <Field label="Clave de acceso (cliente)" value={f.accessKey} onChange={(v) => set('accessKey', v)} />
         <Field label="Clave de pagos (admin)" value={f.paymentsKey} onChange={(v) => set('paymentsKey', v)} />
       </div>
-      <AdAccountSelect value={f.metaAccountId} onChange={(v) => set('metaAccountId', v)} />
-      <div className="ad-field">
-        <label>Responsable (AM)</label>
-        <select value={f.am} onChange={(e) => set('am', e.target.value)}>
-          <option value="">— Sin asignar —</option>
-          {ALL_AMS.map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
+
+      <div className="ad-sublabel">Estrategia — meses de trabajo (micro)</div>
+      <p className="ad-muted" style={{ margin: '0 0 8px' }}>Elegí los meses que vas a trabajar. Cada uno se va a alimentar de su Plan de medios.</p>
+      <div className="ad-caps">
+        {MONTH_OPTS.map((m) => (
+          <label key={m} className="ad-cap">
+            <input type="checkbox" checked={f.months.includes(m)} onChange={() => toggleMonth(m)} />
+            <span>{fmtMonth(m)}</span>
+          </label>
+        ))}
       </div>
+
       <div className="ad-sublabel">¿Qué le ofrecés?</div>
       <CapsEditor caps={f.capabilities} onToggle={toggleCap} />
       {f.capabilities.variable && <NumField label="Base fija del variable (ARS)" value={f.variableBase} onChange={(v) => set('variableBase', v)} />}
@@ -471,6 +510,13 @@ function ClientConfigEditor({ slug }) {
               <select value={cfg.am || ''} onChange={(e) => setCfg({ ...cfg, am: e.target.value })}>
                 <option value="">— Sin asignar —</option>
                 {ALL_AMS.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+            <div className="ad-field">
+              <label>Tipo de cliente</label>
+              <select value={cfg.type || (cfg.capabilities?.ecommerce ? 'ecommerce' : 'servicios')} onChange={(e) => setCfg({ ...cfg, type: e.target.value })}>
+                <option value="ecommerce">Ecommerce</option>
+                <option value="servicios">Servicios</option>
               </select>
             </div>
           </div>

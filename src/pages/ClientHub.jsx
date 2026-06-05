@@ -110,14 +110,16 @@ export default function ClientHub({ slug, onBack }) {
           <div className="hub-goals-card">
             <div className="hub-goals-title">Metas del mes</div>
             {planObjective ? (
-              <div className="hub-goals-row">
-                <div className="hub-metric" style={{ minWidth: 180 }}><div className="hub-metric-lbl">Meta facturación</div><div className="hub-metric-val">{fmtMoney(revGoal)}</div></div>
-                <div className="hub-metric" style={{ minWidth: 140 }}><div className="hub-metric-lbl">Meta ROAS</div><div className="hub-metric-val">{roasGoal ? roasGoal + '×' : '—'}</div></div>
-                <div style={{ alignSelf: 'center' }}>
-                  <span className="ad-muted">Viene del Plan de medios de este mes. </span>
-                  <button className="hub-quick-btn" style={{ display: 'inline', padding: '4px 10px', minWidth: 0 }} onClick={() => setTab('media')}>Editar en Plan de medios →</button>
+              <>
+                <div className="hub-metrics">
+                  <div className="hub-metric"><div className="hub-metric-lbl">Meta facturación</div><div className="hub-metric-val">{fmtMoney(revGoal)}</div></div>
+                  <div className="hub-metric"><div className="hub-metric-lbl">Meta ROAS</div><div className="hub-metric-val">{roasGoal ? roasGoal + '×' : '—'}</div></div>
                 </div>
-              </div>
+                <div className="hub-goals-note">
+                  <span className="ad-muted">Viene del Plan de medios de este mes.</span>
+                  <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => setTab('media')}>Editar en Plan de medios →</button>
+                </div>
+              </>
             ) : (
               <div className="hub-goals-row">
                 <div className="ad-field"><label>Meta facturación (ARS)</label><input type="number" value={goals.revenue} placeholder="ej. 5000000" onChange={(e) => setGoals((g) => ({ ...g, revenue: e.target.value }))} /></div>

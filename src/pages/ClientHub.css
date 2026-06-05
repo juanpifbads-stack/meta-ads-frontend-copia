@@ -31,3 +31,5 @@
 .hub-portal-link { font-family: var(--font-mono); font-size: 12px; color: #1b1fe8; word-break: break-all; margin-bottom: 4px; }
 .hub-portal-key { font-size: 13px; color: #475569; margin-bottom: 12px; }
 .hub-portal-actions { display: flex; gap: 8px; }
+
+.hub-goals-note { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }

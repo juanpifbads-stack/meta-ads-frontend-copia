@@ -50,15 +50,16 @@ function PublicRoute({ children }) {
 function AppShell() {
   const [view, setView] = useState('home');
   const [slug, setSlug] = useState(null);
+  const [adminNew, setAdminNew] = useState(false);
 
   if (view === 'optimize') return <Dashboard onBack={() => setView('home')} />;
-  if (view === 'admin') return <Admin onBack={() => setView('home')} />;
+  if (view === 'admin') return <Admin onBack={() => setView('home')} autoNew={adminNew} />;
   if (view === 'client' && slug) return <ClientHub slug={slug} onBack={() => { setView('home'); setSlug(null); }} />;
   return (
     <Home
       onOpenClient={(s) => { setSlug(s); setView('client'); }}
       onOptimize={() => setView('optimize')}
-      onNewClient={() => setView('admin')}
+      onNewClient={() => { setAdminNew(true); setView('admin'); }}
     />
   );
 }

@@ -46,3 +46,6 @@
 .ad-new { border-color: var(--color-brand-blue); }
 .ad-tn { margin: 8px 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ad-tn-ok { font-family: var(--font-mono); font-size: 12px; color: var(--color-success); }
+
+.ad-strategy-head { margin: 22px 0 4px; }
+.ad-strategy-title { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
