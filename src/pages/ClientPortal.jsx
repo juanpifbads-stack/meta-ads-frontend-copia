@@ -234,9 +234,12 @@ function ClientDashboard({ client }) {
   const [metaLoading, setMetaLoading] = useState(true);
   const [tn, setTn] = useState(null);
   const [tnLoading, setTnLoading] = useState(true);
+  const [fx, setFx] = useState(null);
+  const [budgetCur, setBudgetCur] = useState('orig'); // 'orig' (monedas originales) | 'ars' (todo en pesos)
 
   useEffect(() => {
     let alive = true;
+    apiClient.get('/public/fx').then((r) => { if (alive) setFx(r.data?.venta || null); }).catch(() => {});
     apiClient
       .get(`/public/${client.slug}/meta-insights`, { params: { key: client.accessKey } })
       .then((res) => { if (alive) setMeta(res.data); })
@@ -347,13 +350,22 @@ function ClientDashboard({ client }) {
         </div>
         )}
 
-        {/* Presupuesto — botón a modal */}
+        {/* Presupuesto — toggle de moneda + detalle */}
         {show('presupuestoTotal') && (
-        <button className="cp-kpi cp-kpi--button" onClick={() => setShowBudgetModal(true)}>
+        <div className="cp-kpi cp-kpi--button">
           <div className="cp-kpi-label">Presupuesto total mes</div>
-          <div className="cp-kpi-value cp-kpi-value--budget">{fmtTotals(budgetTotals)}</div>
-          <div className="cp-kpi-cta">Ver detalle →</div>
-        </button>
+          <div className="cp-budget-cur">
+            <button className={`cp-budget-curbtn ${budgetCur === 'orig' ? 'cp-budget-curbtn--on' : ''}`} onClick={() => setBudgetCur('orig')}>Monedas originales</button>
+            <button className={`cp-budget-curbtn ${budgetCur === 'ars' ? 'cp-budget-curbtn--on' : ''}`} onClick={() => setBudgetCur('ars')} disabled={!fx}>Todo en pesos</button>
+          </div>
+          <div className="cp-kpi-value cp-kpi-value--budget">
+            {budgetCur === 'ars'
+              ? fmtMoney((budgetTotals.ARS || 0) + (budgetTotals.USD || 0) * (fx || 0))
+              : fmtTotals(budgetTotals)}
+          </div>
+          {budgetCur === 'ars' && fx && <div className="cp-kpi-pct">al dólar oficial venta ${fx}</div>}
+          <div className="cp-kpi-cta" onClick={() => setShowBudgetModal(true)} style={{ cursor: 'pointer' }}>Ver detalle →</div>
+        </div>
         )}
       </section>
 

@@ -410,3 +410,9 @@
 .cp-risk-text { font-size: 13px; color: var(--color-text-secondary); }
 
 .cp-footer { text-align: center; font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted); margin-top: 40px; }
+
+/* Toggle de moneda en Presupuesto total */
+.cp-budget-cur { display: flex; gap: 6px; margin: 4px 0 8px; }
+.cp-budget-curbtn { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .03em; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--color-gray-light, #d8d8df); background: #fff; color: #64748b; cursor: pointer; transition: all .12s; }
+.cp-budget-curbtn--on { background: var(--color-brand-blue, #1b1fe8); color: #fff; border-color: var(--color-brand-blue, #1b1fe8); }
+.cp-budget-curbtn:disabled { opacity: .4; cursor: not-allowed; }
