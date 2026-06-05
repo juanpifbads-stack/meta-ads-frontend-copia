@@ -46,6 +46,7 @@ export default function StrategicProducts({ slug, accessKey, products }) {
     for (const p of products) m[p.sku] = p.name;
     return m;
   }, [products]);
+  const nameOf = (p) => nameBySku[p.sku] || p.name || p.sku;
 
   useEffect(() => {
     let alive = true;
@@ -64,7 +65,7 @@ export default function StrategicProducts({ slug, accessKey, products }) {
 
   const sortVal = (p, key) => {
     switch (key) {
-      case 'name': return (nameBySku[p.sku] || p.sku).toLowerCase();
+      case 'name': return nameOf(p).toLowerCase();
       case 'sku': return p.sku.toLowerCase();
       case 'stock': return p.stock == null ? -1 : p.stock;
       case 'units': return p.windows[win]?.units || 0;
@@ -177,7 +178,7 @@ export default function StrategicProducts({ slug, accessKey, products }) {
                     <tr className="sp-prow" onClick={() => setExpanded((e) => ({ ...e, [p.sku]: !e[p.sku] }))}>
                       <td>
                         {vs.length > 0 && <span className="sp-caret">{isOpen ? '▾' : '▸'}</span>}
-                        {nameBySku[p.sku] || p.sku}
+                        {nameOf(p)}
                       </td>
                       <td className="sp-mono">{p.sku}</td>
                       <td className="sp-r">{p.stock == null ? '—' : `${p.stock} u`}</td>

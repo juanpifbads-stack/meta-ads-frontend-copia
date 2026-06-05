@@ -459,11 +459,11 @@ function ClientDashboard({ client }) {
       </section>
       )}
 
-      {/* Productos estratégicos */}
-      {caps.ecommerce && show('productos') && (strategicProducts || []).length > 0 && (
+      {/* Productos estratégicos (se traen de Tienda Nube; si no hay tienda conectada, no aparece) */}
+      {caps.ecommerce && show('productos') && (generic ? !!tn : (strategicProducts || []).length > 0) && (
       <section className="cp-section">
         <h2 className="cp-section-title">Productos estratégicos</h2>
-        <StrategicProducts slug={client.slug} accessKey={client.accessKey} products={strategicProducts} />
+        <StrategicProducts slug={client.slug} accessKey={client.accessKey} products={strategicProducts || []} />
       </section>
       )}
 

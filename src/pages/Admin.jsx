@@ -139,8 +139,8 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
   const loadClient = useCallback((s) => {
     apiClient.get(`/admin/${s}`).then((r) => {
       setClientData(r.data);
-      const m = r.data.months?.includes(currentYM()) ? currentYM() : (r.data.months?.[0] || currentYM());
-      setMonth(m);
+      setMonth(''); // no autoseleccionar: el usuario elige el mes micro
+      setPlan(null);
     }).catch(() => {});
   }, []);
 
@@ -161,7 +161,9 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
 
   const savePlan = () => {
     setMsg('Guardando…');
-    apiClient.put(`/admin/${slug}/plan/${month}`, { plan })
+    // La etiqueta del mes es siempre la fecha del mes.
+    const payload = { ...plan, strategyMonthly: { ...(plan.strategyMonthly || {}), month: fmtMonth(month) } };
+    apiClient.put(`/admin/${slug}/plan/${month}`, { plan: payload })
       .then(() => { setMsg('✓ Guardado'); setTimeout(() => setMsg(''), 2000); })
       .catch(() => setMsg('Error al guardar'));
   };
@@ -208,12 +210,13 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
           <div className="ad-field">
             <label>Mes (micro)</label>
             <select value={month} onChange={(e) => setMonth(e.target.value)}>
+              <option value="">— Elegí el mes —</option>
               {[...(clientData?.months || [])].sort().map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
             </select>
           </div>
           <div className="ad-save" style={{ marginLeft: 'auto' }}>
             {msg && <span className="ad-msg">{msg}</span>}
-            <button className="ad-btn" onClick={savePlan} disabled={!plan}>Guardar mes</button>
+            <button className="ad-btn" onClick={savePlan} disabled={!plan || !month}>Guardar mes</button>
           </div>
         </div>
       )}
@@ -224,7 +227,6 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
         <div className="ad-plan">
           {/* Estrategia mensual */}
           <Section title="Estrategia del mes">
-            <Field label="Etiqueta del mes (ej. Junio 2026)" value={plan.strategyMonthly?.month || ''} onChange={(v) => upd((p) => { p.strategyMonthly = { ...p.strategyMonthly, month: v }; })} />
             <Field label="Objetivo del mes" value={plan.strategyMonthly?.objective || ''} onChange={(v) => upd((p) => { p.strategyMonthly = { ...p.strategyMonthly, objective: v }; })} />
             <Field label="Descripción" textarea value={plan.strategyMonthly?.description || ''} onChange={(v) => upd((p) => { p.strategyMonthly = { ...p.strategyMonthly, description: v }; })} />
           </Section>
@@ -263,48 +265,9 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
             <button className="ad-add" onClick={() => upd((p) => { p.roadmap = p.roadmap || []; p.roadmap.push({ week: `Semana ${p.roadmap.length + 1}`, goal: '', status: 'pendiente', recordings: [] }); })}>+ Semana</button>
           </Section>
 
-          {/* Productos estratégicos */}
+          {/* Productos estratégicos — se traen de Tienda Nube */}
           <Section title="Productos estratégicos">
-            {(plan.strategicProducts || []).map((pr, i) => (
-              <div key={i} className="ad-row">
-                <Field label="SKU" value={pr.sku} onChange={(v) => upd((p) => { p.strategicProducts[i].sku = v; })} />
-                <Field label="Nombre" value={pr.name} onChange={(v) => upd((p) => { p.strategicProducts[i].name = v; })} />
-                <button className="ad-del" onClick={() => upd((p) => { p.strategicProducts.splice(i, 1); })}>×</button>
-              </div>
-            ))}
-            <button className="ad-add" onClick={() => upd((p) => { p.strategicProducts = p.strategicProducts || []; p.strategicProducts.push({ sku: '', name: '' }); })}>+ Producto</button>
-          </Section>
-
-          {/* Presupuesto */}
-          <Section title="Presupuesto y fees">
-            {(plan.budgetItems || []).map((it, i) => (
-              <div key={i} className="ad-row-box">
-                <div className="ad-row">
-                  <Field label="Concepto" value={it.concept} onChange={(v) => upd((p) => { p.budgetItems[i].concept = v; })} />
-                  <Field label="Detalle" value={it.detail || ''} onChange={(v) => upd((p) => { p.budgetItems[i].detail = v; })} />
-                </div>
-                {!it.breakdown && !it.isVariable && !it.editable && (
-                  <div className="ad-row">
-                    <NumField label="Monto" value={it.amount} onChange={(v) => upd((p) => { p.budgetItems[i].amount = v; })} />
-                    <CurField value={it.currency} onChange={(v) => upd((p) => { p.budgetItems[i].currency = v; })} />
-                  </div>
-                )}
-                {it.editable && <div className="ad-note">Monto editable desde el portal de pagos.</div>}
-                {it.breakdown && (
-                  <div className="ad-breakdown">
-                    {it.breakdown.map((b, j) => (
-                      <div key={j} className="ad-row">
-                        <Field label="Sub-concepto" value={b.concept} onChange={(v) => upd((p) => { p.budgetItems[i].breakdown[j].concept = v; })} />
-                        {b.isVariable
-                          ? <div className="ad-note">Variable (se calcula solo)</div>
-                          : <><NumField label="Monto" value={b.amount} onChange={(v) => upd((p) => { p.budgetItems[i].breakdown[j].amount = v; })} /><CurField value={b.currency} onChange={(v) => upd((p) => { p.budgetItems[i].breakdown[j].currency = v; })} /></>}
-                        <Field label="Bonificado (texto, vacío = no)" value={b.bonificado || ''} onChange={(v) => upd((p) => { p.budgetItems[i].breakdown[j].bonificado = v || undefined; })} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+            <p className="ad-muted">Se traen automáticamente de la <strong>Tienda Nube</strong> conectada al cliente. Si no tiene tienda conectada, esta sección no aparece.</p>
           </Section>
 
           <div className="ad-save-bottom">
