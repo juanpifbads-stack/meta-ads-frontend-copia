@@ -208,7 +208,7 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
           <div className="ad-field">
             <label>Mes (micro)</label>
             <select value={month} onChange={(e) => setMonth(e.target.value)}>
-              {(clientData?.months || []).map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
+              {[...(clientData?.months || [])].sort().map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
             </select>
           </div>
           <div className="ad-save" style={{ marginLeft: 'auto' }}>
@@ -229,10 +229,8 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
             <Field label="Descripción" textarea value={plan.strategyMonthly?.description || ''} onChange={(v) => upd((p) => { p.strategyMonthly = { ...p.strategyMonthly, description: v }; })} />
           </Section>
 
-          {/* Objetivo ecommerce (el objetivo Meta viene del Plan de medios) */}
-          <Section title="Objetivo ecommerce">
-            <NumField label="Objetivo facturación ecommerce (ARS)" value={plan.ecommerceGoal?.target} onChange={(v) => upd((p) => { p.ecommerceGoal = { ...p.ecommerceGoal, target: v }; })} />
-            <p className="ad-muted">El objetivo de Meta (facturación / ROAS / inversión), la justificación y las consideraciones se cargan en el <strong>Plan de medios</strong> de este mes.</p>
+          <Section title="Objetivos del mes">
+            <p className="ad-muted">El objetivo de facturación (ecommerce y Meta), ROAS, inversión, justificación y consideraciones se cargan en el <strong>Plan de medios</strong> de este mes.</p>
           </Section>
 
           {/* Roadmap */}

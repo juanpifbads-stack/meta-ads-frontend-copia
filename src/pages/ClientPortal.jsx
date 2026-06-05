@@ -252,8 +252,11 @@ function ClientDashboard({ client }) {
   const ecomOrders = tn ? tn.orders : ecommerceGoal.orders;
   const ecomTicket = tn ? tn.ticket : (ecommerceGoal.orders > 0 ? ecommerceGoal.current / ecommerceGoal.orders : 0);
 
-  const ecomPct = ecommerceGoal.target > 0 ? (ecomCurrent / ecommerceGoal.target) * 100 : 0;
-  const expected = (ecommerceGoal.target / daysInMonth()) * daysElapsed();
+  // Objetivo de facturación: para portales genéricos viene del Plan de medios; si no, del plan mensual.
+  const ecomTarget = (generic && mediaObjective?.facturacion) ? mediaObjective.facturacion : (ecommerceGoal.target || 0);
+
+  const ecomPct = ecomTarget > 0 ? (ecomCurrent / ecomTarget) * 100 : 0;
+  const expected = (ecomTarget / daysInMonth()) * daysElapsed();
   const ecomDeviation = expected > 0 ? ((ecomCurrent - expected) / expected) * 100 : 0;
 
   const budgetTotals = sumByCurrency(budget.items, { budget, facturacion: ecomCurrent });
@@ -304,7 +307,7 @@ function ClientDashboard({ client }) {
           {ecomReady && tn && <div className="cp-kpi-pct">{ecomOrders?.toLocaleString('es-AR')} pedidos · ticket {fmtMoney(ecomTicket)}</div>}
           <div className="cp-kpi-objrow">
             <span className="cp-kpi-objlbl">Objetivo del mes</span>
-            <span className="cp-kpi-objval">{fmtMoney(ecommerceGoal.target)}</span>
+            <span className="cp-kpi-objval">{fmtMoney(ecomTarget)}</span>
           </div>
           <div className="cp-bar cp-bar--lg">
             <div className={`cp-bar-fill ${ecomPct >= 100 ? 'cp-bar--good' : ecomPct >= 70 ? 'cp-bar--warn' : 'cp-bar--bad'}`}
@@ -360,7 +363,7 @@ function ClientDashboard({ client }) {
       {/* Modal de presupuesto */}
       {showBudgetModal && (
         <Modal title="Presupuesto económico" onClose={() => setShowBudgetModal(false)}>
-          <PaymentsSection budget={budget} facturacion={ecomCurrent} objetivo={ecommerceGoal.target} />
+          <PaymentsSection budget={budget} facturacion={ecomCurrent} objetivo={ecomTarget} />
         </Modal>
       )}
 
