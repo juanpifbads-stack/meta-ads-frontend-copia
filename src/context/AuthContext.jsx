@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import apiClient from '../api/client.js';
+import apiClient, { setAuthToken } from '../api/client.js';
 
 const AuthContext = createContext(null);
 
@@ -29,6 +29,7 @@ export function AuthProvider({ children }) {
     } catch {
       // Ignore errors on logout
     } finally {
+      setAuthToken(null);
       setUser(null);
     }
   }, []);
