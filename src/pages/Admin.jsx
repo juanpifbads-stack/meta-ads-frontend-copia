@@ -159,6 +159,17 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
 
   const upd = (fn) => setPlan((p) => { const next = structuredClone(p); fn(next); return next; });
 
+  // Mover una sesión de grabación de una semana a otra.
+  const moveRecording = (fromWeek, recIndex, toWeek) => {
+    if (fromWeek === toWeek) return;
+    upd((p) => {
+      const rec = p.roadmap[fromWeek].recordings[recIndex];
+      p.roadmap[fromWeek].recordings.splice(recIndex, 1);
+      p.roadmap[toWeek].recordings = p.roadmap[toWeek].recordings || [];
+      p.roadmap[toWeek].recordings.push(rec);
+    });
+  };
+
   const savePlan = () => {
     setMsg('Guardando…');
     // La etiqueta del mes es siempre la fecha del mes.
@@ -237,6 +248,10 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
 
           {/* Roadmap */}
           <Section title="Roadmap del mes">
+            <datalist id="ad-actrices">
+              <option value="Delfina" />
+              <option value="Karina" />
+            </datalist>
             {(plan.roadmap || []).map((w, i) => (
               <div key={i} className="ad-row-box">
                 <div className="ad-row">
@@ -250,16 +265,24 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
                   <button className="ad-del" onClick={() => upd((p) => { p.roadmap.splice(i, 1); })}>×</button>
                 </div>
                 <Field label="Objetivo de la semana" value={w.goal} onChange={(v) => upd((p) => { p.roadmap[i].goal = v; })} />
-                <div className="ad-sublabel">Grabaciones</div>
+                <div className="ad-sublabel">Sesiones de grabación</div>
                 {(w.recordings || []).map((r, j) => (
-                  <div key={j} className="ad-row">
-                    <Field label="Fecha (AAAA-MM-DD)" value={r.date} onChange={(v) => upd((p) => { p.roadmap[i].recordings[j].date = v; })} />
-                    <Field label="Actriz" value={r.actress} onChange={(v) => upd((p) => { p.roadmap[i].recordings[j].actress = v; })} />
+                  <div key={j} className="ad-row-box" style={{ background: '#fff' }}>
+                    <div className="ad-row">
+                      <div className="ad-field"><label>Fecha</label><input type="date" value={r.date || ''} onChange={(e) => upd((p) => { p.roadmap[i].recordings[j].date = e.target.value; })} /></div>
+                      <div className="ad-field"><label>Actriz</label><input list="ad-actrices" value={r.actress || ''} placeholder="Elegí o escribí" onChange={(e) => upd((p) => { p.roadmap[i].recordings[j].actress = e.target.value; })} /></div>
+                      <div className="ad-field">
+                        <label>Semana</label>
+                        <select value={i} onChange={(e) => moveRecording(i, j, parseInt(e.target.value, 10))}>
+                          {(plan.roadmap || []).map((wk, wi) => <option key={wi} value={wi}>{wk.week || `Semana ${wi + 1}`}</option>)}
+                        </select>
+                      </div>
+                      <button className="ad-del" onClick={() => upd((p) => { p.roadmap[i].recordings.splice(j, 1); })}>×</button>
+                    </div>
                     <Field label="Nota" value={r.note} onChange={(v) => upd((p) => { p.roadmap[i].recordings[j].note = v; })} />
-                    <button className="ad-del" onClick={() => upd((p) => { p.roadmap[i].recordings.splice(j, 1); })}>×</button>
                   </div>
                 ))}
-                <button className="ad-add" onClick={() => upd((p) => { p.roadmap[i].recordings = p.roadmap[i].recordings || []; p.roadmap[i].recordings.push({ date: '', actress: '', note: '' }); })}>+ Grabación</button>
+                <button className="ad-add" onClick={() => upd((p) => { p.roadmap[i].recordings = p.roadmap[i].recordings || []; p.roadmap[i].recordings.push({ date: '', actress: '', note: '' }); })}>+ Sesión de grabación</button>
               </div>
             ))}
             <button className="ad-add" onClick={() => upd((p) => { p.roadmap = p.roadmap || []; p.roadmap.push({ week: `Semana ${p.roadmap.length + 1}`, goal: '', status: 'pendiente', recordings: [] }); })}>+ Semana</button>
