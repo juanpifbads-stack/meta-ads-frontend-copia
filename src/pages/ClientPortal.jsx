@@ -40,6 +40,12 @@ function fmtMonthLabel(ym) {
 }
 
 function daysElapsed() { return new Date().getDate(); }
+// Días "efectivos" para el ritmo: días completos (hasta ayer) + fracción de hoy (10am→22hs).
+function elapsedPace() {
+  const now = new Date();
+  const todayFrac = Math.min(1, Math.max(0, (now.getHours() + now.getMinutes() / 60 - 10) / 12));
+  return Math.max(0, now.getDate() - 1) + todayFrac;
+}
 function daysInMonth() {
   const n = new Date();
   return new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
@@ -256,7 +262,7 @@ function ClientDashboard({ client }) {
   const ecomTarget = (generic && mediaObjective?.facturacion) ? mediaObjective.facturacion : (ecommerceGoal.target || 0);
 
   const ecomPct = ecomTarget > 0 ? (ecomCurrent / ecomTarget) * 100 : 0;
-  const expected = (ecomTarget / daysInMonth()) * daysElapsed();
+  const expected = (ecomTarget / daysInMonth()) * elapsedPace();
   const ecomDeviation = expected > 0 ? ((ecomCurrent - expected) / expected) * 100 : 0;
 
   const budgetTotals = sumByCurrency(budget.items, { budget, facturacion: ecomCurrent });
@@ -401,7 +407,7 @@ function ClientDashboard({ client }) {
             const roasStatus = meta.roas >= effMetaGoal.roasTarget ? 'good' : meta.roas >= effMetaGoal.roasTarget * 0.7 ? 'warn' : 'bad';
             const revPct = effMetaGoal.revenueTarget > 0 ? (meta.purchaseValue / effMetaGoal.revenueTarget) * 100 : 0;
             // Desvío de facturación atribuida vs ritmo esperado del mes
-            const revExpected = (effMetaGoal.revenueTarget / daysInMonth()) * daysElapsed();
+            const revExpected = (effMetaGoal.revenueTarget / daysInMonth()) * elapsedPace();
             const revDeviation = revExpected > 0 ? ((meta.purchaseValue - revExpected) / revExpected) * 100 : 0;
             const revOnTrack = revDeviation >= -10;
             return (

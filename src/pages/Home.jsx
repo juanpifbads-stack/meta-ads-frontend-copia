@@ -14,8 +14,14 @@ function fmtMoney(n) {
   if (n == null || isNaN(n)) return '—';
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
 }
-function daysElapsed() { return new Date().getDate(); }
 function daysInMonth() { const n = new Date(); return new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate(); }
+// Días transcurridos "efectivos" para el ritmo: días completos (hasta ayer) + fracción de hoy.
+// La fracción arranca a las 10am y llega a 1 a las 22hs → a la mañana no figurás atrasado por un día.
+function elapsedPace() {
+  const now = new Date();
+  const todayFrac = Math.min(1, Math.max(0, (now.getHours() + now.getMinutes() / 60 - 10) / 12));
+  return Math.max(0, now.getDate() - 1) + todayFrac;
+}
 
 // Bandas de estado según el ratio (valor / objetivo).
 function statusByRatio(r) {
@@ -39,12 +45,12 @@ function ClientCard({ c, onOpen }) {
   const purchaseValue = health?.purchaseValue || 0;
   const roas = health?.roas || 0;
 
-  const expected = revGoal > 0 ? (revGoal / daysInMonth()) * daysElapsed() : 0;
-  const pacePct = expected > 0 ? (purchaseValue / expected) * 100 : null; // % del ritmo esperado
+  const expected = revGoal > 0 ? (revGoal / daysInMonth()) * elapsedPace() : 0;
+  // Desvío: cuánto te alejaste del esperado (no el % del 100). Ej: vas 100, debías 150 → -33%.
+  const dev = expected > 0 ? ((purchaseValue - expected) / expected) * 100 : null;
   const roasBand = roasGoal > 0 && health ? statusByRatio(roas / roasGoal) : null;
   const paceBand = expected > 0 && health ? statusByRatio(purchaseValue / expected) : null;
   const revPct = revGoal > 0 ? Math.min((purchaseValue / revGoal) * 100, 999) : 0;
-  const roasPct = roasGoal > 0 ? Math.min((roas / roasGoal) * 100, 999) : 0;
 
   return (
     <button className="hm-card" onClick={() => onOpen(c.slug)}>
@@ -73,27 +79,19 @@ function ClientCard({ c, onOpen }) {
           {paceBand && (
             <div className="hm-pace" style={{ background: paceBand.bg, color: paceBand.color }}>
               <span>
-                {pacePct >= 100
-                  ? `✓ Vas al ${pacePct.toFixed(0)}% del ritmo esperado`
-                  : `⚠ Vas al ${pacePct.toFixed(0)}% del ritmo esperado`}
+                {dev >= 0
+                  ? `✓ Adelantado un ${dev.toFixed(0)}% sobre el ritmo`
+                  : `⚠ Te desviaste un ${Math.abs(dev).toFixed(0)}% del ritmo`}
                 <span className="hm-pace-exp"> · esperado {fmtMoney(expected)}</span>
               </span>
             </div>
           )}
-          {(revGoal > 0 || roasGoal > 0) && (
+          {revGoal > 0 && (
             <div className="ctrl-goals">
-              {revGoal > 0 && (
-                <div className="ctrl-goal-row">
-                  <div className="ctrl-goal-top"><span>Objetivo facturación</span><span>{revPct.toFixed(0)}%</span></div>
-                  <div className="ctrl-bar"><div className="ctrl-bar-fill" style={{ width: Math.min(revPct, 100) + '%', background: (paceBand || {}).color }} /></div>
-                </div>
-              )}
-              {roasGoal > 0 && (
-                <div className="ctrl-goal-row">
-                  <div className="ctrl-goal-top"><span>Objetivo ROAS</span><span>{roasPct.toFixed(0)}%</span></div>
-                  <div className="ctrl-bar"><div className="ctrl-bar-fill" style={{ width: Math.min(roasPct, 100) + '%', background: (roasBand || {}).color }} /></div>
-                </div>
-              )}
+              <div className="ctrl-goal-row">
+                <div className="ctrl-goal-top"><span>Objetivo facturación</span><span>{revPct.toFixed(0)}%</span></div>
+                <div className="ctrl-bar"><div className="ctrl-bar-fill" style={{ width: Math.min(revPct, 100) + '%', background: (paceBand || {}).color }} /></div>
+              </div>
             </div>
           )}
         </>
