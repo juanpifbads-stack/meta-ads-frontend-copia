@@ -49,3 +49,13 @@
 
 .ad-strategy-head { margin: 22px 0 4px; }
 .ad-strategy-title { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+
+.ad-services { display: flex; flex-direction: column; gap: 8px; }
+.ad-service-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.ad-service-row .ad-cap { min-width: 220px; }
+.ad-service-fee { flex-direction: row; align-items: center; gap: 8px; }
+.ad-service-fee label { white-space: nowrap; }
+.ad-service-fee input { width: 140px; }
+.ad-service-total { margin-top: 6px; font-family: var(--font-mono); font-size: 13px; color: var(--color-text-primary); }
+.ad-service-total strong { color: var(--color-brand-blue); }
+.ad-variable { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }

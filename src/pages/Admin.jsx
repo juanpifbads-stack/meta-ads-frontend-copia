@@ -4,22 +4,86 @@ import './Admin.css';
 
 const ALL_AMS = ['Juan Ignacio', 'Franco', 'Agustín', 'Chachi'];
 
-// Catálogo de secciones del panel del cliente (elegibles por cliente).
-const PANEL_SECTIONS = [
-  { key: 'macro', label: 'Estrategia macro (largo plazo)' },
-  { key: 'estrategiaMes', label: 'Estrategia del mes' },
-  { key: 'facturacion', label: 'Facturación ecommerce' },
-  { key: 'ritmo', label: 'Ritmo del mes' },
+// Secciones OPCIONALES del panel (las obligatorias van siempre, no se preguntan).
+const OPTIONAL_SECTIONS = [
   { key: 'presupuestoTotal', label: 'Presupuesto total del mes' },
   { key: 'pagos', label: 'Pagos del mes' },
-  { key: 'performanceMeta', label: 'Performance Meta' },
   { key: 'roadmap', label: 'Roadmap del mes' },
-  { key: 'productos', label: 'Productos estratégicos' },
-  { key: 'justificacion', label: 'Justificación de objetivos' },
-  { key: 'consideraciones', label: 'Consideraciones y riesgos' },
+  { key: 'productos', label: 'Productos estratégicos (Tienda Nube)' },
   { key: 'planificacion', label: 'Planificación de próximos meses' },
-  { key: 'tareas', label: 'Tareas' },
 ];
+const MANDATORY_LABELS = ['Estrategia macro', 'Estrategia del mes', 'Facturación ecommerce', 'Ritmo del mes', 'Performance Meta', 'Justificación de objetivos', 'Consideraciones y riesgos', 'Tareas'];
+
+// Servicios facturables (con monto por cada uno).
+const SERVICES = [
+  { k: 'meta', l: 'Pauta en Meta' },
+  { k: 'tiktok', l: 'Pauta en TikTok' },
+  { k: 'contenido', l: 'Contenido / grabaciones' },
+  { k: 'web', l: 'Email mkt + gestión web' },
+];
+const fmtArs = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n || 0);
+
+function ServicesEditor({ caps, fees, onToggle, onFee }) {
+  const total = SERVICES.reduce((s, sv) => s + (caps[sv.k] ? (Number(fees[sv.k]) || 0) : 0), 0);
+  return (
+    <div className="ad-services">
+      {SERVICES.map((sv) => (
+        <div key={sv.k} className="ad-service-row">
+          <label className="ad-cap"><input type="checkbox" checked={!!caps[sv.k]} onChange={() => onToggle(sv.k)} /><span>{sv.l}</span></label>
+          {caps[sv.k] && (
+            <div className="ad-field ad-service-fee">
+              <label>Monto (ARS)</label>
+              <input className="mp-num" type="number" value={fees[sv.k] === 0 || fees[sv.k] == null ? '' : fees[sv.k]} placeholder="0" onChange={(e) => onFee(sv.k, e.target.value === '' ? 0 : parseFloat(e.target.value))} />
+            </div>
+          )}
+        </div>
+      ))}
+      <div className="ad-service-total">Total servicios: <strong>{fmtArs(total)}</strong></div>
+    </div>
+  );
+}
+
+function VariableEditor({ variable, onChange }) {
+  const v = variable || { mode: 'none', base: 0, rate: 0.03 };
+  return (
+    <div className="ad-variable">
+      <div className="ad-field">
+        <label>Componente variable</label>
+        <select value={v.mode || 'none'} onChange={(e) => onChange({ ...v, mode: e.target.value })}>
+          <option value="none">Sin variable</option>
+          <option value="percent">Variable sobre % de facturación</option>
+          <option value="differential">Variable sobre el diferencial (con base fija)</option>
+        </select>
+      </div>
+      {v.mode === 'percent' && <NumField label="% sobre facturación" value={Math.round((v.rate || 0) * 1000) / 10} onChange={(x) => onChange({ ...v, rate: (Number(x) || 0) / 100 })} />}
+      {v.mode === 'differential' && (
+        <div className="ad-row">
+          <NumField label="Base fija (ARS)" value={v.base} onChange={(x) => onChange({ ...v, base: Number(x) || 0 })} />
+          <NumField label="% sobre el diferencial" value={Math.round((v.rate || 0) * 1000) / 10} onChange={(x) => onChange({ ...v, rate: (Number(x) || 0) / 100 })} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Select de mes (para rangos de macro). Cubre año pasado, actual y próximo.
+const MONTH_RANGE = (() => {
+  const y = new Date().getFullYear();
+  const out = [];
+  for (let yr = y - 1; yr <= y + 1; yr++) for (let m = 1; m <= 12; m++) out.push(`${yr}-${String(m).padStart(2, '0')}`);
+  return out;
+})();
+function MonthSelect({ label, value, onChange }) {
+  return (
+    <div className="ad-field">
+      <label>{label}</label>
+      <select value={value || ''} onChange={(e) => onChange(e.target.value)}>
+        <option value="">— Elegí —</option>
+        {MONTH_RANGE.map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
+      </select>
+    </div>
+  );
+}
 
 const STATUS_OPTS = [
   { v: 'pendiente', l: 'Pendiente' },
@@ -102,22 +166,6 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
       .catch(() => setMsg('Error al guardar'));
   };
 
-  const duplicate = () => {
-    const to = prompt('¿A qué mes duplicar? Formato AAAA-MM (ej. 2026-07)');
-    if (!to) return;
-    apiClient.post(`/admin/${slug}/duplicate`, { from: month, to })
-      .then(() => { loadClient(slug); setMonth(to); setMsg('✓ Mes duplicado'); setTimeout(() => setMsg(''), 2000); })
-      .catch(() => setMsg('Error al duplicar'));
-  };
-
-  const newMonth = () => {
-    const to = prompt('Nuevo mes en blanco. Formato AAAA-MM (ej. 2026-07)');
-    if (!to) return;
-    apiClient.put(`/admin/${slug}/plan/${to}`, { plan: blankPlan() })
-      .then(() => { loadClient(slug); setMonth(to); })
-      .catch(() => setMsg('Error'));
-  };
-
   return (
     <div className="ad-page">
       <header className="ad-header">
@@ -128,46 +176,48 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
         <button className="ad-btn ad-btn--ghost" onClick={onBack}>← Volver</button>
       </header>
 
-      <div className="ad-controls">
-        {!lockedSlug && (
-          <div className="ad-field">
-            <label>Cliente</label>
-            <select value={slug} onChange={(e) => setSlug(e.target.value)}>
-              {clients.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-            </select>
-          </div>
-        )}
-        <div className="ad-field">
-          <label>Mes</label>
-          <select value={month} onChange={(e) => setMonth(e.target.value)}>
-            {(clientData?.months || []).map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
-          </select>
-        </div>
-        <button className="ad-btn ad-btn--ghost" onClick={duplicate}>Duplicar mes →</button>
-        <button className="ad-btn ad-btn--ghost" onClick={newMonth}>+ Mes en blanco</button>
-        {!lockedSlug && <button className="ad-btn ad-btn--ghost" onClick={() => setShowNew(true)}>+ Nuevo cliente</button>}
-        <div className="ad-save">
-          {msg && <span className="ad-msg">{msg}</span>}
-          <button className="ad-btn" onClick={savePlan} disabled={!plan}>Guardar plan</button>
-        </div>
-      </div>
-
-      {showNew && <NewClientForm onClose={() => setShowNew(false)} onCreated={(s) => { setShowNew(false); loadClients(s); }} />}
-
-      {slug && <ClientConfigEditor slug={slug} />}
-
-      {clientData && (
-        <div className="ad-strategy-head">
-          <h2 className="ad-strategy-title">Estrategia</h2>
-          <p className="ad-muted">La <strong>macro</strong> (largo plazo, por temporada) + los <strong>meses (micro)</strong>. Lo micro de cada mes se alimenta de su Plan de medios. Elegí el mes arriba para editar su contenido.</p>
+      {!showNew && (
+        <div className="ad-controls">
+          {!lockedSlug && (
+            <div className="ad-field">
+              <label>Cliente</label>
+              <select value={slug} onChange={(e) => setSlug(e.target.value)}>
+                {clients.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
+              </select>
+            </div>
+          )}
+          {!lockedSlug && <button className="ad-btn ad-btn--ghost" onClick={() => setShowNew(true)}>+ Nuevo cliente</button>}
         </div>
       )}
 
-      {clientData && <MacroEditor slug={slug} macros={clientData.macros} reload={() => loadClient(slug)} />}
+      {showNew && <NewClientForm onClose={() => setShowNew(false)} onCreated={(s) => { setShowNew(false); loadClients(s); }} />}
 
-      {loading && <p className="ad-muted">Cargando plan…</p>}
+      {!showNew && slug && <ClientConfigEditor slug={slug} />}
 
-      {plan && !loading && (
+      {!showNew && clientData && (
+        <div className="ad-strategy-head">
+          <h2 className="ad-strategy-title">Estrategia</h2>
+          <p className="ad-muted">La <strong>macro</strong> (largo plazo, por temporada) + los <strong>meses (micro)</strong>. Cada mes se alimenta de su Plan de medios, tareas, roadmap y productos. Elegí el mes para editar su contenido micro.</p>
+          <div className="ad-row" style={{ marginTop: 10 }}>
+            <div className="ad-field">
+              <label>Mes (micro)</label>
+              <select value={month} onChange={(e) => setMonth(e.target.value)}>
+                {(clientData?.months || []).map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
+              </select>
+            </div>
+            <div className="ad-save" style={{ marginLeft: 'auto' }}>
+              {msg && <span className="ad-msg">{msg}</span>}
+              <button className="ad-btn" onClick={savePlan} disabled={!plan}>Guardar mes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!showNew && clientData && <MacroEditor slug={slug} macros={clientData.macros} reload={() => loadClient(slug)} />}
+
+      {!showNew && loading && <p className="ad-muted">Cargando plan…</p>}
+
+      {!showNew && plan && !loading && (
         <div className="ad-plan">
           {/* Estrategia mensual */}
           <Section title="Estrategia del mes">
@@ -333,14 +383,6 @@ function CurField({ value, onChange }) {
 }
 
 const TN_APP_ID = '33450';
-const CAPS = [
-  { k: 'ecommerce', l: 'Ecommerce (Tienda Nube)' },
-  { k: 'meta', l: 'Pauta en Meta' },
-  { k: 'tiktok', l: 'Pauta en TikTok' },
-  { k: 'contenido', l: 'Contenido / grabaciones' },
-  { k: 'variable', l: 'Cobra componente variable' },
-  { k: 'web', l: 'Email mkt + gestión web' },
-];
 
 function AdAccountSelect({ value, onChange, label }) {
   const [accounts, setAccounts] = useState(null);
@@ -366,49 +408,42 @@ function AdAccountSelect({ value, onChange, label }) {
   );
 }
 
-function CapsEditor({ caps, onToggle }) {
-  return (
-    <div className="ad-caps">
-      {CAPS.map((c) => (
-        <label key={c.k} className="ad-cap">
-          <input type="checkbox" checked={!!caps[c.k]} onChange={() => onToggle(c.k)} />
-          <span>{c.l}</span>
-        </label>
-      ))}
-    </div>
-  );
-}
-
 const slugify = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-const YEAR_NOW = new Date().getFullYear();
-const MONTH_OPTS = Array.from({ length: 12 }, (_, i) => `${YEAR_NOW}-${String(i + 1).padStart(2, '0')}`);
 
 function NewClientForm({ onClose, onCreated }) {
   const [f, setF] = useState({
     name: '', slug: '', accessKey: '', paymentsKey: '', metaAccountId: '', am: '', type: 'ecommerce',
-    capabilities: { meta: true, ecommerce: true, tiktok: true, contenido: true, variable: true, web: true },
-    variableBase: 0,
+    caps: { meta: true, tiktok: false, contenido: false, web: false },
+    fees: { meta: 0, tiktok: 0, contenido: 0, web: 0 },
+    variable: { mode: 'none', base: 0, rate: 0.03 },
+    macroFrom: '', macroTo: '',
+    sections: {},
     bankInfo: { titular: '', alias: '', cbu: '', observaciones: '' },
-    months: [`${YEAR_NOW}-${String(new Date().getMonth() + 1).padStart(2, '0')}`],
   });
   const [err, setErr] = useState('');
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
   const setName = (v) => setF((s) => ({ ...s, name: v, slug: slugify(v), accessKey: s.accessKey || `${slugify(v)}2026` }));
   const setBank = (k, v) => setF((s) => ({ ...s, bankInfo: { ...s.bankInfo, [k]: v } }));
-  const toggleCap = (k) => setF((s) => ({ ...s, capabilities: { ...s.capabilities, [k]: !s.capabilities[k] } }));
-  const toggleMonth = (m) => setF((s) => ({ ...s, months: s.months.includes(m) ? s.months.filter((x) => x !== m) : [...s.months, m] }));
+  const toggleCap = (k) => setF((s) => ({ ...s, caps: { ...s.caps, [k]: !s.caps[k] } }));
+  const setFee = (k, v) => setF((s) => ({ ...s, fees: { ...s.fees, [k]: v } }));
+  const toggleSection = (k) => setF((s) => ({ ...s, sections: { ...s.sections, [k]: !s.sections[k] } }));
 
   const create = () => {
     if (!f.name) { setErr('Poné el nombre del cliente.'); return; }
     if (!f.metaAccountId) { setErr('Tenés que asociar una cuenta publicitaria de tu portfolio.'); return; }
     if (!f.accessKey) { setErr('Falta la clave de acceso.'); return; }
+    if (!f.macroFrom || !f.macroTo) { setErr('Definí el período de la estrategia macro (de qué mes a qué mes).'); return; }
     const config = {
       name: f.name, accessKey: f.accessKey, paymentsKey: f.paymentsKey || f.accessKey,
       metaAccountId: f.metaAccountId || null, am: f.am || '', type: f.type,
-      capabilities: { ...f.capabilities, ecommerce: f.type === 'ecommerce' ? f.capabilities.ecommerce : false },
-      variable: { base: Number(f.variableBase) || 0, rate: 0.03 }, bankInfo: f.bankInfo,
+      capabilities: { meta: f.caps.meta, tiktok: f.caps.tiktok, contenido: f.caps.contenido, web: f.caps.web, ecommerce: f.type === 'ecommerce', variable: f.variable.mode !== 'none' },
+      fees: f.fees,
+      variable: f.variable,
+      panel: { sections: f.sections },
+      bankInfo: f.bankInfo,
     };
-    apiClient.post('/admin/clients', { slug: f.slug, config, months: f.months })
+    const macro = { start_ym: f.macroFrom, end_ym: f.macroTo, period: `${fmtMonth(f.macroFrom)} – ${fmtMonth(f.macroTo)}`, objective: '', description: '' };
+    apiClient.post('/admin/clients', { slug: f.slug, config, macro })
       .then(() => onCreated(f.slug))
       .catch((e) => setErr(e.response?.data?.message || e.message || 'Error al crear'));
   };
@@ -446,20 +481,27 @@ function NewClientForm({ onClose, onCreated }) {
         <Field label="Clave de pagos (admin)" value={f.paymentsKey} onChange={(v) => set('paymentsKey', v)} />
       </div>
 
-      <div className="ad-sublabel">Estrategia — meses de trabajo (micro)</div>
-      <p className="ad-muted" style={{ margin: '0 0 8px' }}>Elegí los meses que vas a trabajar. Cada uno se va a alimentar de su Plan de medios.</p>
+      <div className="ad-sublabel">Estrategia macro — ¿de qué mes a qué mes?</div>
+      <div className="ad-row">
+        <MonthSelect label="Desde" value={f.macroFrom} onChange={(v) => set('macroFrom', v)} />
+        <MonthSelect label="Hasta" value={f.macroTo} onChange={(v) => set('macroTo', v)} />
+      </div>
+
+      <div className="ad-sublabel">Servicios que ofrecés (con su monto)</div>
+      <ServicesEditor caps={f.caps} fees={f.fees} onToggle={toggleCap} onFee={setFee} />
+      <VariableEditor variable={f.variable} onChange={(v) => set('variable', v)} />
+
+      <div className="ad-sublabel">Secciones opcionales del panel</div>
+      <p className="ad-muted" style={{ margin: '0 0 6px' }}>Siempre van: {MANDATORY_LABELS.join(' · ')}.</p>
       <div className="ad-caps">
-        {MONTH_OPTS.map((m) => (
-          <label key={m} className="ad-cap">
-            <input type="checkbox" checked={f.months.includes(m)} onChange={() => toggleMonth(m)} />
-            <span>{fmtMonth(m)}</span>
+        {OPTIONAL_SECTIONS.map((s) => (
+          <label key={s.key} className="ad-cap">
+            <input type="checkbox" checked={!!f.sections[s.key]} onChange={() => toggleSection(s.key)} />
+            <span>{s.label}</span>
           </label>
         ))}
       </div>
 
-      <div className="ad-sublabel">¿Qué le ofrecés?</div>
-      <CapsEditor caps={f.capabilities} onToggle={toggleCap} />
-      {f.capabilities.variable && <NumField label="Base fija del variable (ARS)" value={f.variableBase} onChange={(v) => set('variableBase', v)} />}
       <div className="ad-sublabel">Datos bancarios de alquimia</div>
       <div className="ad-row">
         <Field label="Titular" value={f.bankInfo.titular} onChange={(v) => setBank('titular', v)} />
@@ -468,31 +510,36 @@ function NewClientForm({ onClose, onCreated }) {
       <Field label="CBU / CVU" value={f.bankInfo.cbu} onChange={(v) => setBank('cbu', v)} />
       {err && <div className="ad-err">{err}</div>}
       <button className="ad-btn" onClick={create}>Crear cliente</button>
-      <p className="ad-muted">Después de crearlo: cargá su plan mensual, y si tiene ecommerce conectá Tienda Nube desde la config del cliente.</p>
+      <p className="ad-muted">Después de crearlo: cargá los planes de medios de los meses, y si tiene ecommerce conectá Tienda Nube desde la config del cliente.</p>
     </div>
   );
 }
 
 function ClientConfigEditor({ slug }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [cfg, setCfg] = useState(null);
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
-    if (!open || cfg) return;
     apiClient.get(`/admin/clients/${slug}/config`).then((r) => setCfg(r.data.config)).catch(() => {});
-  }, [open, slug, cfg]);
-  useEffect(() => { setCfg(null); }, [slug]);
+  }, [slug]);
 
   const save = () => {
     const config = { ...cfg };
     delete config.slug; delete config.active;
-    if (config.tiendanube) delete config.tiendanube; // no pisar el token
+    if (config.tiendanube) delete config.tiendanube; // no pisar el token (lo preserva el backend)
+    config.capabilities = {
+      ...(config.capabilities || {}),
+      ecommerce: (config.type || 'ecommerce') === 'ecommerce',
+      variable: (config.variable?.mode || 'none') !== 'none',
+    };
     apiClient.put(`/admin/clients/${slug}`, { config })
       .then(() => { setMsg('✓ Guardado'); setTimeout(() => setMsg(''), 2000); })
       .catch(() => setMsg('Error'));
   };
 
+  const setCap = (k) => setCfg({ ...cfg, capabilities: { ...(cfg.capabilities || {}), [k]: !(cfg.capabilities || {})[k] } });
+  const setFee = (k, v) => setCfg({ ...cfg, fees: { ...(cfg.fees || {}), [k]: v } });
   const tnUrl = `https://www.tiendanube.com/apps/${TN_APP_ID}/authorize?state=${slug}`;
 
   return (
@@ -524,12 +571,15 @@ function ClientConfigEditor({ slug }) {
             <Field label="Clave de acceso" value={cfg.accessKey || ''} onChange={(v) => setCfg({ ...cfg, accessKey: v })} />
             <Field label="Clave de pagos" value={cfg.paymentsKey || ''} onChange={(v) => setCfg({ ...cfg, paymentsKey: v })} />
           </div>
-          <div className="ad-sublabel">Capacidades</div>
-          <CapsEditor caps={cfg.capabilities || {}} onToggle={(k) => setCfg({ ...cfg, capabilities: { ...(cfg.capabilities || {}), [k]: !(cfg.capabilities || {})[k] } })} />
 
-          <div className="ad-sublabel">Secciones del panel del cliente</div>
+          <div className="ad-sublabel">Servicios que ofrecés (con su monto)</div>
+          <ServicesEditor caps={cfg.capabilities || {}} fees={cfg.fees || {}} onToggle={setCap} onFee={setFee} />
+          <VariableEditor variable={cfg.variable || { mode: 'none', base: 0, rate: 0.03 }} onChange={(v) => setCfg({ ...cfg, variable: v })} />
+
+          <div className="ad-sublabel">Secciones opcionales del panel</div>
+          <p className="ad-muted" style={{ margin: '0 0 6px' }}>Siempre van: {MANDATORY_LABELS.join(' · ')}.</p>
           <div className="ad-caps">
-            {PANEL_SECTIONS.map((s) => {
+            {OPTIONAL_SECTIONS.map((s) => {
               const on = !!(cfg.panel?.sections || {})[s.key];
               return (
                 <label key={s.key} className="ad-cap">
@@ -539,9 +589,7 @@ function ClientConfigEditor({ slug }) {
               );
             })}
           </div>
-          {(cfg.capabilities || {}).variable && (
-            <NumField label="Base fija del variable (ARS)" value={cfg.variable?.base} onChange={(v) => setCfg({ ...cfg, variable: { ...(cfg.variable || { rate: 0.03 }), base: v } })} />
-          )}
+
           <div className="ad-sublabel">Tienda Nube</div>
           <div className="ad-tn">
             {cfg.tiendanube?.connected
@@ -589,8 +637,8 @@ function MacroEditor({ slug, macros, reload }) {
           {macros.map((m) => (
             <div key={m.id} className="ad-row-box">
               <div className="ad-row">
-                <Field label="Desde (AAAA-MM)" value={m.start_ym} onChange={(v) => save({ ...m, start_ym: v })} />
-                <Field label="Hasta (AAAA-MM)" value={m.end_ym} onChange={(v) => save({ ...m, end_ym: v })} />
+                <MonthSelect label="Desde" value={m.start_ym} onChange={(v) => save({ ...m, start_ym: v })} />
+                <MonthSelect label="Hasta" value={m.end_ym} onChange={(v) => save({ ...m, end_ym: v })} />
                 <button className="ad-del" onClick={() => del(m.id)}>×</button>
               </div>
               <Field label="Período (ej. Junio – Julio 2026)" value={m.period} onChange={(v) => save({ ...m, period: v })} />
@@ -602,8 +650,8 @@ function MacroEditor({ slug, macros, reload }) {
             ? (
               <div className="ad-row-box">
                 <div className="ad-row">
-                  <Field label="Desde (AAAA-MM)" value={draft.start_ym} onChange={(v) => setDraft({ ...draft, start_ym: v })} />
-                  <Field label="Hasta (AAAA-MM)" value={draft.end_ym} onChange={(v) => setDraft({ ...draft, end_ym: v })} />
+                  <MonthSelect label="Desde" value={draft.start_ym} onChange={(v) => setDraft({ ...draft, start_ym: v })} />
+                  <MonthSelect label="Hasta" value={draft.end_ym} onChange={(v) => setDraft({ ...draft, end_ym: v })} />
                 </div>
                 <Field label="Período" value={draft.period} onChange={(v) => setDraft({ ...draft, period: v })} />
                 <Field label="Objetivo macro" value={draft.objective} onChange={(v) => setDraft({ ...draft, objective: v })} />

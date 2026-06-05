@@ -206,11 +206,13 @@ function ClientDashboard({ client }) {
   const months = content?.months || [];
   const caps = data.capabilities || { ecommerce: true, meta: true, contenido: true, variable: true, web: true, tiktok: true };
 
-  // Composición del panel: si el cliente tiene `panel.sections`, gobierna qué se muestra.
+  // Composición del panel: si el cliente tiene `panel`, gobierna qué se muestra.
   // Si no (ej. Moka), `show` devuelve true → comportamiento actual intacto.
+  // Las secciones obligatorias siempre se muestran; las opcionales según el checklist.
+  const MANDATORY = ['macro', 'estrategiaMes', 'facturacion', 'ritmo', 'performanceMeta', 'justificacion', 'consideraciones', 'tareas'];
   const panelSections = data.panel?.sections || null;
-  const generic = !!panelSections;
-  const show = (key) => (panelSections ? !!panelSections[key] : true);
+  const generic = !!data.panel;
+  const show = (key) => (generic ? (MANDATORY.includes(key) || !!(panelSections || {})[key]) : true);
 
   // Contenido alimentado por el plan de medios (solo para portales genéricos).
   const mediaObjective = generic ? data.mediaObjective : null;
