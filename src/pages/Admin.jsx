@@ -248,11 +248,6 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
 
           {/* Roadmap */}
           <Section title="Roadmap del mes">
-            <datalist id="ad-actrices">
-              <option value="Delfina" />
-              <option value="Karina" />
-              <option value="Carina" />
-            </datalist>
             {(plan.roadmap || []).map((w, i) => (
               <div key={i} className="ad-row-box">
                 <div className="ad-row">
@@ -271,7 +266,15 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
                   <div key={j} className="ad-row-box" style={{ background: '#fff' }}>
                     <div className="ad-row">
                       <div className="ad-field"><label>Fecha</label><input type="date" value={r.date || ''} onChange={(e) => upd((p) => { p.roadmap[i].recordings[j].date = e.target.value; })} /></div>
-                      <div className="ad-field"><label>Actriz</label><input list="ad-actrices" value={r.actress || ''} placeholder="Elegí o escribí" onChange={(e) => upd((p) => { p.roadmap[i].recordings[j].actress = e.target.value; })} /></div>
+                      <div className="ad-field">
+                        <label>Actriz</label>
+                        <select value={r.actress || ''} onChange={(e) => upd((p) => { p.roadmap[i].recordings[j].actress = e.target.value; })}>
+                          <option value="">— Actriz —</option>
+                          <option value="Delfina">Delfina</option>
+                          <option value="Carina">Carina</option>
+                          {r.actress && !['Delfina', 'Carina'].includes(r.actress) && <option value={r.actress}>{r.actress}</option>}
+                        </select>
+                      </div>
                       <div className="ad-field">
                         <label>Semana</label>
                         <select value={i} onChange={(e) => moveRecording(i, j, parseInt(e.target.value, 10))}>
