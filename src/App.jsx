@@ -47,21 +47,42 @@ function PublicRoute({ children }) {
   return children;
 }
 
+function AppFooter() {
+  const { logout } = useAuth();
+  return (
+    <footer style={{ textAlign: 'center', padding: '28px 16px 40px' }}>
+      <button
+        onClick={logout}
+        style={{
+          fontFamily: 'var(--font-mono, monospace)', fontSize: '12px', textTransform: 'uppercase',
+          letterSpacing: '0.05em', color: '#64748b', background: 'transparent',
+          border: '1px solid #cbd5e1', borderRadius: '999px', padding: '8px 18px', cursor: 'pointer',
+        }}
+      >
+        Cerrar sesión
+      </button>
+    </footer>
+  );
+}
+
 function AppShell() {
   const [view, setView] = useState('home');
   const [slug, setSlug] = useState(null);
   const [adminNew, setAdminNew] = useState(false);
 
-  if (view === 'optimize') return <Dashboard onBack={() => setView('home')} />;
-  if (view === 'admin') return <Admin onBack={() => setView('home')} autoNew={adminNew} />;
-  if (view === 'client' && slug) return <ClientHub slug={slug} onBack={() => { setView('home'); setSlug(null); }} />;
-  return (
+  let content;
+  if (view === 'optimize') content = <Dashboard onBack={() => setView('home')} />;
+  else if (view === 'admin') content = <Admin onBack={() => setView('home')} autoNew={adminNew} />;
+  else if (view === 'client' && slug) content = <ClientHub slug={slug} onBack={() => { setView('home'); setSlug(null); }} />;
+  else content = (
     <Home
       onOpenClient={(s) => { setSlug(s); setView('client'); }}
       onOptimize={() => setView('optimize')}
       onNewClient={() => { setAdminNew(true); setView('admin'); }}
     />
   );
+
+  return <>{content}<AppFooter /></>;
 }
 
 export default function App() {
