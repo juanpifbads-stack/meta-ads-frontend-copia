@@ -375,7 +375,7 @@ const slugify = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]
 
 function NewClientForm({ onClose, onCreated }) {
   const [f, setF] = useState({
-    name: '', slug: '', accessKey: '', paymentsKey: '', metaAccountId: '', am: '', type: 'ecommerce',
+    name: '', slug: '', email: '', accessKey: '', paymentsKey: '', metaAccountId: '', am: '', type: 'ecommerce',
     caps: { meta: true, tiktok: false, contenido: false, web: false },
     fees: { meta: 0, tiktok: 0, contenido: 0, web: 0 },
     variable: { mode: 'none', base: 0, rate: 0.03 },
@@ -397,7 +397,7 @@ function NewClientForm({ onClose, onCreated }) {
     if (!f.accessKey) { setErr('Falta la clave de acceso.'); return; }
     if (!f.macroFrom || !f.macroTo) { setErr('Definí el período de la estrategia macro (de qué mes a qué mes).'); return; }
     const config = {
-      name: f.name, accessKey: f.accessKey, paymentsKey: f.paymentsKey || f.accessKey,
+      name: f.name, email: f.email || '', accessKey: f.accessKey, paymentsKey: f.paymentsKey || f.accessKey,
       metaAccountId: f.metaAccountId || null, am: f.am || '', type: f.type,
       capabilities: { meta: f.caps.meta, tiktok: f.caps.tiktok, contenido: f.caps.contenido, web: f.caps.web, ecommerce: f.type === 'ecommerce', variable: f.variable.mode !== 'none' },
       fees: f.fees,
@@ -419,6 +419,7 @@ function NewClientForm({ onClose, onCreated }) {
       </div>
       <Field label="Nombre del cliente" value={f.name} onChange={setName} />
       {f.slug && <p className="ad-muted" style={{ margin: '-4px 0 8px' }}>URL: /cliente/<strong>{f.slug}</strong></p>}
+      <Field label="Email del cliente" value={f.email} onChange={(v) => set('email', v)} />
 
       <div className="ad-row">
         <div className="ad-field">
@@ -529,6 +530,9 @@ function ClientConfigEditor({ slug }) {
                 <option value="servicios">Servicios</option>
               </select>
             </div>
+          </div>
+          <div className="ad-row">
+            <Field label="Email del cliente" value={cfg.email || ''} onChange={(v) => setCfg({ ...cfg, email: v })} />
           </div>
           <div className="ad-row">
             <Field label="Clave de acceso" value={cfg.accessKey || ''} onChange={(v) => setCfg({ ...cfg, accessKey: v })} />
