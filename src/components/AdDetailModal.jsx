@@ -275,26 +275,6 @@ export default function AdDetailModal({ adsetId, adsetName, accountId, campaignO
                             </span>
                           )}
                         </div>
-                        {ad.link_url && (
-                          <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0 }}>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
-                              ↗ Landing
-                            </span>
-                            <a
-                              href={ad.link_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title={ad.link_url}
-                              style={{
-                                fontFamily: 'var(--font-mono)', fontSize: '11px',
-                                color: 'var(--color-brand-blue)', textDecoration: 'none',
-                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                              }}
-                            >
-                              {ad.link_url}
-                            </a>
-                          </div>
-                        )}
                         {pauseErr && (
                           <div className="alert alert-error" style={{ fontSize: '11px', padding: '4px 10px', marginTop: '6px' }}>
                             {pauseErr}
