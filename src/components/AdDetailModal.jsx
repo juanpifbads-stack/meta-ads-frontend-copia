@@ -275,6 +275,22 @@ export default function AdDetailModal({ adsetId, adsetName, accountId, campaignO
                             </span>
                           )}
                         </div>
+                        {ad.destination_url && (
+                          <div style={{ marginTop: '6px', display: 'flex', alignItems: 'baseline', gap: '6px', minWidth: 0 }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
+                              URL destino
+                            </span>
+                            <a
+                              href={ad.destination_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              title={ad.destination_url}
+                              style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-brand-blue)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                            >
+                              {ad.destination_url}
+                            </a>
+                          </div>
+                        )}
                         {pauseErr && (
                           <div className="alert alert-error" style={{ fontSize: '11px', padding: '4px 10px', marginTop: '6px' }}>
                             {pauseErr}
