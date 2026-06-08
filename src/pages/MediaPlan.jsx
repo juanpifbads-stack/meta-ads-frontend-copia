@@ -262,11 +262,13 @@ export default function MediaPlan({ onBack, lockedSlug }) {
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
     <title>Plan de medios — ${esc(clientName)} ${esc(fmtMonth(month))}</title>
     <style>
-      @page { margin: 32px; }
+      @page { margin: 0; size: A4; }
       * { box-sizing: border-box; }
       /* Que el PDF imprima fondos y colores (Chrome los descarta por defecto). */
       html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      body { font-family: -apple-system, system-ui, Helvetica, Arial, sans-serif; color: #15161a; margin: 0; padding: 34px 38px; line-height: 1.55; }
+      body { font-family: -apple-system, system-ui, Helvetica, Arial, sans-serif; color: #15161a; margin: 0; padding: 0; line-height: 1.55; }
+      /* Hoja A4 (96dpi = 794x1123px). #doc se auto-escala por JS para entrar SIEMPRE en una sola carilla. */
+      #page { width: 794px; min-height: 1123px; margin: 0 auto; padding: 48px 52px; transform-origin: top center; }
       .brand { font-family: 'SF Mono', Menlo, Consolas, monospace; color: #1b1fe8; font-weight: 700; font-size: 14px; letter-spacing: 0.04em; }
       .eyebrow { font-family: 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px; color: #8a8d96; margin-top: 3px; }
       h1 { font-size: 25px; margin: 6px 0 2px; }
@@ -290,6 +292,7 @@ export default function MediaPlan({ onBack, lockedSlug }) {
       .disc { background: #fef9c3; color: #854d0e; border-radius: 10px; padding: 11px 15px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 600; margin-top: 22px; }
       .foot { margin-top: 22px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 9px; color: #b0b2ba; text-align: center; }
     </style></head><body>
+      <div id="page">
       <div class="brand">alquimia.</div>
       <div class="eyebrow">Plan de medios</div>
       <h1>${esc(clientName)}</h1>
@@ -310,6 +313,30 @@ export default function MediaPlan({ onBack, lockedSlug }) {
 
       <div class="disc">⚠ ${DISCLAIMER}</div>
       <div class="foot">Generado por alquimia. · ${new Date().toLocaleDateString('es-AR')}</div>
+      </div>
+      <script>
+        // Garantiza UNA sola carilla: si el contenido se pasa del alto de A4,
+        // lo escala hacia abajo lo justo (nunca agranda). El "aire" base se
+        // mantiene cuando el contenido entra holgado.
+        (function () {
+          var PAGE_H = 1123; // alto A4 a 96dpi
+          var el = document.getElementById('page');
+          function fit() {
+            el.style.transform = 'none';
+            el.style.minHeight = '0px';
+            var h = el.scrollHeight;
+            var scale = Math.min(1, PAGE_H / h);
+            if (scale < 1) {
+              el.style.transform = 'scale(' + scale + ')';
+              el.style.height = (h * scale) + 'px';
+            } else {
+              el.style.minHeight = PAGE_H + 'px';
+            }
+          }
+          fit();
+          window.__fit = fit;
+        })();
+      </script>
     </body></html>`;
 
     const w = window.open('', '_blank');
@@ -317,7 +344,9 @@ export default function MediaPlan({ onBack, lockedSlug }) {
     w.document.write(html);
     w.document.close();
     w.focus();
-    setTimeout(() => w.print(), 400);
+    // Re-medir tras cargar fuentes/SVG y recién ahí imprimir (así la escala
+    // a una carilla queda exacta).
+    setTimeout(() => { try { w.__fit && w.__fit(); } catch (e) {} w.print(); }, 500);
   };
 
   return (
