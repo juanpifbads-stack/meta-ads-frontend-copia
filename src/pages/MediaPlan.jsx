@@ -44,7 +44,7 @@ const blank = () => ({
   objectiveJustification: '',
   considerations: [''],
   nextPlanning: '',
-  include: { lastMonth: true, lastYear: true, trend: true, contextDates: true, contextProducts: true, considerations: true },
+  include: { clientInput: false, lastMonth: true, lastYear: true, trend: true, contextDates: true, contextProducts: true, considerations: true },
 });
 
 function normalize(raw) {
@@ -116,7 +116,7 @@ function buildTrendSvg(points, { w = 640, h = 240, visible = ['roas', 'facturaci
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" xmlns="http://www.w3.org/2000/svg">${legend}${body}${labels}</svg>`;
 }
 
-const DISCLAIMER = 'Esto es una proyección: estamos estimando. No quiere decir que vaya a suceder.';
+const DISCLAIMER = 'Esto es una proyección.';
 
 export default function MediaPlan({ onBack, lockedSlug }) {
   const [clients, setClients] = useState([]);
@@ -220,19 +220,19 @@ export default function MediaPlan({ onBack, lockedSlug }) {
 
     const sections = [];
     if (inc.lastMonth) {
-      sections.push(`<div class="sec"><div class="sec-t">Cómo nos fue el mes pasado</div><div class="kpis">
-        <div class="kpi"><div class="lbl">Facturación</div><div class="val">${money(plan.lastMonthMeta.facturacion)}</div></div>
-        <div class="kpi"><div class="lbl">Inversión pauta</div><div class="val">${money(plan.lastMonthMeta.inversion)}</div></div>
-        <div class="kpi"><div class="lbl">ROAS</div><div class="val">${roasFmt(plan.lastMonthMeta.roas)}</div></div></div></div>`);
+      sections.push(`<div class="sec"><div class="sec-t sec-t--sec">Cómo nos fue el mes pasado</div><div class="kpis">
+        <div class="kpi kpi--sec"><div class="lbl">Facturación</div><div class="val">${money(plan.lastMonthMeta.facturacion)}</div></div>
+        <div class="kpi kpi--sec"><div class="lbl">Inversión pauta</div><div class="val">${money(plan.lastMonthMeta.inversion)}</div></div>
+        <div class="kpi kpi--sec"><div class="lbl">ROAS</div><div class="val">${roasFmt(plan.lastMonthMeta.roas)}</div></div></div></div>`);
     }
     if (inc.lastYear) {
       if (lastYearComparable) {
-        sections.push(`<div class="sec"><div class="sec-t">Mismo período del año pasado</div><div class="kpis">
-          <div class="kpi"><div class="lbl">Facturación</div><div class="val">${money(plan.lastYearMeta.facturacion)}</div></div>
-          <div class="kpi"><div class="lbl">Inversión pauta</div><div class="val">${money(plan.lastYearMeta.inversion)}</div></div>
-          <div class="kpi"><div class="lbl">ROAS</div><div class="val">${roasFmt(plan.lastYearMeta.roas)}</div></div></div></div>`);
+        sections.push(`<div class="sec"><div class="sec-t sec-t--sec">Mismo período del año pasado</div><div class="kpis">
+          <div class="kpi kpi--sec"><div class="lbl">Facturación</div><div class="val">${money(plan.lastYearMeta.facturacion)}</div></div>
+          <div class="kpi kpi--sec"><div class="lbl">Inversión pauta</div><div class="val">${money(plan.lastYearMeta.inversion)}</div></div>
+          <div class="kpi kpi--sec"><div class="lbl">ROAS</div><div class="val">${roasFmt(plan.lastYearMeta.roas)}</div></div></div></div>`);
       } else {
-        sections.push(`<div class="sec"><div class="sec-t">Mismo período del año pasado</div><div class="txt">No se puede comparar con el mismo período del año pasado ya que no hubo inversión publicitaria.</div></div>`);
+        sections.push(`<div class="sec"><div class="sec-t sec-t--sec">Mismo período del año pasado</div><div class="txt">No se puede comparar con el mismo período del año pasado ya que no hubo inversión publicitaria.</div></div>`);
       }
     }
     if (inc.trend) {
@@ -255,38 +255,48 @@ export default function MediaPlan({ onBack, lockedSlug }) {
       sections.push(`<div class="sec"><div class="sec-t">Justificación y consideraciones</div>${c}</div>`);
     }
 
+    const clientProposal = (inc.clientInput && plan.clientInput?.trim())
+      ? `<div class="sec"><div class="sec-t">Propuesto por el cliente</div><div class="txt">${esc(plan.clientInput)}</div></div>`
+      : '';
+
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
     <title>Plan de medios — ${esc(clientName)} ${esc(fmtMonth(month))}</title>
     <style>
-      @page { margin: 36px; }
+      @page { margin: 24px; }
       * { box-sizing: border-box; }
       /* Que el PDF imprima fondos y colores (Chrome los descarta por defecto). */
       html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      body { font-family: -apple-system, system-ui, Helvetica, Arial, sans-serif; color: #15161a; margin: 0; padding: 40px; line-height: 1.5; }
-      .brand { font-family: 'SF Mono', Menlo, Consolas, monospace; color: #1b1fe8; font-weight: 700; font-size: 15px; letter-spacing: 0.04em; }
-      .eyebrow { font-family: 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: #8a8d96; margin-top: 4px; }
-      h1 { font-size: 30px; margin: 6px 0 2px; }
-      .sub { color: #5b5e66; font-size: 14px; margin-bottom: 22px; }
-      .rule { height: 3px; background: #15161a; margin: 14px 0 24px; }
-      .sec { margin-bottom: 22px; page-break-inside: avoid; }
-      .sec-t { font-family: 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.05em; font-size: 13px; font-weight: 700; border-bottom: 2px solid #15161a; padding-bottom: 5px; margin-bottom: 10px; }
-      .txt { white-space: pre-wrap; font-size: 14px; }
-      .lbl { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #8a8d96; margin-bottom: 2px; }
-      ul { margin: 0; padding-left: 18px; } li { font-size: 14px; margin-bottom: 4px; }
-      .kpis { display: flex; gap: 12px; }
-      .kpi { flex: 1; border: 1.5px solid #e5e6ea; border-radius: 14px; padding: 16px; background: #fafafa; }
-      .kpi .lbl { margin-bottom: 6px; } .kpi .val { font-size: 24px; font-weight: 700; color: #15161a; }
-      .chart { border: 1.5px solid #e5e6ea; border-radius: 12px; padding: 12px; }
-      .obj { background: #1b1fe8; color: #fff; border-radius: 14px; padding: 20px; display: flex; gap: 20px; margin-bottom: 26px; }
-      .obj .val { font-size: 24px; font-weight: 700; } .obj .lbl { color: #c7c9ff; }
-      .disc { background: #fef9c3; color: #854d0e; border-radius: 10px; padding: 12px 16px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; font-weight: 600; margin-top: 22px; }
-      .foot { margin-top: 28px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; color: #b0b2ba; text-align: center; }
+      body { font-family: -apple-system, system-ui, Helvetica, Arial, sans-serif; color: #15161a; margin: 0; padding: 22px 26px; line-height: 1.35; }
+      .brand { font-family: 'SF Mono', Menlo, Consolas, monospace; color: #1b1fe8; font-weight: 700; font-size: 13px; letter-spacing: 0.04em; }
+      .eyebrow { font-family: 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px; color: #8a8d96; margin-top: 2px; }
+      h1 { font-size: 22px; margin: 4px 0 1px; }
+      .sub { color: #5b5e66; font-size: 12px; margin-bottom: 12px; }
+      .rule { height: 2px; background: #15161a; margin: 8px 0 14px; }
+      .sec { margin-bottom: 13px; page-break-inside: avoid; }
+      .sec-t { font-family: 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; font-weight: 700; border-bottom: 2px solid #15161a; padding-bottom: 4px; margin-bottom: 7px; }
+      /* Secundario: menos jerarquía que el objetivo del mes. */
+      .sec-t--sec { font-size: 10px; color: #6b6e76; border-bottom: 1px solid #c9cbd2; padding-bottom: 3px; margin-bottom: 5px; }
+      .txt { white-space: pre-wrap; font-size: 12.5px; }
+      .lbl { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #8a8d96; margin-bottom: 2px; }
+      ul { margin: 0; padding-left: 16px; } li { font-size: 12.5px; margin-bottom: 2px; }
+      .kpis { display: flex; gap: 10px; }
+      .kpi { flex: 1; border: 1.5px solid #e5e6ea; border-radius: 12px; padding: 12px; background: #fafafa; }
+      .kpi .lbl { margin-bottom: 4px; } .kpi .val { font-size: 21px; font-weight: 700; color: #15161a; }
+      /* KPI secundario (mes pasado / año pasado): más chico y discreto. */
+      .kpi--sec { border-radius: 9px; padding: 8px 10px; background: #f4f5f7; border-color: #ebecef; }
+      .kpi--sec .lbl { font-size: 8px; margin-bottom: 1px; }
+      .kpi--sec .val { font-size: 14px; font-weight: 600; color: #4b4e56; }
+      .chart { border: 1.5px solid #e5e6ea; border-radius: 10px; padding: 8px; }
+      .disc { background: #fef9c3; color: #854d0e; border-radius: 9px; padding: 9px 13px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 600; margin-top: 13px; }
+      .foot { margin-top: 14px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 9px; color: #b0b2ba; text-align: center; }
     </style></head><body>
       <div class="brand">alquimia.</div>
       <div class="eyebrow">Plan de medios</div>
       <h1>${esc(clientName)}</h1>
       <div class="sub">${esc(fmtMonth(month))}</div>
       <div class="rule"></div>
+
+      ${clientProposal}
 
       <div class="sec"><div class="sec-t">Objetivo propuesto</div>
         <div class="kpis">
@@ -361,7 +371,8 @@ export default function MediaPlan({ onBack, lockedSlug }) {
             ↓ <strong>Trabajo interno</strong> para definir el objetivo. En el entregable van siempre el mes pasado y el año pasado; el resto solo si lo tildás.
           </div>
 
-          <Section title="Objetivos propuestos por el cliente" internal>
+          <Section title="Propuesto por el cliente" include={plan.include.clientInput} onToggle={() => tgl('clientInput')}>
+            <p className="ad-muted" style={{ margin: '0 0 6px' }}>Si lo tildás, aparece arriba de todo en el entregable.</p>
             <Area value={plan.clientInput} onChange={(v) => upd((p) => { p.clientInput = v; })} ph="Qué busca el cliente este mes (objetivo, volumen, acciones, eventos…). Si propone un objetivo, cargalo arriba; se puede ajustar luego." />
           </Section>
 
