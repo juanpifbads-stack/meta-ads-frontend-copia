@@ -262,33 +262,33 @@ export default function MediaPlan({ onBack, lockedSlug }) {
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
     <title>Plan de medios — ${esc(clientName)} ${esc(fmtMonth(month))}</title>
     <style>
-      @page { margin: 24px; }
+      @page { margin: 32px; }
       * { box-sizing: border-box; }
       /* Que el PDF imprima fondos y colores (Chrome los descarta por defecto). */
       html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      body { font-family: -apple-system, system-ui, Helvetica, Arial, sans-serif; color: #15161a; margin: 0; padding: 22px 26px; line-height: 1.35; }
-      .brand { font-family: 'SF Mono', Menlo, Consolas, monospace; color: #1b1fe8; font-weight: 700; font-size: 13px; letter-spacing: 0.04em; }
-      .eyebrow { font-family: 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px; color: #8a8d96; margin-top: 2px; }
-      h1 { font-size: 22px; margin: 4px 0 1px; }
-      .sub { color: #5b5e66; font-size: 12px; margin-bottom: 12px; }
-      .rule { height: 2px; background: #15161a; margin: 8px 0 14px; }
-      .sec { margin-bottom: 13px; page-break-inside: avoid; }
-      .sec-t { font-family: 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; font-weight: 700; border-bottom: 2px solid #15161a; padding-bottom: 4px; margin-bottom: 7px; }
+      body { font-family: -apple-system, system-ui, Helvetica, Arial, sans-serif; color: #15161a; margin: 0; padding: 34px 38px; line-height: 1.55; }
+      .brand { font-family: 'SF Mono', Menlo, Consolas, monospace; color: #1b1fe8; font-weight: 700; font-size: 14px; letter-spacing: 0.04em; }
+      .eyebrow { font-family: 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px; color: #8a8d96; margin-top: 3px; }
+      h1 { font-size: 25px; margin: 6px 0 2px; }
+      .sub { color: #5b5e66; font-size: 13px; margin-bottom: 18px; }
+      .rule { height: 2px; background: #15161a; margin: 12px 0 22px; }
+      .sec { margin-bottom: 22px; page-break-inside: avoid; }
+      .sec-t { font-family: 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; font-weight: 700; border-bottom: 2px solid #15161a; padding-bottom: 5px; margin-bottom: 11px; }
       /* Secundario: menos jerarquía que el objetivo del mes. */
-      .sec-t--sec { font-size: 10px; color: #6b6e76; border-bottom: 1px solid #c9cbd2; padding-bottom: 3px; margin-bottom: 5px; }
-      .txt { white-space: pre-wrap; font-size: 12.5px; }
-      .lbl { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #8a8d96; margin-bottom: 2px; }
-      ul { margin: 0; padding-left: 16px; } li { font-size: 12.5px; margin-bottom: 2px; }
-      .kpis { display: flex; gap: 10px; }
-      .kpi { flex: 1; border: 1.5px solid #e5e6ea; border-radius: 12px; padding: 12px; background: #fafafa; }
-      .kpi .lbl { margin-bottom: 4px; } .kpi .val { font-size: 21px; font-weight: 700; color: #15161a; }
+      .sec-t--sec { font-size: 10px; color: #6b6e76; border-bottom: 1px solid #c9cbd2; padding-bottom: 4px; margin-bottom: 8px; }
+      .txt { white-space: pre-wrap; font-size: 13px; }
+      .lbl { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #8a8d96; margin-bottom: 3px; }
+      ul { margin: 0; padding-left: 18px; } li { font-size: 13px; margin-bottom: 6px; line-height: 1.45; }
+      .kpis { display: flex; gap: 12px; }
+      .kpi { flex: 1; border: 1.5px solid #e5e6ea; border-radius: 13px; padding: 15px; background: #fafafa; }
+      .kpi .lbl { margin-bottom: 6px; } .kpi .val { font-size: 22px; font-weight: 700; color: #15161a; }
       /* KPI secundario (mes pasado / año pasado): más chico y discreto. */
-      .kpi--sec { border-radius: 9px; padding: 8px 10px; background: #f4f5f7; border-color: #ebecef; }
-      .kpi--sec .lbl { font-size: 8px; margin-bottom: 1px; }
-      .kpi--sec .val { font-size: 14px; font-weight: 600; color: #4b4e56; }
-      .chart { border: 1.5px solid #e5e6ea; border-radius: 10px; padding: 8px; }
-      .disc { background: #fef9c3; color: #854d0e; border-radius: 9px; padding: 9px 13px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 600; margin-top: 13px; }
-      .foot { margin-top: 14px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 9px; color: #b0b2ba; text-align: center; }
+      .kpi--sec { border-radius: 10px; padding: 10px 12px; background: #f4f5f7; border-color: #ebecef; }
+      .kpi--sec .lbl { font-size: 8px; margin-bottom: 2px; }
+      .kpi--sec .val { font-size: 15px; font-weight: 600; color: #4b4e56; }
+      .chart { border: 1.5px solid #e5e6ea; border-radius: 11px; padding: 10px; }
+      .disc { background: #fef9c3; color: #854d0e; border-radius: 10px; padding: 11px 15px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; font-weight: 600; margin-top: 22px; }
+      .foot { margin-top: 22px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 9px; color: #b0b2ba; text-align: center; }
     </style></head><body>
       <div class="brand">alquimia.</div>
       <div class="eyebrow">Plan de medios</div>
