@@ -236,7 +236,7 @@ export default function MediaPlan({ onBack, lockedSlug }) {
       }
     }
     if (inc.trend) {
-      const svg = buildTrendSvg(trendData, { visible: visibleKeys, staticLabels: true });
+      const svg = buildTrendSvg(trendData, { visible: visibleKeys, staticLabels: false });
       if (svg) sections.push(`<div class="sec"><div class="sec-t">Tendencia ${trendCompare === 'lastyear' ? '(año pasado)' : 'últimos 3 meses'}</div><div class="chart">${svg}</div>${plan.trendNote?.trim() ? `<div class="txt" style="margin-top:8px">${esc(plan.trendNote)}</div>` : ''}</div>`);
     }
     if (inc.contextDates && (plan.context.dates?.trim() || (plan.context.dateItems || []).length)) {
@@ -260,6 +260,8 @@ export default function MediaPlan({ onBack, lockedSlug }) {
     <style>
       @page { margin: 36px; }
       * { box-sizing: border-box; }
+      /* Que el PDF imprima fondos y colores (Chrome los descarta por defecto). */
+      html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       body { font-family: -apple-system, system-ui, Helvetica, Arial, sans-serif; color: #15161a; margin: 0; padding: 40px; line-height: 1.5; }
       .brand { font-family: 'SF Mono', Menlo, Consolas, monospace; color: #1b1fe8; font-weight: 700; font-size: 15px; letter-spacing: 0.04em; }
       .eyebrow { font-family: 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; color: #8a8d96; margin-top: 4px; }
@@ -272,8 +274,8 @@ export default function MediaPlan({ onBack, lockedSlug }) {
       .lbl { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #8a8d96; margin-bottom: 2px; }
       ul { margin: 0; padding-left: 18px; } li { font-size: 14px; margin-bottom: 4px; }
       .kpis { display: flex; gap: 12px; }
-      .kpi { flex: 1; border: 1.5px solid #e5e6ea; border-radius: 12px; padding: 14px; }
-      .kpi .lbl { margin-bottom: 6px; } .kpi .val { font-size: 22px; font-weight: 700; }
+      .kpi { flex: 1; border: 1.5px solid #e5e6ea; border-radius: 14px; padding: 16px; background: #fafafa; }
+      .kpi .lbl { margin-bottom: 6px; } .kpi .val { font-size: 24px; font-weight: 700; color: #15161a; }
       .chart { border: 1.5px solid #e5e6ea; border-radius: 12px; padding: 12px; }
       .obj { background: #1b1fe8; color: #fff; border-radius: 14px; padding: 20px; display: flex; gap: 20px; margin-bottom: 26px; }
       .obj .val { font-size: 24px; font-weight: 700; } .obj .lbl { color: #c7c9ff; }
@@ -287,10 +289,10 @@ export default function MediaPlan({ onBack, lockedSlug }) {
       <div class="rule"></div>
 
       <div class="sec"><div class="sec-t">Objetivo propuesto</div>
-        <div class="obj">
-          <div><div class="lbl">Facturación objetivo (en Meta)</div><div class="val">${money(plan.objective.facturacion)}</div></div>
-          <div><div class="lbl">ROAS objetivo</div><div class="val">${roasFmt(plan.objective.roas)}</div></div>
-          <div><div class="lbl">Inversión necesaria</div><div class="val">${money(inv)}</div></div>
+        <div class="kpis">
+          <div class="kpi"><div class="lbl">Facturación objetivo (en Meta)</div><div class="val">${money(plan.objective.facturacion)}</div></div>
+          <div class="kpi"><div class="lbl">ROAS objetivo</div><div class="val">${roasFmt(plan.objective.roas)}</div></div>
+          <div class="kpi"><div class="lbl">Inversión necesaria</div><div class="val">${money(inv)}</div></div>
         </div>
       </div>
 
