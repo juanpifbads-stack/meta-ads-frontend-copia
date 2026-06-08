@@ -32,7 +32,7 @@ const blank = () => ({
   metaSource: false, // true cuando los números vienen de Meta (no editables)
   lastMonthMeta: { facturacion: 0, inversion: 0, roas: 0 },
   lastYearMeta: { facturacion: 0, inversion: 0, roas: 0 },
-  objective: { facturacion: 0, roas: 0 },
+  objective: { facturacion: 0, roas: 0, inversion: 0 },
   trend: [
     { label: '', roas: 0, facturacion: 0, inversion: 0 },
     { label: '', roas: 0, facturacion: 0, inversion: 0 },
@@ -44,7 +44,7 @@ const blank = () => ({
   objectiveJustification: '',
   considerations: [''],
   nextPlanning: '',
-  include: { trend: true, contextDates: true, contextProducts: true, considerations: true },
+  include: { lastMonth: true, lastYear: true, trend: true, contextDates: true, contextProducts: true, considerations: true },
 });
 
 function normalize(raw) {
@@ -60,7 +60,12 @@ function normalize(raw) {
     trendLastYear: Array.isArray(p.trendLastYear) ? p.trendLastYear : [],
     context: { ...b.context, ...(p.context || {}), dateItems: Array.isArray(p.context?.dateItems) ? p.context.dateItems : [] },
     considerations: Array.isArray(p.considerations) ? p.considerations : b.considerations,
-    objective: { ...b.objective, ...(p.objective || {}) },
+    objective: (() => {
+      const o = { ...b.objective, ...(p.objective || {}) };
+      // Compat: si un plan viejo no tiene inversión guardada, la derivamos (fact ÷ ROAS).
+      if (!o.inversion && o.roas > 0) o.inversion = o.facturacion / o.roas;
+      return o;
+    })(),
     include: {
       ...b.include,
       ...inc,
@@ -181,7 +186,24 @@ export default function MediaPlan({ onBack, lockedSlug }) {
   const allMonths = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
   const monthOptions = Array.from(new Set([...allMonths, ...months])).sort();
 
-  const inv = plan && plan.objective.roas > 0 ? plan.objective.facturacion / plan.objective.roas : 0;
+  const inv = plan ? (plan.objective.inversion || 0) : 0;
+  const round2 = (x) => Math.round((Number(x) || 0) * 100) / 100;
+  // Las 3 métricas del objetivo están relacionadas: facturación = ROAS × inversión.
+  // La facturación es el ancla: si editás ROAS recalculamos inversión, y si editás
+  // inversión recalculamos ROAS. Así se puede cargar fact+ROAS o fact+inversión.
+  const setObjFact = (v) => upd((p) => {
+    p.objective.facturacion = v;
+    if (p.objective.roas > 0) p.objective.inversion = round2(v / p.objective.roas);
+    else if (p.objective.inversion > 0) p.objective.roas = round2(v / p.objective.inversion);
+  });
+  const setObjRoas = (v) => upd((p) => {
+    p.objective.roas = v;
+    p.objective.inversion = v > 0 ? round2((p.objective.facturacion || 0) / v) : 0;
+  });
+  const setObjInv = (v) => upd((p) => {
+    p.objective.inversion = v;
+    p.objective.roas = v > 0 ? round2((p.objective.facturacion || 0) / v) : 0;
+  });
   const lastYearComparable = plan && (plan.lastYearMeta.inversion || 0) > 0;
   const visibleKeys = SERIES.map((s) => s.key).filter((k) => visibleSeries[k]);
   const trendData = plan ? (trendCompare === 'lastyear' ? plan.trendLastYear : plan.trend) : [];
@@ -197,17 +219,21 @@ export default function MediaPlan({ onBack, lockedSlug }) {
     const fmtDate = (d) => { if (!d) return ''; const [y, m, dd] = d.split('-'); return `${dd}/${m}`; };
 
     const sections = [];
-    sections.push(`<div class="sec"><div class="sec-t">Cómo nos fue el mes pasado</div><div class="kpis">
-      <div class="kpi"><div class="lbl">Facturación</div><div class="val">${money(plan.lastMonthMeta.facturacion)}</div></div>
-      <div class="kpi"><div class="lbl">Inversión pauta</div><div class="val">${money(plan.lastMonthMeta.inversion)}</div></div>
-      <div class="kpi"><div class="lbl">ROAS</div><div class="val">${roasFmt(plan.lastMonthMeta.roas)}</div></div></div></div>`);
-    if (lastYearComparable) {
-      sections.push(`<div class="sec"><div class="sec-t">Mismo período del año pasado</div><div class="kpis">
-        <div class="kpi"><div class="lbl">Facturación</div><div class="val">${money(plan.lastYearMeta.facturacion)}</div></div>
-        <div class="kpi"><div class="lbl">Inversión pauta</div><div class="val">${money(plan.lastYearMeta.inversion)}</div></div>
-        <div class="kpi"><div class="lbl">ROAS</div><div class="val">${roasFmt(plan.lastYearMeta.roas)}</div></div></div></div>`);
-    } else {
-      sections.push(`<div class="sec"><div class="sec-t">Mismo período del año pasado</div><div class="txt">No se puede comparar con el mismo período del año pasado ya que no hubo inversión publicitaria.</div></div>`);
+    if (inc.lastMonth) {
+      sections.push(`<div class="sec"><div class="sec-t">Cómo nos fue el mes pasado</div><div class="kpis">
+        <div class="kpi"><div class="lbl">Facturación</div><div class="val">${money(plan.lastMonthMeta.facturacion)}</div></div>
+        <div class="kpi"><div class="lbl">Inversión pauta</div><div class="val">${money(plan.lastMonthMeta.inversion)}</div></div>
+        <div class="kpi"><div class="lbl">ROAS</div><div class="val">${roasFmt(plan.lastMonthMeta.roas)}</div></div></div></div>`);
+    }
+    if (inc.lastYear) {
+      if (lastYearComparable) {
+        sections.push(`<div class="sec"><div class="sec-t">Mismo período del año pasado</div><div class="kpis">
+          <div class="kpi"><div class="lbl">Facturación</div><div class="val">${money(plan.lastYearMeta.facturacion)}</div></div>
+          <div class="kpi"><div class="lbl">Inversión pauta</div><div class="val">${money(plan.lastYearMeta.inversion)}</div></div>
+          <div class="kpi"><div class="lbl">ROAS</div><div class="val">${roasFmt(plan.lastYearMeta.roas)}</div></div></div></div>`);
+      } else {
+        sections.push(`<div class="sec"><div class="sec-t">Mismo período del año pasado</div><div class="txt">No se puede comparar con el mismo período del año pasado ya que no hubo inversión publicitaria.</div></div>`);
+      }
     }
     if (inc.trend) {
       const svg = buildTrendSvg(trendData, { visible: visibleKeys, staticLabels: true });
@@ -216,7 +242,7 @@ export default function MediaPlan({ onBack, lockedSlug }) {
     if (inc.contextDates && (plan.context.dates?.trim() || (plan.context.dateItems || []).length)) {
       let c = plan.context.dates?.trim() ? `<div class="txt">${esc(plan.context.dates)}</div>` : '';
       const items = (plan.context.dateItems || []).filter((it) => it.date || it.name);
-      if (items.length) c += `<ul>${items.map((it) => `<li><strong>${fmtDate(it.date)}</strong> — ${esc(it.name)}</li>`).join('')}</ul>`;
+      if (items.length) c += `<ul>${items.map((it) => `<li><strong>${fmtDate(it.date)}${it.endDate ? ` al ${fmtDate(it.endDate)}` : ''}</strong> — ${esc(it.name)}</li>`).join('')}</ul>`;
       sections.push(`<div class="sec"><div class="sec-t">Fechas importantes del mes</div>${c}</div>`);
     }
     if (inc.contextProducts && plan.context.products?.trim())
@@ -262,7 +288,7 @@ export default function MediaPlan({ onBack, lockedSlug }) {
 
       <div class="sec"><div class="sec-t">Objetivo propuesto</div>
         <div class="obj">
-          <div><div class="lbl">Facturación objetivo</div><div class="val">${money(plan.objective.facturacion)}</div></div>
+          <div><div class="lbl">Facturación objetivo (en Meta)</div><div class="val">${money(plan.objective.facturacion)}</div></div>
           <div><div class="lbl">ROAS objetivo</div><div class="val">${roasFmt(plan.objective.roas)}</div></div>
           <div><div class="lbl">Inversión necesaria</div><div class="val">${money(inv)}</div></div>
         </div>
@@ -322,23 +348,23 @@ export default function MediaPlan({ onBack, lockedSlug }) {
           {/* OBJETIVO — siempre arriba */}
           <Section title="Objetivo propuesto" tone="objective">
             <div className="mp-kpis">
-              <KpiEditable label="Facturación objetivo" kind="money" value={plan.objective.facturacion} onChange={(v) => upd((p) => { p.objective.facturacion = v; })} />
-              <KpiEditable label="ROAS objetivo" kind="roas" value={plan.objective.roas} onChange={(v) => upd((p) => { p.objective.roas = v; })} />
-              <div className="mp-kpi"><div className="mp-kpi-lbl">Inversión necesaria</div><div className="mp-kpi-val">{money(inv)}</div></div>
+              <KpiEditable label="Facturación objetivo (en Meta)" kind="money" value={plan.objective.facturacion} onChange={setObjFact} />
+              <KpiEditable label="ROAS objetivo" kind="roas" value={plan.objective.roas} onChange={setObjRoas} />
+              <KpiEditable label="Inversión necesaria" kind="money" value={plan.objective.inversion} onChange={setObjInv} />
             </div>
-            <div className="mp-calc">Inversión en pauta necesaria = facturación ÷ ROAS</div>
+            <div className="mp-calc">Las 3 están relacionadas: facturación (en Meta) = ROAS × inversión. Cargá dos y la tercera se calcula sola (la facturación es la base).</div>
           </Section>
 
           <div className="mp-internal-banner">
             ↓ <strong>Trabajo interno</strong> para definir el objetivo. En el entregable van siempre el mes pasado y el año pasado; el resto solo si lo tildás.
           </div>
 
-          <Section title="Qué pidió el cliente" internal>
+          <Section title="Objetivos propuestos por el cliente" internal>
             <Area value={plan.clientInput} onChange={(v) => upd((p) => { p.clientInput = v; })} ph="Qué busca el cliente este mes (objetivo, volumen, acciones, eventos…). Si propone un objetivo, cargalo arriba; se puede ajustar luego." />
           </Section>
 
           {/* Mes pasado */}
-          <Section title="Cómo nos fue el mes pasado (Meta)" required
+          <Section title="Cómo nos fue el mes pasado (Meta)" include={plan.include.lastMonth} onToggle={() => tgl('lastMonth')}
             action={plan.metaSource ? <button className="mp-edit-link" onClick={() => upd((p) => { p.metaSource = false; })}>✎ Editar a mano</button> : null}>
             {plan.metaSource
               ? <KpiCards data={plan.lastMonthMeta} />
@@ -352,7 +378,7 @@ export default function MediaPlan({ onBack, lockedSlug }) {
           </Section>
 
           {/* Año pasado */}
-          <Section title="Mismo período del año pasado (Meta)" required>
+          <Section title="Mismo período del año pasado (Meta)" include={plan.include.lastYear} onToggle={() => tgl('lastYear')}>
             {plan.metaSource
               ? (lastYearComparable ? <KpiCards data={plan.lastYearMeta} /> : <p className="mp-rule-note">No hubo inversión el año pasado → en el entregable aparece: <em>"No se puede comparar con el mismo período del año pasado ya que no hubo inversión publicitaria."</em></p>)
               : (
@@ -429,12 +455,13 @@ export default function MediaPlan({ onBack, lockedSlug }) {
             <div className="mp-dates">
               {(plan.context.dateItems || []).map((it, i) => (
                 <div key={i} className="ad-row mp-date-row">
-                  <div className="ad-field"><label>Fecha</label><input type="date" value={it.date || ''} onChange={(e) => upd((p) => { p.context.dateItems[i].date = e.target.value; p.context.dateItems.sort((a, b) => { if (!a.date) return 1; if (!b.date) return -1; return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }); })} /></div>
+                  <div className="ad-field"><label>Desde</label><input type="date" value={it.date || ''} onChange={(e) => upd((p) => { p.context.dateItems[i].date = e.target.value; p.context.dateItems.sort((a, b) => { if (!a.date) return 1; if (!b.date) return -1; return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }); })} /></div>
+                  <div className="ad-field"><label>Hasta (opcional)</label><input type="date" value={it.endDate || ''} onChange={(e) => upd((p) => { p.context.dateItems[i].endDate = e.target.value; })} /></div>
                   <div className="ad-field ad-field--grow"><label>Nombre</label><input value={it.name || ''} placeholder="Ej. Día del padre" onChange={(e) => upd((p) => { p.context.dateItems[i].name = e.target.value; })} /></div>
                   <button className="ad-del" onClick={() => upd((p) => { p.context.dateItems.splice(i, 1); })}>×</button>
                 </div>
               ))}
-              <button className="ad-add" onClick={() => upd((p) => { p.context.dateItems = p.context.dateItems || []; p.context.dateItems.push({ date: '', name: '' }); })}>+ Sumar fecha</button>
+              <button className="ad-add" onClick={() => upd((p) => { p.context.dateItems = p.context.dateItems || []; p.context.dateItems.push({ date: '', endDate: '', name: '' }); })}>+ Sumar fecha</button>
             </div>
           </Section>
 
