@@ -225,8 +225,13 @@ function ClientDashboard({ client }) {
   const mediaJustification = generic ? (data.justificationText || '') : '';
   const mediaConsiderations = generic ? (data.considerationsList || []) : [];
   const mediaPlanning = generic ? (data.planningText || '') : '';
-  const effMetaGoal = (generic && mediaObjective)
-    ? { revenueTarget: mediaObjective.facturacion || 0, roasTarget: mediaObjective.roas || 0, spendTarget: mediaObjective.inversion || 0 }
+  // El objetivo de Performance Meta sale del PLAN DE MEDIOS del mes (para TODOS
+  // los clientes, incluido Moka). Solo cae al metaGoal estático si el plan de
+  // medios del mes no tiene objetivo cargado (así no se rompe el display con 0s).
+  const metaObjFromPlan = data.mediaObjective && (data.mediaObjective.facturacion || data.mediaObjective.roas)
+    ? data.mediaObjective : null;
+  const effMetaGoal = metaObjFromPlan
+    ? { revenueTarget: metaObjFromPlan.facturacion || 0, roasTarget: metaObjFromPlan.roas || 0, spendTarget: metaObjFromPlan.inversion || 0 }
     : metaGoal;
 
   const [showBudgetModal, setShowBudgetModal] = useState(false);
