@@ -207,6 +207,8 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
 
       {!showNew && slug && <ClientConfigEditor slug={slug} />}
 
+      {!showNew && slug && <OnboardingEditor slug={slug} clients={clients} />}
+
       {!showNew && clientData && (
         <div className="ad-strategy-head">
           <h2 className="ad-strategy-title">Estrategia</h2>
@@ -576,6 +578,132 @@ function ClientConfigEditor({ slug }) {
           <div className="ad-row" style={{ justifyContent: 'flex-end' }}>
             {msg && <span className="ad-msg">{msg}</span>}
             <button className="ad-btn" onClick={save}>Guardar config</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const OB_STATUS = [
+  { v: 'pendiente', l: 'Pendiente' },
+  { v: 'en_curso', l: 'En curso' },
+  { v: 'hecho', l: 'Hecho' },
+];
+
+function OnboardingEditor({ slug, clients }) {
+  const [open, setOpen] = useState(false);
+  const [ob, setOb] = useState(null);
+  const [msg, setMsg] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!open || ob) return;
+    apiClient.get(`/admin/${slug}/onboarding`).then((r) => setOb(r.data.onboarding)).catch(() => {});
+  }, [open, slug, ob]);
+  useEffect(() => { setOb(null); }, [slug]);
+
+  const upd = (fn) => setOb((p) => { const n = structuredClone(p); fn(n); return n; });
+  const save = () => {
+    setMsg('Guardando…');
+    apiClient.put(`/admin/${slug}/onboarding`, { onboarding: ob })
+      .then(() => { setMsg('✓ Guardado'); setTimeout(() => setMsg(''), 2000); })
+      .catch(() => setMsg('Error al guardar'));
+  };
+
+  const link = `${window.location.origin}/cliente/${slug}/onboarding`;
+  const copy = () => { navigator.clipboard?.writeText(link).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); }); };
+
+  return (
+    <div className="ad-macro">
+      <button className="ad-macro-head" onClick={() => setOpen(!open)}>
+        <span>{open ? '▾' : '▸'}</span> Onboarding del cliente
+      </button>
+      {open && ob && (
+        <div className="ad-macro-body">
+          {/* Link para compartir */}
+          <div className="ad-sublabel">Link para el cliente (misma clave que el portal)</div>
+          <div className="ad-row" style={{ alignItems: 'center' }}>
+            <input className="ad-field--grow" readOnly value={link} style={{ flex: 1, padding: '8px 10px', fontFamily: 'monospace', fontSize: 12 }} />
+            <button className="ad-btn ad-btn--ghost" onClick={copy}>{copied ? '✓ Copiado' : 'Copiar'}</button>
+          </div>
+
+          {/* Reunión 1 */}
+          <div className="ad-sublabel" style={{ marginTop: 16 }}>Reunión 1 — transferencia de accesos</div>
+          <p className="ad-muted" style={{ margin: '0 0 8px' }}>Mientras la fecha no pase, el cliente ve la pantalla bloqueada con "Nos vemos [fecha]" y esta reunión.</p>
+          <div className="ad-row">
+            <div className="ad-field"><label>Fecha de la reunión</label><input type="date" value={ob.meeting1?.date || ''} onChange={(e) => upd((p) => { p.meeting1.date = e.target.value; })} /></div>
+            <Field label="Título" value={ob.meeting1?.title || ''} onChange={(v) => upd((p) => { p.meeting1.title = v; })} />
+          </div>
+          <div className="ad-sublabel">Objetivos de la reunión</div>
+          {(ob.meeting1?.objectives || []).map((o, i) => (
+            <div key={i} className="ad-row">
+              <div className="ad-field ad-field--grow"><label>{`Objetivo ${i + 1}`}</label><input value={o} onChange={(e) => upd((p) => { p.meeting1.objectives[i] = e.target.value; })} /></div>
+              <button className="ad-del" onClick={() => upd((p) => { p.meeting1.objectives.splice(i, 1); })}>×</button>
+            </div>
+          ))}
+          <button className="ad-add" onClick={() => upd((p) => { p.meeting1.objectives = p.meeting1.objectives || []; p.meeting1.objectives.push(''); })}>+ Objetivo</button>
+          <Field label="Disclaimer (ej. tarjeta de crédito)" value={ob.meeting1?.disclaimer || ''} onChange={(v) => upd((p) => { p.meeting1.disclaimer = v; })} />
+
+          <label className="ad-cap" style={{ marginTop: 10 }}>
+            <input type="checkbox" checked={!!ob.flags?.forceUnlock} onChange={() => upd((p) => { p.flags = p.flags || {}; p.flags.forceUnlock = !p.flags.forceUnlock; })} />
+            <span>Desbloquear ya (ignorar la fecha de la reunión)</span>
+          </label>
+
+          {/* Roadmap */}
+          <div className="ad-sublabel" style={{ marginTop: 16 }}>Roadmap — hitos y entregables</div>
+          <p className="ad-muted" style={{ margin: '0 0 8px' }}>Se ven cuando el onboarding está desbloqueado. Cada uno con fecha puntual o rango de semanas.</p>
+          {(ob.roadmap || []).map((it, i) => (
+            <div key={it.id || i} className="ad-row-box">
+              <div className="ad-row">
+                <Field label="Título" value={it.title || ''} onChange={(v) => upd((p) => { p.roadmap[i].title = v; })} />
+                <div className="ad-field">
+                  <label>Tipo</label>
+                  <select value={it.kind || 'hito'} onChange={(e) => upd((p) => { p.roadmap[i].kind = e.target.value; })}>
+                    <option value="hito">Hito</option>
+                    <option value="task">Entregable (cliente)</option>
+                  </select>
+                </div>
+                <div className="ad-field">
+                  <label>Responsable</label>
+                  <select value={it.owner || 'agencia'} onChange={(e) => upd((p) => { p.roadmap[i].owner = e.target.value; })}>
+                    <option value="agencia">Nosotros</option>
+                    <option value="cliente">El cliente</option>
+                  </select>
+                </div>
+                <button className="ad-del" onClick={() => upd((p) => { p.roadmap.splice(i, 1); })}>×</button>
+              </div>
+              <Field label="Detalle" value={it.detail || ''} onChange={(v) => upd((p) => { p.roadmap[i].detail = v; })} />
+              <div className="ad-row">
+                <div className="ad-field">
+                  <label>Cuándo</label>
+                  <select value={it.when?.mode || 'date'} onChange={(e) => upd((p) => { p.roadmap[i].when = { ...(p.roadmap[i].when || {}), mode: e.target.value }; })}>
+                    <option value="date">Fecha puntual</option>
+                    <option value="weeks">Rango de semanas</option>
+                  </select>
+                </div>
+                {(it.when?.mode || 'date') === 'date'
+                  ? <div className="ad-field"><label>Fecha</label><input type="date" value={it.when?.date || ''} onChange={(e) => upd((p) => { p.roadmap[i].when = { ...(p.roadmap[i].when || {}), date: e.target.value }; })} /></div>
+                  : (
+                    <>
+                      <div className="ad-field"><label>Desde semana</label><input className="mp-num" type="number" min="1" value={it.when?.fromWeek || ''} onChange={(e) => upd((p) => { p.roadmap[i].when = { ...(p.roadmap[i].when || {}), fromWeek: e.target.value ? parseInt(e.target.value, 10) : '' }; })} /></div>
+                      <div className="ad-field"><label>Hasta semana</label><input className="mp-num" type="number" min="1" value={it.when?.toWeek || ''} onChange={(e) => upd((p) => { p.roadmap[i].when = { ...(p.roadmap[i].when || {}), toWeek: e.target.value ? parseInt(e.target.value, 10) : '' }; })} /></div>
+                    </>
+                  )}
+                <div className="ad-field">
+                  <label>Estado</label>
+                  <select value={it.status || 'pendiente'} onChange={(e) => upd((p) => { p.roadmap[i].status = e.target.value; })}>
+                    {OB_STATUS.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+          ))}
+          <button className="ad-add" onClick={() => upd((p) => { p.roadmap = p.roadmap || []; p.roadmap.push({ id: `r${Date.now()}`, title: '', detail: '', kind: 'hito', owner: 'agencia', when: { mode: 'date', date: '' }, status: 'pendiente' }); })}>+ Hito / entregable</button>
+
+          <div className="ad-row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+            {msg && <span className="ad-msg">{msg}</span>}
+            <button className="ad-btn" onClick={save}>Guardar onboarding</button>
           </div>
         </div>
       )}

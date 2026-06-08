@@ -8,6 +8,7 @@ import Home from './pages/Home.jsx';
 import ClientHub from './pages/ClientHub.jsx';
 import Admin from './pages/Admin.jsx';
 import ClientPortal, { PaymentsPortal } from './pages/ClientPortal.jsx';
+import Onboarding from './pages/Onboarding.jsx';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -112,6 +113,8 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      {/* Onboarding del cliente — público, misma clave que el portal */}
+      <Route path="/cliente/:slug/onboarding" element={<Onboarding />} />
       {/* Portal de cliente — público, protegido por clave propia */}
       <Route path="/cliente/:slug" element={<ClientPortal />} />
       {/* Vista solo de pagos — para administración, clave separada */}
