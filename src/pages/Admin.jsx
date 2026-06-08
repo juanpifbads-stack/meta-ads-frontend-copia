@@ -614,6 +614,47 @@ function OnboardingEditor({ slug, clients }) {
   const link = `${window.location.origin}/cliente/${slug}/onboarding`;
   const copy = () => { navigator.clipboard?.writeText(link).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); }); };
 
+  // --- Banco de preguntas (global) ---
+  const [bank, setBank] = useState(null);
+  const [newQ, setNewQ] = useState({ marca: '', producto: '', audiencia: '' });
+  const reloadBank = () => apiClient.get('/admin/onboarding/questions').then((r) => setBank(r.data.questions || [])).catch(() => {});
+  useEffect(() => { if (open && bank === null) reloadBank(); }, [open, bank]);
+  const addQ = (section) => {
+    const text = (newQ[section] || '').trim();
+    if (!text) return;
+    apiClient.post('/admin/onboarding/questions', { section, text }).then(() => { setNewQ((s) => ({ ...s, [section]: '' })); reloadBank(); }).catch(() => {});
+  };
+  const setQActive = (q, active) => apiClient.put(`/admin/onboarding/questions/${q.id}`, { active }).then(reloadBank).catch(() => {});
+  const editQText = (q, text) => apiClient.put(`/admin/onboarding/questions/${q.id}`, { text }).catch(() => {});
+  const isSelected = (id) => (ob?.selectedQuestionIds || []).includes(id);
+  const toggleSelect = (id) => upd((p) => { const set = new Set(p.selectedQuestionIds || []); set.has(id) ? set.delete(id) : set.add(id); p.selectedQuestionIds = [...set]; });
+
+  // --- PDF de respuestas del cliente ---
+  const downloadAnswersPdf = () => {
+    const clientName = clients.find((c) => c.slug === slug)?.name || slug;
+    const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const secOf = {}; (bank || []).forEach((q) => { secOf[q.id] = q.section; });
+    const SEC_LBL = { marca: 'Marca', producto: 'Producto', audiencia: 'Audiencia', otras: 'Otras' };
+    const groups = { marca: [], producto: [], audiencia: [], otras: [] };
+    (ob.answers || []).forEach((a) => { (groups[secOf[a.questionId] || 'otras']).push(a); });
+    const body = ['marca', 'producto', 'audiencia', 'otras'].filter((k) => groups[k].length).map((k) => `
+      <div class="sec"><div class="sec-t">${SEC_LBL[k]}</div>${groups[k].map((a) => `
+        <div class="qa"><div class="q">${esc(a.questionText)}</div><div class="a">${esc(a.answer) || '<span class="empty">— sin responder —</span>'}</div></div>`).join('')}</div>`).join('');
+    const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Onboarding — ${esc(clientName)}</title>
+      <style>@page{margin:36px;} body{font-family:-apple-system,system-ui,Helvetica,Arial,sans-serif;color:#15161a;padding:40px;line-height:1.5;}
+      .brand{font-family:monospace;color:#1b1fe8;font-weight:700;font-size:15px;} h1{font-size:28px;margin:6px 0 2px;}
+      .sub{color:#5b5e66;margin-bottom:22px;} .rule{height:3px;background:#15161a;margin:14px 0 24px;}
+      .sec{margin-bottom:22px;page-break-inside:avoid;} .sec-t{font-family:monospace;text-transform:uppercase;letter-spacing:.05em;font-size:13px;font-weight:700;border-bottom:2px solid #15161a;padding-bottom:5px;margin-bottom:12px;}
+      .qa{margin-bottom:14px;} .q{font-weight:700;font-size:14px;} .a{font-size:14px;white-space:pre-wrap;margin-top:2px;} .empty{color:#b0b2ba;}
+      .foot{margin-top:28px;font-family:monospace;font-size:10px;color:#b0b2ba;text-align:center;}</style></head><body>
+      <div class="brand">alquimia.</div><h1>${esc(clientName)}</h1><div class="sub">Formulario de onboarding</div><div class="rule"></div>
+      ${body || '<p>Sin respuestas todavía.</p>'}
+      <div class="foot">Generado por alquimia. · ${new Date().toLocaleDateString('es-AR')}</div></body></html>`;
+    const w = window.open('', '_blank');
+    if (!w) { alert('Permití las ventanas emergentes para exportar el PDF.'); return; }
+    w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 400);
+  };
+
   return (
     <div className="ad-macro">
       <button className="ad-macro-head" onClick={() => setOpen(!open)}>
@@ -701,9 +742,37 @@ function OnboardingEditor({ slug, clients }) {
           ))}
           <button className="ad-add" onClick={() => upd((p) => { p.roadmap = p.roadmap || []; p.roadmap.push({ id: `r${Date.now()}`, title: '', detail: '', kind: 'hito', owner: 'agencia', when: { mode: 'date', date: '' }, status: 'pendiente' }); })}>+ Hito / entregable</button>
 
-          <div className="ad-row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
-            {msg && <span className="ad-msg">{msg}</span>}
-            <button className="ad-btn" onClick={save}>Guardar onboarding</button>
+          {/* Formulario de onboarding: banco de preguntas + selección */}
+          <div className="ad-sublabel" style={{ marginTop: 18 }}>Formulario de onboarding — banco de preguntas</div>
+          <p className="ad-muted" style={{ margin: '0 0 8px' }}>Tildá las preguntas que van para este cliente. El banco se guarda y se reutiliza para todos. "Archivar" = se deja de ofrecer pero no se borra (no afecta a quienes ya respondieron).</p>
+          {['marca', 'producto', 'audiencia'].map((sec) => {
+            const qs = (bank || []).filter((q) => q.section === sec);
+            return (
+              <div key={sec} className="ad-row-box">
+                <div className="ad-sublabel" style={{ textTransform: 'capitalize', marginTop: 0 }}>{sec}</div>
+                {qs.map((q) => (
+                  <div key={q.id} className="ad-row" style={{ alignItems: 'center', opacity: q.active ? 1 : 0.5 }}>
+                    <label className="ad-cap" style={{ flex: 1 }}>
+                      <input type="checkbox" disabled={!q.active} checked={isSelected(q.id)} onChange={() => toggleSelect(q.id)} />
+                      <input defaultValue={q.text} onBlur={(e) => { if (e.target.value.trim() && e.target.value !== q.text) editQText(q, e.target.value.trim()); }} style={{ flex: 1, padding: '6px 8px', fontSize: 13 }} />
+                    </label>
+                    <button className="ad-btn ad-btn--ghost" onClick={() => setQActive(q, !q.active)}>{q.active ? 'Archivar' : 'Reactivar'}</button>
+                  </div>
+                ))}
+                <div className="ad-row" style={{ marginTop: 6 }}>
+                  <input className="ad-field--grow" placeholder={`Nueva pregunta de ${sec}…`} value={newQ[sec]} onChange={(e) => setNewQ((s) => ({ ...s, [sec]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') addQ(sec); }} style={{ flex: 1, padding: '8px 10px' }} />
+                  <button className="ad-add" onClick={() => addQ(sec)}>+ Agregar</button>
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="ad-row" style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+            <button className="ad-btn ad-btn--ghost" onClick={downloadAnswersPdf} disabled={!(ob.answers || []).length}>↧ Descargar respuestas (PDF)</button>
+            <div className="ad-save">
+              {msg && <span className="ad-msg">{msg}</span>}
+              <button className="ad-btn" onClick={save}>Guardar onboarding</button>
+            </div>
           </div>
         </div>
       )}
