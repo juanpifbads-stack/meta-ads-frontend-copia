@@ -268,7 +268,7 @@ export default function MediaPlan({ onBack, lockedSlug }) {
       html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       body { font-family: -apple-system, system-ui, Helvetica, Arial, sans-serif; color: #15161a; margin: 0; padding: 0; line-height: 1.55; }
       /* Hoja A4 (96dpi = 794x1123px). #doc se auto-escala por JS para entrar SIEMPRE en una sola carilla. */
-      #page { width: 794px; min-height: 1123px; margin: 0 auto; padding: 48px 52px; transform-origin: top center; }
+      #page { width: 794px; min-height: 1123px; margin: 0 auto; padding: 48px 52px; }
       .brand { font-family: 'SF Mono', Menlo, Consolas, monospace; color: #1b1fe8; font-weight: 700; font-size: 14px; letter-spacing: 0.04em; }
       .eyebrow { font-family: 'SF Mono', Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px; color: #8a8d96; margin-top: 3px; }
       h1 { font-size: 25px; margin: 6px 0 2px; }
@@ -322,16 +322,15 @@ export default function MediaPlan({ onBack, lockedSlug }) {
           var PAGE_H = 1123; // alto A4 a 96dpi
           var el = document.getElementById('page');
           function fit() {
-            el.style.transform = 'none';
+            // Medimos sin zoom (zoom reflowea el layout, a diferencia de transform
+            // que Chrome ignora al paginar la impresión).
+            el.style.zoom = 1;
             el.style.minHeight = '0px';
             var h = el.scrollHeight;
-            var scale = Math.min(1, PAGE_H / h);
-            if (scale < 1) {
-              el.style.transform = 'scale(' + scale + ')';
-              el.style.height = (h * scale) + 'px';
-            } else {
-              el.style.minHeight = PAGE_H + 'px';
-            }
+            var scale = Math.min(1, (PAGE_H - 4) / h);
+            el.style.zoom = scale;
+            // Si entra holgado, ocupamos la hoja completa (centrado vertical natural).
+            if (scale >= 1) el.style.minHeight = PAGE_H + 'px';
           }
           fit();
           window.__fit = fit;
