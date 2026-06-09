@@ -54,6 +54,7 @@
 .ob-meeting-obj { margin: 0 0 14px; padding-left: 20px; }
 .ob-meeting-obj li { font-size: 14px; margin-bottom: 6px; color: #2b2d34; }
 .ob-disclaimer { background: #fef9c3; color: #854d0e; border-radius: 10px; padding: 12px 14px; font-size: 13px; font-weight: 600; }
+.ob-meet-btn { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; text-decoration: none; }
 
 /* ---- Progreso ---- */
 .ob-progresswrap { max-width: 760px; margin: 0 auto 26px; background: #fff; border: 1px solid #e5e6ea; border-radius: 14px; padding: 16px 18px; }

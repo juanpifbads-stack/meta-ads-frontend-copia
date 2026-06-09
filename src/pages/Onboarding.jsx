@@ -84,11 +84,12 @@ function Welcome({ name, onDone }) {
 /* ── Pantalla bloqueada: reunión 1 ── */
 function LockedView({ name, meeting1 }) {
   const m = meeting1 || {};
+  const when = m.date ? `${fmtLongDate(m.date)}${m.time ? ` a las ${m.time} hs` : ''}` : '';
   return (
     <div className="ob-locked">
       <div className="ob-card ob-card--meeting">
         <div className="ob-lock-eyebrow">🔒 Tu espacio se abre pronto</div>
-        <h2 className="ob-lock-title">{m.date ? `Nos vemos el ${fmtLongDate(m.date)}` : 'Nos vemos pronto'}</h2>
+        <h2 className="ob-lock-title">{m.date ? `Nos vemos el ${when}` : 'Nos vemos pronto'}</h2>
         <p className="ob-lock-sub">Primer hito del camino</p>
 
         <div className="ob-meeting">
@@ -96,7 +97,7 @@ function LockedView({ name, meeting1 }) {
             <span className="ob-meeting-num">1</span>
             <div>
               <div className="ob-meeting-title">{m.title || 'Reunión de transferencia de accesos'}</div>
-              {m.date && <div className="ob-meeting-date">{fmtLongDate(m.date)}</div>}
+              {when && <div className="ob-meeting-date">{when}</div>}
             </div>
           </div>
           <div className="ob-meeting-objlabel">Objetivo de la reunión</div>
@@ -104,6 +105,11 @@ function LockedView({ name, meeting1 }) {
             {(m.objectives || []).map((o, i) => <li key={i}>{o}</li>)}
           </ul>
           {m.disclaimer && <div className="ob-disclaimer">💳 {m.disclaimer}</div>}
+          {m.meetLink && (
+            <a className="ob-btn ob-meet-btn" href={m.meetLink} target="_blank" rel="noopener noreferrer">
+              🎥 Unirse a la reunión
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -285,13 +291,19 @@ export default function Onboarding() {
   const onPass = (key, payload) => {
     setAuthKey(key);
     setData(payload);
-    setShowWelcome(!payload.welcomeSeen);
+    // Bloqueado → la animación aparece SIEMPRE en cada ingreso.
+    // Desbloqueado → solo la primera vez (después queda marcada como vista).
+    setShowWelcome(payload.locked ? true : !payload.welcomeSeen);
   };
 
   const dismissWelcome = useCallback(() => {
     setShowWelcome(false);
-    apiClient.patch(`/onboarding/${slug}`, { welcomeSeen: true }, { params: { key: authKey } }).catch(() => {});
-  }, [slug, authKey]);
+    // Solo la marcamos como "vista" cuando ya está desbloqueado; mientras está
+    // bloqueado no se persiste, para que reaparezca en cada ingreso.
+    if (data && !data.locked) {
+      apiClient.patch(`/onboarding/${slug}`, { welcomeSeen: true }, { params: { key: authKey } }).catch(() => {});
+    }
+  }, [slug, authKey, data]);
 
   const refetch = useCallback(() => {
     apiClient.get(`/onboarding/${slug}`, { params: { key: authKey } }).then((r) => setData(r.data)).catch(() => {});

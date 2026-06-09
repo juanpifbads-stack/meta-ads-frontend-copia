@@ -317,13 +317,13 @@ function Section({ title, children }) {
     </section>
   );
 }
-function Field({ label, value, onChange, textarea }) {
+function Field({ label, value, onChange, textarea, ph }) {
   return (
     <div className="ad-field ad-field--grow">
       <label>{label}</label>
       {textarea
-        ? <textarea value={value} onChange={(e) => onChange(e.target.value)} />
-        : <input value={value} onChange={(e) => onChange(e.target.value)} />}
+        ? <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={ph} />
+        : <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={ph} />}
     </div>
   );
 }
@@ -674,8 +674,10 @@ function OnboardingEditor({ slug, clients }) {
           <p className="ad-muted" style={{ margin: '0 0 8px' }}>Mientras la fecha no pase, el cliente ve la pantalla bloqueada con "Nos vemos [fecha]" y esta reunión.</p>
           <div className="ad-row">
             <div className="ad-field"><label>Fecha de la reunión</label><input type="date" value={ob.meeting1?.date || ''} onChange={(e) => upd((p) => { p.meeting1.date = e.target.value; })} /></div>
+            <div className="ad-field"><label>Hora</label><input type="time" value={ob.meeting1?.time || ''} onChange={(e) => upd((p) => { p.meeting1.time = e.target.value; })} /></div>
             <Field label="Título" value={ob.meeting1?.title || ''} onChange={(v) => upd((p) => { p.meeting1.title = v; })} />
           </div>
+          <Field label="Link del Meet (videollamada)" value={ob.meeting1?.meetLink || ''} onChange={(v) => upd((p) => { p.meeting1.meetLink = v; })} ph="https://meet.google.com/…" />
           <div className="ad-sublabel">Objetivos de la reunión</div>
           {(ob.meeting1?.objectives || []).map((o, i) => (
             <div key={i} className="ad-row">
