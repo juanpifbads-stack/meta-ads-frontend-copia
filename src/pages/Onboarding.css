@@ -55,8 +55,8 @@
 .ob-meeting-obj li { font-size: 14px; margin-bottom: 6px; color: #2b2d34; }
 .ob-disclaimer { background: #fef9c3; color: #854d0e; border-radius: 10px; padding: 12px 14px; font-size: 13px; font-weight: 600; }
 .ob-meet-btn { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; text-decoration: none; }
-.ob-section-intro { background: #f3f4ff; border-left: 3px solid #1b1fe8; border-radius: 8px; padding: 12px 14px; font-size: 13.5px; color: #2b2d34; margin: 0 0 18px; white-space: pre-wrap; }
-.ob-fixed-intro { background: #fbfbfd; border: 1px solid #e5e6ea; border-radius: 10px; padding: 14px 16px; font-size: 13px; line-height: 1.6; color: #3a3d44; margin: 0 0 18px; white-space: pre-wrap; }
+.ob-section-intro { background: #f3f4ff; border-left: 3px solid #1b1fe8; border-radius: 8px; padding: 16px 18px; font-size: 14.5px; line-height: 1.7; color: #2b2d34; margin: 0 0 22px; white-space: pre-wrap; text-align: justify; }
+.ob-fixed-intro { background: #fbfbfd; border: 1px solid #e5e6ea; border-radius: 10px; padding: 18px 20px; font-size: 14px; line-height: 1.75; color: #3a3d44; margin: 0 0 22px; white-space: pre-wrap; text-align: justify; }
 .ob-persona { border: 1.5px solid #e5e6ea; border-radius: 14px; padding: 16px; margin-bottom: 16px; background: #fafbff; }
 .ob-persona-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .ob-persona-title { font-family: var(--font-mono, monospace); text-transform: uppercase; letter-spacing: .06em; font-size: 12px; font-weight: 700; color: #1b1fe8; }
@@ -111,17 +111,17 @@
 .ob-deliv-card--done .ob-deliv-status { color: #15803d; }
 
 /* ---- Formulario ---- */
-.ob-form-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(11,13,58,.5); display: flex; align-items: flex-start; justify-content: center; padding: 24px; overflow-y: auto; }
-.ob-form { background: #fff; border-radius: 18px; width: 100%; max-width: 680px; padding: 26px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+.ob-form-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(11,13,58,.5); display: flex; align-items: flex-start; justify-content: center; padding: 32px 24px; overflow-y: auto; }
+.ob-form { background: #fff; border-radius: 18px; width: 100%; max-width: 960px; padding: 38px 44px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
 .ob-form-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
 .ob-form-close { background: transparent; border: none; font-size: 26px; color: #8a8d96; cursor: pointer; line-height: 1; }
 .ob-form-tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
 .ob-form-tab { font-family: var(--font-mono, monospace); font-size: 12px; padding: 7px 14px; border: 1.5px solid #e5e6ea; background: #fff; border-radius: 999px; cursor: pointer; color: #5b5e66; }
 .ob-form-tab--on { background: #1b1fe8; color: #fff; border-color: #1b1fe8; }
 .ob-form-tab-count { opacity: .7; margin-left: 4px; }
-.ob-form-body { display: flex; flex-direction: column; gap: 18px; max-height: 52vh; overflow-y: auto; padding-right: 4px; }
-.ob-form-q label { display: block; font-weight: 600; font-size: 14px; color: #15161a; margin-bottom: 6px; }
-.ob-form-q textarea { width: 100%; min-height: 80px; padding: 10px 12px; border: 1.5px solid #e5e6ea; border-radius: 10px; font-size: 14px; font-family: inherit; resize: vertical; outline: none; }
+.ob-form-body { display: flex; flex-direction: column; gap: 28px; max-height: 62vh; overflow-y: auto; padding-right: 10px; }
+.ob-form-q label { display: block; font-weight: 600; font-size: 15.5px; line-height: 1.7; color: #15161a; margin-bottom: 12px; text-align: justify; }
+.ob-form-q textarea { width: 100%; min-height: 92px; padding: 13px 15px; border: 1.5px solid #e5e6ea; border-radius: 10px; font-size: 15px; line-height: 1.6; font-family: inherit; resize: vertical; outline: none; }
 .ob-form-q textarea:focus { border-color: #1b1fe8; }
 .ob-form-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; gap: 12px; }
 .ob-form-saved { font-family: var(--font-mono, monospace); font-size: 12px; color: #16a34a; }
