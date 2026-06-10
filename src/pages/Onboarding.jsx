@@ -16,6 +16,12 @@ function fmtWhen(when) {
     if (when.fromWeek) return `Semana ${when.fromWeek}`;
     return '';
   }
+  if (when.mode === 'dates') {
+    if (when.fromDate && when.toDate) return `Del ${fmtLongDate(when.fromDate)} al ${fmtLongDate(when.toDate)}`;
+    if (when.fromDate) return `Desde el ${fmtLongDate(when.fromDate)}`;
+    if (when.toDate) return `Hasta el ${fmtLongDate(when.toDate)}`;
+    return '';
+  }
   return when.date ? `Para el ${fmtLongDate(when.date)}` : '';
 }
 

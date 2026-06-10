@@ -727,17 +727,25 @@ function OnboardingEditor({ slug, clients }) {
                   <label>Cuándo</label>
                   <select value={it.when?.mode || 'date'} onChange={(e) => upd((p) => { p.roadmap[i].when = { ...(p.roadmap[i].when || {}), mode: e.target.value }; })}>
                     <option value="date">Fecha puntual</option>
+                    <option value="dates">Rango de fechas</option>
                     <option value="weeks">Rango de semanas</option>
                   </select>
                 </div>
-                {(it.when?.mode || 'date') === 'date'
-                  ? <div className="ad-field"><label>Fecha</label><input type="date" value={it.when?.date || ''} onChange={(e) => upd((p) => { p.roadmap[i].when = { ...(p.roadmap[i].when || {}), date: e.target.value }; })} /></div>
-                  : (
-                    <>
-                      <div className="ad-field"><label>Desde semana</label><input className="mp-num" type="number" min="1" value={it.when?.fromWeek || ''} onChange={(e) => upd((p) => { p.roadmap[i].when = { ...(p.roadmap[i].when || {}), fromWeek: e.target.value ? parseInt(e.target.value, 10) : '' }; })} /></div>
-                      <div className="ad-field"><label>Hasta semana</label><input className="mp-num" type="number" min="1" value={it.when?.toWeek || ''} onChange={(e) => upd((p) => { p.roadmap[i].when = { ...(p.roadmap[i].when || {}), toWeek: e.target.value ? parseInt(e.target.value, 10) : '' }; })} /></div>
-                    </>
-                  )}
+                {(it.when?.mode || 'date') === 'date' && (
+                  <div className="ad-field"><label>Fecha</label><input type="date" value={it.when?.date || ''} onChange={(e) => upd((p) => { p.roadmap[i].when = { ...(p.roadmap[i].when || {}), date: e.target.value }; })} /></div>
+                )}
+                {it.when?.mode === 'dates' && (
+                  <>
+                    <div className="ad-field"><label>Desde fecha</label><input type="date" value={it.when?.fromDate || ''} onChange={(e) => upd((p) => { p.roadmap[i].when = { ...(p.roadmap[i].when || {}), fromDate: e.target.value }; })} /></div>
+                    <div className="ad-field"><label>Hasta fecha</label><input type="date" value={it.when?.toDate || ''} onChange={(e) => upd((p) => { p.roadmap[i].when = { ...(p.roadmap[i].when || {}), toDate: e.target.value }; })} /></div>
+                  </>
+                )}
+                {it.when?.mode === 'weeks' && (
+                  <>
+                    <div className="ad-field"><label>Desde semana</label><input className="mp-num" type="number" min="1" value={it.when?.fromWeek || ''} onChange={(e) => upd((p) => { p.roadmap[i].when = { ...(p.roadmap[i].when || {}), fromWeek: e.target.value ? parseInt(e.target.value, 10) : '' }; })} /></div>
+                    <div className="ad-field"><label>Hasta semana</label><input className="mp-num" type="number" min="1" value={it.when?.toWeek || ''} onChange={(e) => upd((p) => { p.roadmap[i].when = { ...(p.roadmap[i].when || {}), toWeek: e.target.value ? parseInt(e.target.value, 10) : '' }; })} /></div>
+                  </>
+                )}
                 <div className="ad-field">
                   <label>Estado</label>
                   <select value={it.status || 'pendiente'} onChange={(e) => upd((p) => { p.roadmap[i].status = e.target.value; })}>
