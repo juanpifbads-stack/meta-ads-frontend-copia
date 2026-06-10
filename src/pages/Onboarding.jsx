@@ -28,8 +28,20 @@ function fmtWhen(when) {
 const STATUS = {
   pendiente: { label: 'Pendiente', cls: 'ob-st--pending' },
   en_curso: { label: 'En curso', cls: 'ob-st--progress' },
-  hecho: { label: 'Hecho', cls: 'ob-st--done' },
+  hecho: { label: 'Finalizado', cls: 'ob-st--done' },
 };
+
+const DOW = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+function ymd(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+// ¿El hito/entregable cae en este día (YYYY-MM-DD)? (modo semanas no se ubica en el calendario)
+function itemOnDay(it, ds) {
+  const w = it.when || {};
+  if (w.mode === 'dates') {
+    if (w.fromDate && w.toDate) return ds >= w.fromDate && ds <= w.toDate;
+    return w.fromDate === ds || w.toDate === ds;
+  }
+  return w.date === ds;
+}
 
 /* ── Gate de clave (validado contra el backend) ── */
 function Gate({ slug, onPass }) {
@@ -373,6 +385,7 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
   const pct = items.length ? Math.round((done / items.length) * 100) : 0;
   const [showForm, setShowForm] = useState(false);
   const [showContent, setShowContent] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
   const questions = data.questions || [];
   const ansCount = (data.answers || []).filter((a) => (a.answer || '').trim()).length;
 
@@ -385,23 +398,42 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
   const tasks = items.filter((it) => it.kind === 'task');
   const hitos = items.filter((it) => it.kind !== 'task').sort((a, b) => whenSortKey(a).localeCompare(whenSortKey(b)));
 
+  // El cliente puede ciclar el estado: pendiente → en curso → hecho → pendiente.
+  const STATUS_ORDER = ['pendiente', 'en_curso', 'hecho'];
+  const cycleStatus = (it) => {
+    if (!it.id) return;
+    const next = STATUS_ORDER[(STATUS_ORDER.indexOf(it.status || 'pendiente') + 1) % STATUS_ORDER.length];
+    apiClient.patch(`/onboarding/${slug}`, { roadmapStatuses: { [it.id]: next } }, { params: { key: authKey } })
+      .then(refetch).catch(() => {});
+  };
+
   const renderCard = (it, idx) => {
     const st = STATUS[it.status] || STATUS.pendiente;
+    const when = fmtWhen(it.when);
+    const isHito = it.kind !== 'task';
     return (
       <div key={it.id || idx} className={`ob-rc ${it.status === 'hecho' ? 'ob-rc--done' : ''}`}>
         <div className="ob-tl-top">
           <span className={`ob-tl-kind ${it.kind === 'task' ? 'ob-tl-kind--task' : ''}`}>{it.kind === 'task' ? 'Entregable' : 'Hito'}</span>
-          <span className={`ob-st ${st.cls}`}>{st.label}</span>
+          <button className={`ob-st ob-st--btn ${st.cls}`} onClick={() => cycleStatus(it)} title="Tocá para cambiar el estado">{st.label}</button>
         </div>
+        {isHito && when && <div className="ob-rc-date">🗓 {when}</div>}
         <div className="ob-tl-title">{it.title}</div>
         {it.detail && <div className="ob-tl-detail">{it.detail}</div>}
         <div className="ob-tl-meta">
-          {fmtWhen(it.when) && <span>🗓 {fmtWhen(it.when)}</span>}
+          {!isHito && when && <span>🗓 {when}</span>}
           {it.owner && <span className={`ob-owner ob-owner--${it.owner}`}>{ownerLabel(it.owner)}</span>}
         </div>
       </div>
     );
   };
+
+  // Calendario: semana actual (lunes a domingo) + desplazamiento.
+  const weekStart = (() => { const d = new Date(); const dow = (d.getDay() + 6) % 7; d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - dow + weekOffset * 7); return d; })();
+  const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(weekStart.getDate() + i); return d; });
+  const todayStr = ymd(new Date());
+  const weekLabel = `${weekStart.getDate()} ${MESES[weekStart.getMonth()]} – ${weekDays[6].getDate()} ${MESES[weekDays[6].getMonth()]}`;
+  const weekTitle = weekOffset === 0 ? 'Esta semana' : weekOffset === 1 ? 'Próxima semana' : weekOffset === -1 ? 'Semana pasada' : weekLabel;
 
   return (
     <div className="ob-roadmap">
@@ -450,6 +482,31 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
       </div>
 
       {items.length === 0 && <p className="ob-empty">Estamos preparando los próximos pasos. ¡Muy pronto vas a ver tu camino acá!</p>}
+
+      {items.length > 0 && (
+        <div className="ob-cal">
+          <div className="ob-cal-head">
+            <button className="ob-cal-nav" onClick={() => setWeekOffset((o) => o - 1)} aria-label="Semana anterior">←</button>
+            <span className="ob-cal-range"><strong>{weekTitle}</strong>{weekOffset !== 0 && <span className="ob-cal-sub"> · {weekLabel}</span>}</span>
+            <button className="ob-cal-nav" onClick={() => setWeekOffset((o) => o + 1)} aria-label="Semana siguiente">→</button>
+          </div>
+          <div className="ob-cal-grid">
+            {weekDays.map((d, i) => {
+              const ds = ymd(d);
+              const dayItems = items.filter((it) => itemOnDay(it, ds));
+              return (
+                <div key={ds} className={`ob-cal-day ${ds === todayStr ? 'ob-cal-day--today' : ''}`}>
+                  <div className="ob-cal-dow">{DOW[i]}</div>
+                  <div className="ob-cal-dom">{d.getDate()}</div>
+                  {dayItems.map((it, j) => (
+                    <div key={it.id || j} className={`ob-cal-pill ${it.kind === 'task' ? 'ob-cal-pill--task' : ''}`} title={it.title}>{it.title}</div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {items.length > 0 && (
         <div className="ob-cols">
