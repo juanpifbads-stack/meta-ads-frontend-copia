@@ -144,6 +144,17 @@ const PERSONA_Q_PH = 'Ej: El padre de familia de 40 que no quiere ir hasta el su
 // pregunta del banco: es la descripción libre de la audiencia general.
 const AUD_GENERAL_ID = '__aud_general__';
 
+// Guía fija de cómo organizar la carpeta de contenido.
+const CONTENT_GUIDE = `Compartinos el material (fotos y videos) en una carpeta de Drive, ordenada así:
+
+1. Separá primero por temporada o contexto. Ej: si estás vendiendo la temporada de verano, la primera carpeta sería "SS26".
+
+2. Dentro de esa carpeta, creá dos: FOTOS y VIDEOS.
+
+3. Dentro de cada una, organizá con tu propio criterio. Ej: "Producción ecommerce", "Producción street", etc.
+
+Cuando esté lista, pegá abajo el link de la carpeta y asegurate de darnos permiso de visualización.`;
+
 /* ── Formulario de onboarding (3 secciones, progreso, resumable, buyer personas) ── */
 function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPersonas, intros, onClose, onSaved }) {
   // Mapa { akey: answer } inicial desde lo ya respondido.
@@ -314,12 +325,48 @@ function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPerso
   );
 }
 
+/* ── Modal: compartir carpeta de contenido (link de Drive) ── */
+function ContentModal({ slug, authKey, initialLink, onClose, onSaved }) {
+  const [link, setLink] = useState(initialLink || '');
+  const [saving, setSaving] = useState(false);
+  const save = () => {
+    setSaving(true);
+    apiClient.patch(`/onboarding/${slug}`, { driveLink: link.trim() }, { params: { key: authKey } })
+      .then(() => { onSaved && onSaved(); onClose(); })
+      .catch(() => {})
+      .finally(() => setSaving(false));
+  };
+  return (
+    <div className="ob-form-overlay">
+      <div className="ob-form">
+        <div className="ob-form-head">
+          <div>
+            <div className="ob-brand">alquimia.</div>
+            <div className="ob-head-eyebrow">Compartir contenido</div>
+          </div>
+          <button className="ob-form-close" onClick={onClose} aria-label="Cerrar">×</button>
+        </div>
+        <div className="ob-fixed-intro">{CONTENT_GUIDE}</div>
+        <div className="ob-form-q">
+          <label>Link de la carpeta de contenido</label>
+          <input className="ob-link-input" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://drive.google.com/…" />
+        </div>
+        <div className="ob-form-foot">
+          <span className="ob-form-saved" />
+          <button className="ob-btn" onClick={save} disabled={saving}>{saving ? 'Guardando…' : 'Guardar link'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Roadmap (desbloqueado) ── */
 function Roadmap({ name, data, slug, authKey, refetch }) {
   const items = data.roadmap || [];
   const done = items.filter((i) => i.status === 'hecho').length;
   const pct = items.length ? Math.round((done / items.length) * 100) : 0;
   const [showForm, setShowForm] = useState(false);
+  const [showContent, setShowContent] = useState(false);
   const questions = data.questions || [];
   const ansCount = (data.answers || []).filter((a) => (a.answer || '').trim()).length;
 
@@ -341,6 +388,11 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
               {data.formSubmitted ? '✓ Enviado' : questions.length ? `${ansCount}/${questions.length} respondidas` : 'Próximamente'}
             </span>
           </button>
+          <button className={`ob-deliv-card ${data.contentSubmitted ? 'ob-deliv-card--done' : ''}`} onClick={() => setShowContent(true)}>
+            <span className="ob-deliv-icon">📁</span>
+            <span className="ob-deliv-name">Compartir carpeta de contenido</span>
+            <span className="ob-deliv-status">{data.contentSubmitted ? '✓ Link cargado' : 'Pegá el link de Drive'}</span>
+          </button>
         </div>
       </div>
 
@@ -349,6 +401,13 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
           slug={slug} authKey={authKey} questions={questions} initialAnswers={data.answers}
           initialPersonas={data.personas} intros={data.sectionIntros}
           onClose={() => setShowForm(false)} onSaved={refetch}
+        />
+      )}
+
+      {showContent && (
+        <ContentModal
+          slug={slug} authKey={authKey} initialLink={data.content?.driveLink}
+          onClose={() => setShowContent(false)} onSaved={refetch}
         />
       )}
 

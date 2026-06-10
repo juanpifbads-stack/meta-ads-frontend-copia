@@ -124,6 +124,8 @@
 .ob-form-q label { display: block; font-weight: 600; font-size: 15.5px; line-height: 1.7; color: #15161a; margin-bottom: 12px; text-align: justify; white-space: pre-line; }
 .ob-form-q textarea { width: 100%; min-height: 92px; padding: 13px 15px; border: 1.5px solid #e5e6ea; border-radius: 10px; font-size: 15px; line-height: 1.6; font-family: inherit; resize: vertical; outline: none; }
 .ob-form-q textarea:focus { border-color: #1b1fe8; }
+.ob-link-input { width: 100%; padding: 13px 15px; border: 1.5px solid #e5e6ea; border-radius: 10px; font-size: 15px; font-family: inherit; outline: none; }
+.ob-link-input:focus { border-color: #1b1fe8; }
 .ob-form-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; gap: 12px; }
 .ob-form-saved { font-family: var(--font-mono, monospace); font-size: 12px; color: #16a34a; }
 .ob-form-nav { display: flex; gap: 8px; }
