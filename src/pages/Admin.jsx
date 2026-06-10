@@ -649,7 +649,7 @@ function OnboardingEditor({ slug, clients }) {
       .brand{font-family:monospace;color:#1b1fe8;font-weight:700;font-size:15px;} h1{font-size:28px;margin:6px 0 2px;}
       .sub{color:#5b5e66;margin-bottom:22px;} .rule{height:3px;background:#15161a;margin:14px 0 24px;}
       .sec{margin-bottom:22px;page-break-inside:avoid;} .sec-t{font-family:monospace;text-transform:uppercase;letter-spacing:.05em;font-size:13px;font-weight:700;border-bottom:2px solid #15161a;padding-bottom:5px;margin-bottom:12px;}
-      .qa{margin-bottom:14px;} .q{font-weight:700;font-size:14px;} .a{font-size:14px;white-space:pre-wrap;margin-top:2px;} .empty{color:#b0b2ba;}
+      .qa{margin-bottom:14px;} .q{font-weight:700;font-size:14px;white-space:pre-line;} .a{font-size:14px;white-space:pre-wrap;margin-top:2px;} .empty{color:#b0b2ba;}
       .ptag{display:inline-block;background:#eef0ff;color:#1b1fe8;font-family:monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 6px;border-radius:5px;margin-right:4px;}
       .foot{margin-top:28px;font-family:monospace;font-size:10px;color:#b0b2ba;text-align:center;}</style></head><body>
       <div class="brand">alquimia.</div><h1>${esc(clientName)}</h1><div class="sub">Formulario de onboarding</div><div class="rule"></div>
@@ -760,16 +760,16 @@ function OnboardingEditor({ slug, clients }) {
                 <Field label="Descripción de la sección (la ve el cliente arriba de las preguntas)" textarea value={ob.sectionIntros?.[sec] || ''} onChange={(v) => upd((p) => { p.sectionIntros = p.sectionIntros || {}; p.sectionIntros[sec] = v; })} ph={sec === 'audiencia' ? 'Ej: Definamos a quién le hablamos. La 1ª pregunta es general; después cargá uno o más buyer personas.' : ''} />
                 {sec === 'audiencia' && <p className="ad-muted" style={{ margin: '0 0 8px' }}>En Audiencia, la 1ª pregunta es general y las siguientes se repiten por cada buyer persona que sume el cliente.</p>}
                 {qs.map((q) => (
-                  <div key={q.id} className="ad-row" style={{ alignItems: 'center', opacity: q.active ? 1 : 0.5 }}>
-                    <label className="ad-cap" style={{ flex: 1 }}>
-                      <input type="checkbox" disabled={!q.active} checked={isSelected(q.id)} onChange={() => toggleSelect(q.id)} />
-                      <input defaultValue={q.text} onBlur={(e) => { if (e.target.value.trim() && e.target.value !== q.text) editQText(q, e.target.value.trim()); }} style={{ flex: 1, padding: '6px 8px', fontSize: 13 }} />
+                  <div key={q.id} className="ad-row" style={{ alignItems: 'flex-start', opacity: q.active ? 1 : 0.5 }}>
+                    <label className="ad-cap" style={{ flex: 1, alignItems: 'flex-start' }}>
+                      <input type="checkbox" disabled={!q.active} checked={isSelected(q.id)} onChange={() => toggleSelect(q.id)} style={{ marginTop: 8 }} />
+                      <textarea defaultValue={q.text} rows={3} onBlur={(e) => { if (e.target.value.trim() && e.target.value !== q.text) editQText(q, e.target.value.trim()); }} style={{ flex: 1, padding: '9px 11px', fontSize: 13, lineHeight: 1.55, resize: 'vertical', minHeight: 64, fontFamily: 'inherit' }} />
                     </label>
                     <button className="ad-btn ad-btn--ghost" onClick={() => setQActive(q, !q.active)}>{q.active ? 'Archivar' : 'Reactivar'}</button>
                   </div>
                 ))}
-                <div className="ad-row" style={{ marginTop: 6 }}>
-                  <input className="ad-field--grow" placeholder={`Nueva pregunta de ${sec}…`} value={newQ[sec]} onChange={(e) => setNewQ((s) => ({ ...s, [sec]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') addQ(sec); }} style={{ flex: 1, padding: '8px 10px' }} />
+                <div className="ad-row" style={{ marginTop: 6, alignItems: 'flex-start' }}>
+                  <textarea className="ad-field--grow" rows={2} placeholder={`Nueva pregunta de ${sec}… (podés usar Enter para separar en párrafos)`} value={newQ[sec]} onChange={(e) => setNewQ((s) => ({ ...s, [sec]: e.target.value }))} style={{ flex: 1, padding: '9px 11px', lineHeight: 1.55, resize: 'vertical', minHeight: 52, fontFamily: 'inherit' }} />
                   <button className="ad-add" onClick={() => addQ(sec)}>+ Agregar</button>
                 </div>
               </div>
