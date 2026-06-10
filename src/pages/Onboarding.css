@@ -55,6 +55,13 @@
 .ob-meeting-obj li { font-size: 14px; margin-bottom: 6px; color: #2b2d34; }
 .ob-disclaimer { background: #fef9c3; color: #854d0e; border-radius: 10px; padding: 12px 14px; font-size: 13px; font-weight: 600; }
 .ob-meet-btn { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; text-decoration: none; }
+.ob-section-intro { background: #f3f4ff; border-left: 3px solid #1b1fe8; border-radius: 8px; padding: 12px 14px; font-size: 13.5px; color: #2b2d34; margin: 0 0 18px; white-space: pre-wrap; }
+.ob-persona { border: 1.5px solid #e5e6ea; border-radius: 14px; padding: 16px; margin-bottom: 16px; background: #fafbff; }
+.ob-persona-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.ob-persona-title { font-family: var(--font-mono, monospace); text-transform: uppercase; letter-spacing: .06em; font-size: 12px; font-weight: 700; color: #1b1fe8; }
+.ob-persona-del { border: none; background: none; color: #b0b2ba; font-size: 12px; cursor: pointer; padding: 2px 6px; }
+.ob-persona-del:hover { color: #d33; }
+.ob-persona-add { margin-top: 4px; }
 
 /* ---- Progreso ---- */
 .ob-progresswrap { max-width: 760px; margin: 0 auto 26px; background: #fff; border: 1px solid #e5e6ea; border-radius: 14px; padding: 16px 18px; }

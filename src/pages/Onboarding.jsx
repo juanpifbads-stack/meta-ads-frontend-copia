@@ -122,39 +122,86 @@ const SECTIONS = [
   { key: 'audiencia', label: 'Audiencia' },
 ];
 
-/* ── Formulario de onboarding (3 secciones, progreso, resumable) ── */
-function OnboardingForm({ slug, authKey, questions, initialAnswers, onClose, onSaved }) {
-  // Mapa { questionId: answer } inicial desde lo ya respondido.
+// Clave de respuesta: simple por questionId, o compuesta si es de un buyer persona.
+const akey = (qid, personaId) => (personaId ? `${qid}::${personaId}` : qid);
+
+/* ── Formulario de onboarding (3 secciones, progreso, resumable, buyer personas) ── */
+function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPersonas, intros, onClose, onSaved }) {
+  // Mapa { akey: answer } inicial desde lo ya respondido.
   const [answers, setAnswers] = useState(() => {
     const m = {};
-    (initialAnswers || []).forEach((a) => { m[a.questionId] = a.answer; });
+    (initialAnswers || []).forEach((a) => { m[akey(a.questionId, a.personaId)] = a.answer; });
     return m;
   });
+  const [personas, setPersonas] = useState(() =>
+    (initialPersonas && initialPersonas.length) ? initialPersonas.map((p) => ({ id: p.id, description: p.description || '' })) : [{ id: 'p1', description: '' }]);
   const [sectionIdx, setSectionIdx] = useState(0);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState('');
 
   const sectionsWithQs = SECTIONS.map((s) => ({ ...s, qs: questions.filter((q) => q.section === s.key) })).filter((s) => s.qs.length);
-  const total = questions.length;
-  const answered = questions.filter((q) => (answers[q.id] || '').trim()).length;
-  const pct = total ? Math.round((answered / total) * 100) : 0;
   const cur = sectionsWithQs[sectionIdx] || sectionsWithQs[0];
 
-  const buildPayload = (submitted) => ({
-    answers: questions.map((q) => ({ questionId: q.id, questionText: q.text, answer: answers[q.id] || '' })),
-    ...(submitted != null ? { formSubmitted: submitted } : {}),
-  });
-  const persist = (submitted) => {
+  // En Audiencia, la 1ª pregunta es general; las que siguen se repiten por buyer persona.
+  const audQs = questions.filter((q) => q.section === 'audiencia');
+  const audRestIds = new Set(audQs.slice(1).map((q) => q.id));
+  const isPersonaQ = (q) => audRestIds.has(q.id);
+
+  // Todos los "slots" de respuesta (expandiendo las preguntas por persona).
+  const slotsOf = (qs) => {
+    const out = [];
+    qs.forEach((q) => { if (isPersonaQ(q)) personas.forEach((p) => out.push(akey(q.id, p.id))); else out.push(q.id); });
+    return out;
+  };
+  const allSlots = slotsOf(questions);
+  const total = allSlots.length;
+  const answered = allSlots.filter((k) => (answers[k] || '').trim()).length;
+  const pct = total ? Math.round((answered / total) * 100) : 0;
+
+  const buildPayload = (submitted, pAns = answers, pPers = personas) => {
+    const out = [];
+    questions.forEach((q) => {
+      if (isPersonaQ(q)) pPers.forEach((p) => out.push({ questionId: q.id, questionText: q.text, answer: pAns[akey(q.id, p.id)] || '', personaId: p.id }));
+      else out.push({ questionId: q.id, questionText: q.text, answer: pAns[q.id] || '' });
+    });
+    return { answers: out, personas: pPers, ...(submitted != null ? { formSubmitted: submitted } : {}) };
+  };
+  const persist = (submitted, pAns, pPers) => {
     setSaving(true);
-    return apiClient.patch(`/onboarding/${slug}`, buildPayload(submitted), { params: { key: authKey } })
+    return apiClient.patch(`/onboarding/${slug}`, buildPayload(submitted, pAns, pPers), { params: { key: authKey } })
       .then(() => { setSavedMsg('✓ Guardado'); setTimeout(() => setSavedMsg(''), 1500); })
       .catch(() => setSavedMsg('Error al guardar'))
       .finally(() => setSaving(false));
   };
 
+  const addPersona = () => { const next = [...personas, { id: `p${Date.now()}`, description: '' }]; setPersonas(next); persist(undefined, answers, next); };
+  const removePersona = (id) => {
+    const next = personas.filter((p) => p.id !== id);
+    const na = { ...answers }; Object.keys(na).forEach((k) => { if (k.endsWith(`::${id}`)) delete na[k]; });
+    setPersonas(next); setAnswers(na); persist(undefined, na, next);
+  };
+  const setPersonaDesc = (id, v) => setPersonas((ps) => ps.map((p) => (p.id === id ? { ...p, description: v } : p)));
+
   const goSection = (i) => { persist(); setSectionIdx(i); };
   const finish = () => { persist(true).then(() => { onSaved && onSaved(); onClose(); }); };
   const closeSaving = () => { persist().then(() => { onSaved && onSaved(); onClose(); }); };
+
+  const renderQ = (q, personaId) => {
+    const k = akey(q.id, personaId);
+    return (
+      <div key={k} className="ob-form-q">
+        <label>{q.text}</label>
+        <textarea
+          value={answers[k] || ''}
+          onChange={(e) => setAnswers((m) => ({ ...m, [k]: e.target.value }))}
+          onBlur={() => persist()}
+          placeholder="Tu respuesta…"
+        />
+      </div>
+    );
+  };
+
+  const sectionIntro = cur ? (intros || {})[cur.key] : '';
 
   return (
     <div className="ob-form-overlay">
@@ -174,27 +221,45 @@ function OnboardingForm({ slug, authKey, questions, initialAnswers, onClose, onS
 
         <div className="ob-form-tabs">
           {sectionsWithQs.map((s, i) => {
-            const sa = s.qs.filter((q) => (answers[q.id] || '').trim()).length;
+            const ss = slotsOf(s.qs);
+            const sa = ss.filter((k) => (answers[k] || '').trim()).length;
             return (
               <button key={s.key} className={`ob-form-tab ${i === sectionIdx ? 'ob-form-tab--on' : ''}`} onClick={() => goSection(i)}>
-                {s.label} <span className="ob-form-tab-count">{sa}/{s.qs.length}</span>
+                {s.label} <span className="ob-form-tab-count">{sa}/{ss.length}</span>
               </button>
             );
           })}
         </div>
 
         <div className="ob-form-body">
-          {cur && cur.qs.map((q) => (
-            <div key={q.id} className="ob-form-q">
-              <label>{q.text}</label>
-              <textarea
-                value={answers[q.id] || ''}
-                onChange={(e) => setAnswers((m) => ({ ...m, [q.id]: e.target.value }))}
-                onBlur={() => persist()}
-                placeholder="Tu respuesta…"
-              />
-            </div>
-          ))}
+          {sectionIntro && sectionIntro.trim() && <p className="ob-section-intro">{sectionIntro}</p>}
+
+          {cur && cur.key === 'audiencia' ? (
+            <>
+              {cur.qs[0] && renderQ(cur.qs[0], null)}
+              {personas.map((p, idx) => (
+                <div key={p.id} className="ob-persona">
+                  <div className="ob-persona-head">
+                    <span className="ob-persona-title">Buyer persona {idx + 1}</span>
+                    {personas.length > 1 && <button className="ob-persona-del" onClick={() => removePersona(p.id)}>Quitar</button>}
+                  </div>
+                  <div className="ob-form-q">
+                    <label>Describí en dos oraciones quién es este buyer persona</label>
+                    <textarea
+                      value={p.description || ''}
+                      onChange={(e) => setPersonaDesc(p.id, e.target.value)}
+                      onBlur={() => persist()}
+                      placeholder="Ej: Mujer de 30-40 años, profesional independiente, que busca…"
+                    />
+                  </div>
+                  {cur.qs.slice(1).map((q) => renderQ(q, p.id))}
+                </div>
+              ))}
+              <button className="ob-btn ob-btn--ghost ob-persona-add" onClick={addPersona}>+ Agregar otro buyer persona</button>
+            </>
+          ) : (
+            cur && cur.qs.map((q) => renderQ(q, null))
+          )}
         </div>
 
         <div className="ob-form-foot">
@@ -245,6 +310,7 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
       {showForm && (
         <OnboardingForm
           slug={slug} authKey={authKey} questions={questions} initialAnswers={data.answers}
+          initialPersonas={data.personas} intros={data.sectionIntros}
           onClose={() => setShowForm(false)} onSaved={refetch}
         />
       )}

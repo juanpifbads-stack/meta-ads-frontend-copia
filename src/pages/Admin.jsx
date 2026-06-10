@@ -637,15 +637,20 @@ function OnboardingEditor({ slug, clients }) {
     const SEC_LBL = { marca: 'Marca', producto: 'Producto', audiencia: 'Audiencia', otras: 'Otras' };
     const groups = { marca: [], producto: [], audiencia: [], otras: [] };
     (ob.answers || []).forEach((a) => { (groups[secOf[a.questionId] || 'otras']).push(a); });
+    // Etiqueta del buyer persona (orden según ob.personas).
+    const personaIdx = {}; (ob.personas || []).forEach((p, i) => { personaIdx[p.id] = i + 1; });
+    const personaLabel = (id) => `Buyer persona ${personaIdx[id] || '?'}`;
+    const renderQA = (a) => `<div class="qa"><div class="q">${a.personaId ? `<span class="ptag">${esc(personaLabel(a.personaId))}</span> ` : ''}${esc(a.questionText)}</div><div class="a">${esc(a.answer) || '<span class="empty">— sin responder —</span>'}</div></div>`;
+    const personaDescs = (ob.personas || []).filter((p) => (p.description || '').trim()).map((p, i) => `<div class="qa"><div class="q">${esc(`Buyer persona ${i + 1}`)} — quién es</div><div class="a">${esc(p.description)}</div></div>`).join('');
     const body = ['marca', 'producto', 'audiencia', 'otras'].filter((k) => groups[k].length).map((k) => `
-      <div class="sec"><div class="sec-t">${SEC_LBL[k]}</div>${groups[k].map((a) => `
-        <div class="qa"><div class="q">${esc(a.questionText)}</div><div class="a">${esc(a.answer) || '<span class="empty">— sin responder —</span>'}</div></div>`).join('')}</div>`).join('');
+      <div class="sec"><div class="sec-t">${SEC_LBL[k]}</div>${k === 'audiencia' ? personaDescs : ''}${groups[k].map(renderQA).join('')}</div>`).join('');
     const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Onboarding — ${esc(clientName)}</title>
       <style>@page{margin:36px;} body{font-family:-apple-system,system-ui,Helvetica,Arial,sans-serif;color:#15161a;padding:40px;line-height:1.5;}
       .brand{font-family:monospace;color:#1b1fe8;font-weight:700;font-size:15px;} h1{font-size:28px;margin:6px 0 2px;}
       .sub{color:#5b5e66;margin-bottom:22px;} .rule{height:3px;background:#15161a;margin:14px 0 24px;}
       .sec{margin-bottom:22px;page-break-inside:avoid;} .sec-t{font-family:monospace;text-transform:uppercase;letter-spacing:.05em;font-size:13px;font-weight:700;border-bottom:2px solid #15161a;padding-bottom:5px;margin-bottom:12px;}
       .qa{margin-bottom:14px;} .q{font-weight:700;font-size:14px;} .a{font-size:14px;white-space:pre-wrap;margin-top:2px;} .empty{color:#b0b2ba;}
+      .ptag{display:inline-block;background:#eef0ff;color:#1b1fe8;font-family:monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 6px;border-radius:5px;margin-right:4px;}
       .foot{margin-top:28px;font-family:monospace;font-size:10px;color:#b0b2ba;text-align:center;}</style></head><body>
       <div class="brand">alquimia.</div><h1>${esc(clientName)}</h1><div class="sub">Formulario de onboarding</div><div class="rule"></div>
       ${body || '<p>Sin respuestas todavía.</p>'}
@@ -752,6 +757,8 @@ function OnboardingEditor({ slug, clients }) {
             return (
               <div key={sec} className="ad-row-box">
                 <div className="ad-sublabel" style={{ textTransform: 'capitalize', marginTop: 0 }}>{sec}</div>
+                <Field label="Descripción de la sección (la ve el cliente arriba de las preguntas)" textarea value={ob.sectionIntros?.[sec] || ''} onChange={(v) => upd((p) => { p.sectionIntros = p.sectionIntros || {}; p.sectionIntros[sec] = v; })} ph={sec === 'audiencia' ? 'Ej: Definamos a quién le hablamos. La 1ª pregunta es general; después cargá uno o más buyer personas.' : ''} />
+                {sec === 'audiencia' && <p className="ad-muted" style={{ margin: '0 0 8px' }}>En Audiencia, la 1ª pregunta es general y las siguientes se repiten por cada buyer persona que sume el cliente.</p>}
                 {qs.map((q) => (
                   <div key={q.id} className="ad-row" style={{ alignItems: 'center', opacity: q.active ? 1 : 0.5 }}>
                     <label className="ad-cap" style={{ flex: 1 }}>
