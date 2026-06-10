@@ -125,6 +125,21 @@ const SECTIONS = [
 // Clave de respuesta: simple por questionId, o compuesta si es de un buyer persona.
 const akey = (qid, personaId) => (personaId ? `${qid}::${personaId}` : qid);
 
+// Texto FIJO (no editable) que explica audiencia vs buyer personas. Siempre se
+// muestra arriba de la 1ª pregunta general de Audiencia.
+const AUDIENCE_INTRO = `Primero definimos la audiencia general y después los buyer personas.
+
+La audiencia es a quién le hablamos a grandes rasgos. Los buyer personas son perfiles concretos dentro de esa audiencia, definidos a fondo.
+
+Por ejemplo: una marca que vende bidones de agua le habla a gente cansada de pagar de más por el agua del supermercado y de andar cargando botellas. Pero si vamos a fondo, sus buyer personas pueden ser: el recién mudado que estudia y cuida cada gasto hormiga, o la familia donde quien antes compraba el agua hoy busca comodidad y logística más que precio.
+
+Entender esto nos permite interpelar bien a cada uno el día de mañana. Algunas marcas tienen 1 buyer persona, otras 2, 3 o más: pensá brevemente la tuya y cargá los que consideres.
+
+La primera pregunta es general, para toda la audiencia. Lo que viene después ya son las preguntas del Buyer persona 1.`;
+
+const PERSONA_Q = 'Describime en una oración quién es este buyer persona: edad, género y una breve descripción.';
+const PERSONA_Q_PH = 'Ej: El padre de familia de 40 que no quiere ir hasta el supermercado a comprar agua.';
+
 /* ── Formulario de onboarding (3 secciones, progreso, resumable, buyer personas) ── */
 function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPersonas, intros, onClose, onSaved }) {
   // Mapa { akey: answer } inicial desde lo ya respondido.
@@ -236,6 +251,7 @@ function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPerso
 
           {cur && cur.key === 'audiencia' ? (
             <>
+              <div className="ob-fixed-intro">{AUDIENCE_INTRO}</div>
               {cur.qs[0] && renderQ(cur.qs[0], null)}
               {personas.map((p, idx) => (
                 <div key={p.id} className="ob-persona">
@@ -244,12 +260,12 @@ function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPerso
                     {personas.length > 1 && <button className="ob-persona-del" onClick={() => removePersona(p.id)}>Quitar</button>}
                   </div>
                   <div className="ob-form-q">
-                    <label>Describí en dos oraciones quién es este buyer persona</label>
+                    <label>{PERSONA_Q}</label>
                     <textarea
                       value={p.description || ''}
                       onChange={(e) => setPersonaDesc(p.id, e.target.value)}
                       onBlur={() => persist()}
-                      placeholder="Ej: Mujer de 30-40 años, profesional independiente, que busca…"
+                      placeholder={PERSONA_Q_PH}
                     />
                   </div>
                   {cur.qs.slice(1).map((q) => renderQ(q, p.id))}
