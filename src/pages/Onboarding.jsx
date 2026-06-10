@@ -42,6 +42,12 @@ function itemOnDay(it, ds) {
   }
   return w.date === ds;
 }
+// Si abarca varios días devuelve {from,to}; si es de un solo día, null (va como pill).
+function rangeBounds(it) {
+  const w = it.when || {};
+  if (w.mode === 'dates' && w.fromDate && w.toDate && w.fromDate !== w.toDate) return { from: w.fromDate, to: w.toDate };
+  return null;
+}
 
 /* ── Gate de clave (validado contra el backend) ── */
 function Gate({ slug, onPass }) {
@@ -430,6 +436,18 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
   const weekStart = (() => { const d = new Date(); const dow = (d.getDay() + 6) % 7; d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - dow + weekOffset * 7); return d; })();
   const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(weekStart.getDate() + i); return d; });
   const todayStr = ymd(new Date());
+  const weekStartStr = ymd(weekDays[0]);
+  const weekEndStr = ymd(weekDays[6]);
+  // Barras de tareas multi-día (estilo Notion): una sola barra que se extiende por los días.
+  const multiDayBars = items.map((it) => {
+    const b = rangeBounds(it);
+    if (!b || b.to < weekStartStr || b.from > weekEndStr) return null;
+    const from = b.from < weekStartStr ? weekStartStr : b.from;
+    const to = b.to > weekEndStr ? weekEndStr : b.to;
+    const s = weekDays.findIndex((d) => ymd(d) === from);
+    const e = weekDays.findIndex((d) => ymd(d) === to);
+    return { it, s, e };
+  }).filter(Boolean);
   const weekLabel = `${weekStart.getDate()} ${MESES[weekStart.getMonth()]} – ${weekDays[6].getDate()} ${MESES[weekDays[6].getMonth()]}`;
   const weekTitle = weekOffset === 0 ? 'Esta semana' : weekOffset === 1 ? 'Próxima semana' : weekOffset === -1 ? 'Semana pasada' : weekLabel;
 
@@ -494,7 +512,7 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
           <div className="ob-cal-grid">
             {weekDays.map((d, i) => {
               const ds = ymd(d);
-              const dayItems = items.filter((it) => itemOnDay(it, ds));
+              const dayItems = items.filter((it) => itemOnDay(it, ds) && !rangeBounds(it));
               return (
                 <div key={ds} className={`ob-cal-day ${ds === todayStr ? 'ob-cal-day--today' : ''}`}>
                   <div className="ob-cal-dow">{DOW[i]}</div>
@@ -506,6 +524,13 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
               );
             })}
           </div>
+          {multiDayBars.length > 0 && (
+            <div className="ob-cal-bars">
+              {multiDayBars.map(({ it, s, e }, k) => (
+                <div key={it.id || k} className={`ob-cal-bar ${it.kind === 'task' ? 'ob-cal-pill--task' : ''}`} style={{ gridColumn: `${s + 1} / ${e + 2}` }} title={it.title}>{it.title}</div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
