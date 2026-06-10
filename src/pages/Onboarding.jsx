@@ -140,6 +140,10 @@ La primera pregunta es general, para toda la audiencia. Lo que viene después ya
 const PERSONA_Q = 'Describime en una oración quién es este buyer persona: edad, género y una breve descripción.';
 const PERSONA_Q_PH = 'Ej: El padre de familia de 40 que no quiere ir hasta el supermercado a comprar agua.';
 
+// Id de la respuesta de "audiencia general" (el recuadro editable). No es una
+// pregunta del banco: es la descripción libre de la audiencia general.
+const AUD_GENERAL_ID = '__aud_general__';
+
 /* ── Formulario de onboarding (3 secciones, progreso, resumable, buyer personas) ── */
 function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPersonas, intros, onClose, onSaved }) {
   // Mapa { akey: answer } inicial desde lo ya respondido.
@@ -157,18 +161,19 @@ function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPerso
   const sectionsWithQs = SECTIONS.map((s) => ({ ...s, qs: questions.filter((q) => q.section === s.key) })).filter((s) => s.qs.length);
   const cur = sectionsWithQs[sectionIdx] || sectionsWithQs[0];
 
-  // En Audiencia, la 1ª pregunta es general; las que siguen se repiten por buyer persona.
-  const audQs = questions.filter((q) => q.section === 'audiencia');
-  const audRestIds = new Set(audQs.slice(1).map((q) => q.id));
-  const isPersonaQ = (q) => audRestIds.has(q.id);
+  // En Audiencia: TODAS las preguntas del banco se repiten por buyer persona.
+  // La "audiencia general" es una respuesta libre aparte (el recuadro editable).
+  const hasAud = sectionsWithQs.some((s) => s.key === 'audiencia');
+  const audGeneralText = (intros || {}).audiencia || '';
+  const isPersonaQ = (q) => q.section === 'audiencia';
 
-  // Todos los "slots" de respuesta (expandiendo las preguntas por persona).
+  // "Slots" de respuesta (expandiendo preguntas por persona) + el general de audiencia.
   const slotsOf = (qs) => {
     const out = [];
     qs.forEach((q) => { if (isPersonaQ(q)) personas.forEach((p) => out.push(akey(q.id, p.id))); else out.push(q.id); });
     return out;
   };
-  const allSlots = slotsOf(questions);
+  const allSlots = [...slotsOf(questions), ...(hasAud ? [AUD_GENERAL_ID] : [])];
   const total = allSlots.length;
   const answered = allSlots.filter((k) => (answers[k] || '').trim()).length;
   const pct = total ? Math.round((answered / total) * 100) : 0;
@@ -179,6 +184,7 @@ function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPerso
       if (isPersonaQ(q)) pPers.forEach((p) => out.push({ questionId: q.id, questionText: q.text, answer: pAns[akey(q.id, p.id)] || '', personaId: p.id }));
       else out.push({ questionId: q.id, questionText: q.text, answer: pAns[q.id] || '' });
     });
+    if (hasAud) out.push({ questionId: AUD_GENERAL_ID, questionText: audGeneralText || 'Audiencia general', answer: pAns[AUD_GENERAL_ID] || '' });
     return { answers: out, personas: pPers, ...(submitted != null ? { formSubmitted: submitted } : {}) };
   };
   const persist = (submitted, pAns, pPers) => {
@@ -236,7 +242,7 @@ function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPerso
 
         <div className="ob-form-tabs">
           {sectionsWithQs.map((s, i) => {
-            const ss = slotsOf(s.qs);
+            const ss = [...slotsOf(s.qs), ...(s.key === 'audiencia' ? [AUD_GENERAL_ID] : [])];
             const sa = ss.filter((k) => (answers[k] || '').trim()).length;
             return (
               <button key={s.key} className={`ob-form-tab ${i === sectionIdx ? 'ob-form-tab--on' : ''}`} onClick={() => goSection(i)}>
@@ -247,12 +253,26 @@ function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPerso
         </div>
 
         <div className="ob-form-body">
-          {sectionIntro && sectionIntro.trim() && <p className="ob-section-intro">{sectionIntro}</p>}
+          {cur && cur.key !== 'audiencia' && sectionIntro && sectionIntro.trim() && <p className="ob-section-intro">{sectionIntro}</p>}
 
           {cur && cur.key === 'audiencia' ? (
             <>
+              {/* 1) Explicación fija: audiencia general vs buyer personas */}
               <div className="ob-fixed-intro">{AUDIENCE_INTRO}</div>
-              {cur.qs[0] && renderQ(cur.qs[0], null)}
+
+              {/* 2) Audiencia general: recuadro editable + su campo de respuesta */}
+              {audGeneralText && audGeneralText.trim() && <p className="ob-section-intro">{audGeneralText}</p>}
+              <div className="ob-form-q">
+                <label>Describí en pocas líneas a tu audiencia general</label>
+                <textarea
+                  value={answers[AUD_GENERAL_ID] || ''}
+                  onChange={(e) => setAnswers((m) => ({ ...m, [AUD_GENERAL_ID]: e.target.value }))}
+                  onBlur={() => persist()}
+                  placeholder="Tu respuesta…"
+                />
+              </div>
+
+              {/* 3) Buyer personas: cada uno con su descripción + TODAS las preguntas */}
               {personas.map((p, idx) => (
                 <div key={p.id} className="ob-persona">
                   <div className="ob-persona-head">
@@ -268,7 +288,7 @@ function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPerso
                       placeholder={PERSONA_Q_PH}
                     />
                   </div>
-                  {cur.qs.slice(1).map((q) => renderQ(q, p.id))}
+                  {cur.qs.map((q) => renderQ(q, p.id))}
                 </div>
               ))}
               <button className="ob-btn ob-btn--ghost ob-persona-add" onClick={addPersona}>+ Agregar otro buyer persona</button>

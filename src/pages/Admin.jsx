@@ -636,7 +636,7 @@ function OnboardingEditor({ slug, clients }) {
     const secOf = {}; (bank || []).forEach((q) => { secOf[q.id] = q.section; });
     const SEC_LBL = { marca: 'Marca', producto: 'Producto', audiencia: 'Audiencia', otras: 'Otras' };
     const groups = { marca: [], producto: [], audiencia: [], otras: [] };
-    (ob.answers || []).forEach((a) => { (groups[secOf[a.questionId] || 'otras']).push(a); });
+    (ob.answers || []).forEach((a) => { (groups[a.questionId === '__aud_general__' ? 'audiencia' : (secOf[a.questionId] || 'otras')]).push(a); });
     // Etiqueta del buyer persona (orden según ob.personas).
     const personaIdx = {}; (ob.personas || []).forEach((p, i) => { personaIdx[p.id] = i + 1; });
     const personaLabel = (id) => `Buyer persona ${personaIdx[id] || '?'}`;
