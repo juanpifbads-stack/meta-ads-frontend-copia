@@ -390,7 +390,6 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
   const ansCount = (data.answers || []).filter((a) => (a.answer || '').trim()).length;
 
   // Separamos en dos columnas: hitos y entregables. Los hitos van ordenados por fecha.
-  const ownerLabel = (o) => (o === 'cliente' ? 'Lo hacés vos' : o === 'ambos' ? 'Lo hacemos juntos' : 'Lo hacemos nosotros');
   const whenSortKey = (it) => {
     const w = it.when || {};
     return w.date || w.fromDate || (w.fromWeek ? `W${String(w.fromWeek).padStart(3, '0')}` : '~~~');
@@ -398,11 +397,9 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
   const tasks = items.filter((it) => it.kind === 'task');
   const hitos = items.filter((it) => it.kind !== 'task').sort((a, b) => whenSortKey(a).localeCompare(whenSortKey(b)));
 
-  // El cliente puede ciclar el estado: pendiente → en curso → hecho → pendiente.
-  const STATUS_ORDER = ['pendiente', 'en_curso', 'hecho'];
-  const cycleStatus = (it) => {
+  // El cliente cambia el estado desde un select (pendiente / en curso / finalizado).
+  const setStatus = (it, next) => {
     if (!it.id) return;
-    const next = STATUS_ORDER[(STATUS_ORDER.indexOf(it.status || 'pendiente') + 1) % STATUS_ORDER.length];
     apiClient.patch(`/onboarding/${slug}`, { roadmapStatuses: { [it.id]: next } }, { params: { key: authKey } })
       .then(refetch).catch(() => {});
   };
@@ -415,15 +412,16 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
       <div key={it.id || idx} className={`ob-rc ${it.status === 'hecho' ? 'ob-rc--done' : ''}`}>
         <div className="ob-tl-top">
           <span className={`ob-tl-kind ${it.kind === 'task' ? 'ob-tl-kind--task' : ''}`}>{it.kind === 'task' ? 'Entregable' : 'Hito'}</span>
-          <button className={`ob-st ob-st--btn ${st.cls}`} onClick={() => cycleStatus(it)} title="Tocá para cambiar el estado">{st.label}</button>
+          <select className={`ob-st-select ${st.cls}`} value={it.status || 'pendiente'} onChange={(e) => setStatus(it, e.target.value)} title="Cambiar estado">
+            <option value="pendiente">Pendiente</option>
+            <option value="en_curso">En curso</option>
+            <option value="hecho">Finalizado</option>
+          </select>
         </div>
         {isHito && when && <div className="ob-rc-date">🗓 {when}</div>}
         <div className="ob-tl-title">{it.title}</div>
         {it.detail && <div className="ob-tl-detail">{it.detail}</div>}
-        <div className="ob-tl-meta">
-          {!isHito && when && <span>🗓 {when}</span>}
-          {it.owner && <span className={`ob-owner ob-owner--${it.owner}`}>{ownerLabel(it.owner)}</span>}
-        </div>
+        {!isHito && when && <div className="ob-tl-meta"><span>🗓 {when}</span></div>}
       </div>
     );
   };
@@ -488,7 +486,10 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
           <div className="ob-cal-head">
             <button className="ob-cal-nav" onClick={() => setWeekOffset((o) => o - 1)} aria-label="Semana anterior">←</button>
             <span className="ob-cal-range"><strong>{weekTitle}</strong>{weekOffset !== 0 && <span className="ob-cal-sub"> · {weekLabel}</span>}</span>
-            <button className="ob-cal-nav" onClick={() => setWeekOffset((o) => o + 1)} aria-label="Semana siguiente">→</button>
+            <div className="ob-cal-headright">
+              {weekOffset !== 0 && <button className="ob-cal-today" onClick={() => setWeekOffset(0)}>Semana actual</button>}
+              <button className="ob-cal-nav" onClick={() => setWeekOffset((o) => o + 1)} aria-label="Semana siguiente">→</button>
+            </div>
           </div>
           <div className="ob-cal-grid">
             {weekDays.map((d, i) => {
