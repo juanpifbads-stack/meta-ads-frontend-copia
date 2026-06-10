@@ -89,6 +89,13 @@
 .ob-owner { padding: 2px 8px; border-radius: 999px; }
 .ob-owner--cliente { background: #e0f2fe; color: #0369a1; }
 .ob-owner--agencia { background: #f1f5f9; color: #475569; }
+.ob-owner--ambos { background: #ede9fe; color: #6d28d9; }
+.ob-cols { max-width: 980px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.ob-col-title { font-family: var(--font-mono, monospace); text-transform: uppercase; letter-spacing: .06em; font-size: 12px; font-weight: 700; color: #8a8d96; margin-bottom: 12px; }
+.ob-col-empty { font-size: 13px; color: #b0b2ba; }
+.ob-rc { background: #fff; border: 1px solid #e5e6ea; border-radius: 14px; padding: 16px 18px; margin-bottom: 14px; }
+.ob-rc--done { border-color: #16a34a33; background: #f6fef9; }
+@media (max-width: 720px) { .ob-cols { grid-template-columns: 1fr; } }
 .ob-st { font-family: var(--font-mono, monospace); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; padding: 3px 9px; border-radius: 999px; }
 .ob-st--pending { background: #f1f5f9; color: #64748b; }
 .ob-st--progress { background: #fef3c7; color: #b45309; }

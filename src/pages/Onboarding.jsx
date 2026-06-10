@@ -376,6 +376,33 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
   const questions = data.questions || [];
   const ansCount = (data.answers || []).filter((a) => (a.answer || '').trim()).length;
 
+  // Separamos en dos columnas: hitos y entregables. Los hitos van ordenados por fecha.
+  const ownerLabel = (o) => (o === 'cliente' ? 'Lo hacés vos' : o === 'ambos' ? 'Lo hacemos juntos' : 'Lo hacemos nosotros');
+  const whenSortKey = (it) => {
+    const w = it.when || {};
+    return w.date || w.fromDate || (w.fromWeek ? `W${String(w.fromWeek).padStart(3, '0')}` : '~~~');
+  };
+  const tasks = items.filter((it) => it.kind === 'task');
+  const hitos = items.filter((it) => it.kind !== 'task').sort((a, b) => whenSortKey(a).localeCompare(whenSortKey(b)));
+
+  const renderCard = (it, idx) => {
+    const st = STATUS[it.status] || STATUS.pendiente;
+    return (
+      <div key={it.id || idx} className={`ob-rc ${it.status === 'hecho' ? 'ob-rc--done' : ''}`}>
+        <div className="ob-tl-top">
+          <span className={`ob-tl-kind ${it.kind === 'task' ? 'ob-tl-kind--task' : ''}`}>{it.kind === 'task' ? 'Entregable' : 'Hito'}</span>
+          <span className={`ob-st ${st.cls}`}>{st.label}</span>
+        </div>
+        <div className="ob-tl-title">{it.title}</div>
+        {it.detail && <div className="ob-tl-detail">{it.detail}</div>}
+        <div className="ob-tl-meta">
+          {fmtWhen(it.when) && <span>🗓 {fmtWhen(it.when)}</span>}
+          {it.owner && <span className={`ob-owner ob-owner--${it.owner}`}>{ownerLabel(it.owner)}</span>}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="ob-roadmap">
       <header className="ob-head">
@@ -424,28 +451,18 @@ function Roadmap({ name, data, slug, authKey, refetch }) {
 
       {items.length === 0 && <p className="ob-empty">Estamos preparando los próximos pasos. ¡Muy pronto vas a ver tu camino acá!</p>}
 
-      <div className="ob-timeline">
-        {items.map((it, i) => {
-          const st = STATUS[it.status] || STATUS.pendiente;
-          return (
-            <div key={it.id || i} className={`ob-tl-item ${it.status === 'hecho' ? 'ob-tl-item--done' : ''}`}>
-              <div className="ob-tl-dot">{it.status === 'hecho' ? '✓' : i + 1}</div>
-              <div className="ob-tl-card">
-                <div className="ob-tl-top">
-                  <span className={`ob-tl-kind ${it.kind === 'task' ? 'ob-tl-kind--task' : ''}`}>{it.kind === 'task' ? 'Entregable' : 'Hito'}</span>
-                  <span className={`ob-st ${st.cls}`}>{st.label}</span>
-                </div>
-                <div className="ob-tl-title">{it.title}</div>
-                {it.detail && <div className="ob-tl-detail">{it.detail}</div>}
-                <div className="ob-tl-meta">
-                  {fmtWhen(it.when) && <span>🗓 {fmtWhen(it.when)}</span>}
-                  {it.owner && <span className={`ob-owner ob-owner--${it.owner}`}>{it.owner === 'cliente' ? 'Lo hacés vos' : 'Lo hacemos nosotros'}</span>}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {items.length > 0 && (
+        <div className="ob-cols">
+          <div className="ob-col">
+            <div className="ob-col-title">Hitos</div>
+            {hitos.length ? hitos.map(renderCard) : <p className="ob-col-empty">Todavía no hay hitos cargados.</p>}
+          </div>
+          <div className="ob-col">
+            <div className="ob-col-title">Entregables</div>
+            {tasks.length ? tasks.map(renderCard) : <p className="ob-col-empty">Todavía no hay entregables cargados.</p>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -717,6 +717,7 @@ function OnboardingEditor({ slug, clients }) {
                   <select value={it.owner || 'agencia'} onChange={(e) => upd((p) => { p.roadmap[i].owner = e.target.value; })}>
                     <option value="agencia">Nosotros</option>
                     <option value="cliente">El cliente</option>
+                    <option value="ambos">En conjunto</option>
                   </select>
                 </div>
                 <button className="ad-del" onClick={() => upd((p) => { p.roadmap.splice(i, 1); })}>×</button>
