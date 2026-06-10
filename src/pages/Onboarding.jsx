@@ -273,6 +273,7 @@ function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPerso
               </div>
 
               {/* 3) Buyer personas: cada uno con su descripción + TODAS las preguntas */}
+              <p className="ob-personas-note">Ahora vamos a definir tus buyer personas. Completá el primero y, si tu marca lo necesita, al final encontrás un botón para agregar más.</p>
               {personas.map((p, idx) => (
                 <div key={p.id} className="ob-persona">
                   <div className="ob-persona-head">

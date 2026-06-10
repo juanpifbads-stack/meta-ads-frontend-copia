@@ -63,6 +63,7 @@
 .ob-persona-del { border: none; background: none; color: #b0b2ba; font-size: 12px; cursor: pointer; padding: 2px 6px; }
 .ob-persona-del:hover { color: #d33; }
 .ob-persona-add { margin-top: 4px; }
+.ob-personas-note { font-size: 14px; line-height: 1.7; color: #3a3d44; background: #f3f4ff; border-left: 3px solid #1b1fe8; border-radius: 8px; padding: 14px 16px; margin: 0 0 6px; text-align: justify; }
 
 /* ---- Progreso ---- */
 .ob-progresswrap { max-width: 760px; margin: 0 auto 26px; background: #fff; border: 1px solid #e5e6ea; border-radius: 14px; padding: 16px 18px; }
