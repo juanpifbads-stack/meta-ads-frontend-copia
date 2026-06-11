@@ -562,7 +562,7 @@ function ClientDashboard({ client }) {
       <section className="cp-section">
         <Collapsible title="Justificación de objetivos">
           {generic
-            ? <p className="cp-conclusion">{mediaJustification}</p>
+            ? <p className="cp-bodytext">{mediaJustification}</p>
             : (
               <>
                 <ul className="cp-list">
@@ -595,7 +595,7 @@ function ClientDashboard({ client }) {
       {generic && show('planificacion') && !!mediaPlanning.trim() && (
       <section className="cp-section">
         <Collapsible title="Planificación de próximos meses">
-          <p className="cp-conclusion">{mediaPlanning}</p>
+          <p className="cp-bodytext">{mediaPlanning}</p>
         </Collapsible>
       </section>
       )}

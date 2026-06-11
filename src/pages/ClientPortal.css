@@ -430,6 +430,8 @@
 .cp-list { margin: 0 0 12px; padding-left: 18px; }
 .cp-list li { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 6px; }
 .cp-conclusion { font-size: 13px; font-weight: 600; color: var(--color-brand-blue); }
+/* Texto de cuerpo (justificación / planificación): misma tipografía que consideraciones, sin azul. */
+.cp-bodytext { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; white-space: pre-wrap; margin: 0; }
 .cp-risk { margin-bottom: 14px; }
 .cp-risk-title { font-family: var(--font-mono); font-size: 12px; font-weight: 700; margin-bottom: 4px; }
 .cp-risk-text { font-size: 13px; color: var(--color-text-secondary); }
