@@ -553,7 +553,9 @@ function ClientDashboard({ client }) {
       {caps.ecommerce && show('productos') && (generic ? !!tn : (strategicProducts || []).length > 0) && (
       <section className="cp-section">
         <h2 className="cp-section-title">Productos estratégicos</h2>
-        <StrategicProducts slug={client.slug} accessKey={client.accessKey} products={strategicProducts || []} />
+        {/* Genéricos (Cameo, etc.): "modo todos" (sin SKUs) → trae todos los productos vendidos.
+            Moka/legacy: mantiene su lista curada de productos estratégicos. */}
+        <StrategicProducts slug={client.slug} accessKey={client.accessKey} products={generic ? [] : (strategicProducts || [])} />
       </section>
       )}
 
