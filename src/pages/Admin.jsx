@@ -116,6 +116,8 @@ const blankPlan = () => ({
 });
 
 export default function Admin({ onBack, lockedSlug, autoNew }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.legacy;
   const [clients, setClients] = useState([]);
   const [slug, setSlug] = useState(lockedSlug || '');
   const [clientData, setClientData] = useState(null);
@@ -206,7 +208,7 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
 
       {showNew && <NewClientForm onClose={() => setShowNew(false)} onCreated={(s) => { setShowNew(false); loadClients(s); }} />}
 
-      {!showNew && slug && <ClientConfigEditor slug={slug} />}
+      {!showNew && slug && isAdmin && <ClientConfigEditor slug={slug} />}
 
       {!showNew && slug && <OnboardingEditor slug={slug} clients={clients} />}
 
