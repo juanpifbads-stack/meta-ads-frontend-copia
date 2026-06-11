@@ -248,16 +248,16 @@ function ClientDashboard({ client }) {
   const [tnLoading, setTnLoading] = useState(true);
   const [fx, setFx] = useState(null);
   const [budgetCur, setBudgetCur] = useState('orig'); // 'orig' (monedas originales) | 'ars' (todo en pesos)
-  const [salesSrc, setSalesSrc] = useState(null); // origen de ventas por UTM (solo Cameo por ahora)
+  const [salesSrc, setSalesSrc] = useState(undefined); // undefined = cargando; objeto = cargado (con datos o tnError)
 
   useEffect(() => {
     let alive = true;
     apiClient.get('/public/fx').then((r) => { if (alive) setFx(r.data?.venta || null); }).catch(() => {});
     if (client.slug === 'cameo') {
       apiClient
-        .get(`/public/${client.slug}/sales-source`, { params: { key: client.accessKey }, timeout: 60000 })
-        .then((res) => { if (alive && res.data && !res.data.tnError) setSalesSrc(res.data); })
-        .catch(() => {});
+        .get(`/public/${client.slug}/sales-source`, { params: { key: client.accessKey }, timeout: 90000 })
+        .then((res) => { if (alive) setSalesSrc(res.data || { tnError: 'Sin datos.' }); })
+        .catch((e) => { if (alive) setSalesSrc({ tnError: e.response?.data?.message || e.message || 'Error al cargar.' }); });
     }
     apiClient
       .get(`/public/${client.slug}/meta-insights`, { params: { key: client.accessKey } })
@@ -476,34 +476,40 @@ function ClientDashboard({ client }) {
       )}
 
       {/* ¿De dónde vienen las ventas? — solo Cameo (UTM del último click vs atribución de Meta) */}
-      {client.slug === 'cameo' && salesSrc && (() => {
-        const total = salesSrc.totalOrders || 0;
-        const tiktok = (salesSrc.sources || []).find((s) => s.source === 'tiktok');
-        return (
-          <section className="cp-section">
-            <h2 className="cp-section-title">¿De dónde vienen las ventas?</h2>
-            <div className="cp-card">
-              <p className="cp-src-note">Origen real de cada venta de la tienda, según el último click (UTM). Meta cuenta con su propio píxel (click + view-through), por eso puede atribuirse ventas que en realidad llegaron por TikTok.</p>
-              <div className="cp-src-list">
-                {(salesSrc.sources || []).map((s) => {
-                  const pct = total ? Math.round((s.orders / total) * 100) : 0;
-                  return (
-                    <div key={s.source} className="cp-src-row">
-                      <div className="cp-src-top"><span className="cp-src-lbl">{s.label}</span><span className="cp-src-val">{s.orders} ventas · {fmtMoney(s.revenue)} · {pct}%</span></div>
-                      <div className="cp-bar"><div className={`cp-bar-fill cp-src-fill--${s.source}`} style={{ width: `${pct}%` }} /></div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="cp-src-contrast">
-                <div className="cp-src-contrast-row"><span>Ventas reales en la tienda (mes)</span><strong>{total} · {fmtMoney(salesSrc.totalRevenue)}</strong></div>
-                <div className="cp-src-contrast-row"><span>Meta se atribuye</span><strong>{salesSrc.meta?.purchases || 0} compras · {fmtMoney(salesSrc.meta?.purchaseValue || 0)}</strong></div>
-                {tiktok && <div className="cp-src-contrast-note">⚠ {tiktok.orders} ventas reales tienen UTM de TikTok ({fmtMoney(tiktok.revenue)}). Parte de lo que Meta se atribuye puede ser, en realidad, de TikTok.</div>}
-              </div>
-            </div>
-          </section>
-        );
-      })()}
+      {client.slug === 'cameo' && (
+        <section className="cp-section">
+          <h2 className="cp-section-title">¿De dónde vienen las ventas?</h2>
+          <div className="cp-card">
+            {salesSrc === undefined && <p className="cp-placeholder">Cargando origen de ventas…</p>}
+            {salesSrc && salesSrc.tnError && <p className="cp-placeholder">No se pudo leer el origen: {salesSrc.tnError}</p>}
+            {salesSrc && !salesSrc.tnError && (() => {
+              const total = salesSrc.totalOrders || 0;
+              const tiktok = (salesSrc.sources || []).find((s) => s.source === 'tiktok');
+              return (
+                <>
+                  <p className="cp-src-note">Origen real de cada venta de la tienda, según el último click (UTM). Meta cuenta con su propio píxel (click + view-through), por eso puede atribuirse ventas que en realidad llegaron por TikTok.</p>
+                  <div className="cp-src-list">
+                    {(salesSrc.sources || []).map((s) => {
+                      const pct = total ? Math.round((s.orders / total) * 100) : 0;
+                      return (
+                        <div key={s.source} className="cp-src-row">
+                          <div className="cp-src-top"><span className="cp-src-lbl">{s.label}</span><span className="cp-src-val">{s.orders} ventas · {fmtMoney(s.revenue)} · {pct}%</span></div>
+                          <div className="cp-bar"><div className={`cp-bar-fill cp-src-fill--${s.source}`} style={{ width: `${pct}%` }} /></div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="cp-src-contrast">
+                    <div className="cp-src-contrast-row"><span>Ventas reales en la tienda (mes)</span><strong>{total} · {fmtMoney(salesSrc.totalRevenue)}</strong></div>
+                    <div className="cp-src-contrast-row"><span>Meta se atribuye</span><strong>{salesSrc.meta?.purchases || 0} compras · {fmtMoney(salesSrc.meta?.purchaseValue || 0)}</strong></div>
+                    {tiktok && <div className="cp-src-contrast-note">⚠ {tiktok.orders} ventas reales tienen UTM de TikTok ({fmtMoney(tiktok.revenue)}). Parte de lo que Meta se atribuye puede ser, en realidad, de TikTok.</div>}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </section>
+      )}
 
       {/* PAGOS — línea de tiempo del mes (desplegable) */}
       {show('pagos') && (
