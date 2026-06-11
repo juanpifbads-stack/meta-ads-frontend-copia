@@ -19,7 +19,7 @@ const inputStyle = {
 };
 
 export default function Login() {
-  const { needsMeta, user, refresh } = useAuth();
+  const { needsMeta, user, refresh, logout } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -64,6 +64,13 @@ export default function Login() {
           <p style={{ marginTop: 16, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)', textAlign: 'center', lineHeight: 1.5 }}>
             Lo pedimos en cada ingreso para mantener tu acceso a Meta siempre vigente.
           </p>
+          <button
+            onClick={logout}
+            style={{ marginTop: 14, width: '100%', background: 'transparent', border: 'none', cursor: 'pointer',
+              fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-muted)', textDecoration: 'underline' }}
+          >
+            ← No sos vos? Cambiar de cuenta
+          </button>
         </div>
       </div>
     );
