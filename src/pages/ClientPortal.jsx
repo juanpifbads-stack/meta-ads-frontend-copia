@@ -285,7 +285,11 @@ function ClientDashboard({ client }) {
   const ecomTicket = tn ? tn.ticket : (ecommerceGoal.orders > 0 ? ecommerceGoal.current / ecommerceGoal.orders : 0);
 
   // Objetivo de facturación: para portales genéricos viene del Plan de medios; si no, del plan mensual.
-  const ecomTarget = (generic && mediaObjective?.facturacion) ? mediaObjective.facturacion : (ecommerceGoal.target || 0);
+  // Objetivo de facturación ecommerce: el campo dedicado del plan de medios; si no
+  // está cargado, cae al de Meta (compat) y por último al ecommerceGoal (legacy/Moka).
+  const ecomTarget = generic
+    ? (mediaObjective?.ecommerce || mediaObjective?.facturacion || ecommerceGoal.target || 0)
+    : (ecommerceGoal.target || 0);
 
   const ecomPct = ecomTarget > 0 ? (ecomCurrent / ecomTarget) * 100 : 0;
   const expected = (ecomTarget / daysInMonth()) * elapsedPace();

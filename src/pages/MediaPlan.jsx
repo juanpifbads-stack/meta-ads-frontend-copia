@@ -32,7 +32,7 @@ const blank = () => ({
   metaSource: false, // true cuando los números vienen de Meta (no editables)
   lastMonthMeta: { facturacion: 0, inversion: 0, roas: 0 },
   lastYearMeta: { facturacion: 0, inversion: 0, roas: 0 },
-  objective: { facturacion: 0, roas: 0, inversion: 0 },
+  objective: { ecommerce: 0, facturacion: 0, roas: 0, inversion: 0 },
   trend: [
     { label: '', roas: 0, facturacion: 0, inversion: 0 },
     { label: '', roas: 0, facturacion: 0, inversion: 0 },
@@ -204,6 +204,8 @@ export default function MediaPlan({ onBack, lockedSlug }) {
     p.objective.inversion = v;
     p.objective.roas = v > 0 ? round2((p.objective.facturacion || 0) / v) : 0;
   });
+  // Objetivo de facturación ECOMMERCE (tienda completa) — independiente del de Meta.
+  const setObjEcom = (v) => upd((p) => { p.objective.ecommerce = v; });
   const lastYearComparable = plan && (plan.lastYearMeta.inversion || 0) > 0;
   const visibleKeys = SERIES.map((s) => s.key).filter((k) => visibleSeries[k]);
   const trendData = plan ? (trendCompare === 'lastyear' ? plan.trendLastYear : plan.trend) : [];
@@ -387,6 +389,10 @@ export default function MediaPlan({ onBack, lockedSlug }) {
         <div className="ad-plan">
           {/* OBJETIVO — siempre arriba */}
           <Section title="Objetivo propuesto" tone="objective">
+            <div className="mp-kpis" style={{ marginBottom: 10 }}>
+              <KpiEditable label="Objetivo de facturación ecommerce (tienda)" kind="money" value={plan.objective.ecommerce} onChange={setObjEcom} />
+            </div>
+            <div className="mp-calc" style={{ marginBottom: 14 }}>Es el objetivo de facturación TOTAL de la tienda (lo que se ve en "Facturación ecommerce" del portal). Es distinto del objetivo atribuido a Meta de abajo.</div>
             <div className="mp-kpis">
               <KpiEditable label="Facturación objetivo (en Meta)" kind="money" value={plan.objective.facturacion} onChange={setObjFact} />
               <KpiEditable label="ROAS objetivo" kind="roas" value={plan.objective.roas} onChange={setObjRoas} />
