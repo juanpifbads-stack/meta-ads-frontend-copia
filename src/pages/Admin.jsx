@@ -208,7 +208,7 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
 
       {showNew && <NewClientForm onClose={() => setShowNew(false)} onCreated={(s) => { setShowNew(false); loadClients(s); }} />}
 
-      {!showNew && slug && isAdmin && <ClientConfigEditor slug={slug} />}
+      {!showNew && slug && <ClientConfigEditor slug={slug} />}
 
       {!showNew && slug && <OnboardingEditor slug={slug} clients={clients} />}
 
@@ -320,13 +320,13 @@ function Section({ title, children }) {
     </section>
   );
 }
-function Field({ label, value, onChange, textarea, ph }) {
+function Field({ label, value, onChange, textarea, ph, disabled }) {
   return (
     <div className="ad-field ad-field--grow">
-      <label>{label}</label>
+      <label>{label}{disabled ? ' 🔒' : ''}</label>
       {textarea
-        ? <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={ph} />
-        : <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={ph} />}
+        ? <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={ph} disabled={disabled} />
+        : <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={ph} disabled={disabled} />}
     </div>
   );
 }
@@ -352,7 +352,7 @@ function CurField({ value, onChange }) {
 
 const TN_APP_ID = '33450';
 
-function AdAccountSelect({ value, onChange, label }) {
+function AdAccountSelect({ value, onChange, label, disabled }) {
   const [accounts, setAccounts] = useState(null);
   useEffect(() => {
     apiClient.get('/accounts').then((r) => setAccounts(r.data || [])).catch(() => setAccounts([]));
@@ -362,11 +362,11 @@ function AdAccountSelect({ value, onChange, label }) {
   const inList = accounts && accounts.some((a) => norm(a.id) === cur);
   return (
     <div className="ad-field ad-field--grow">
-      <label>{label || 'Cuenta publicitaria (Meta)'}</label>
+      <label>{label || 'Cuenta publicitaria (Meta)'}{disabled ? ' 🔒' : ''}</label>
       {accounts === null
         ? <input value="Cargando cuentas…" readOnly />
         : (
-          <select value={cur} onChange={(e) => onChange(e.target.value)}>
+          <select value={cur} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
             <option value="">— Sin cuenta —</option>
             {accounts.map((a) => <option key={a.id} value={norm(a.id)}>{a.name} ({norm(a.id)})</option>)}
             {cur && !inList && <option value={cur}>{cur} (guardada)</option>}
@@ -521,19 +521,20 @@ function ClientConfigEditor({ slug }) {
       </button>
       {open && cfg && (
         <div className="ad-macro-body">
+          {isPaid && <p className="ad-muted" style={{ margin: '0 0 8px' }}>🔒 Algunos campos solo los puede editar un administrador.</p>}
           <div className="ad-row">
-            <Field label="Nombre" value={cfg.name || ''} onChange={(v) => setCfg({ ...cfg, name: v })} />
-            <AdAccountSelect value={cfg.metaAccountId || ''} onChange={(v) => setCfg({ ...cfg, metaAccountId: v })} />
+            <Field label="Nombre" value={cfg.name || ''} onChange={(v) => setCfg({ ...cfg, name: v })} disabled={isPaid} />
+            <AdAccountSelect value={cfg.metaAccountId || ''} onChange={(v) => setCfg({ ...cfg, metaAccountId: v })} disabled={isPaid} />
             <div className="ad-field">
-              <label>Responsable (AM)</label>
-              <select value={cfg.am || ''} onChange={(e) => setCfg({ ...cfg, am: e.target.value })}>
+              <label>Responsable (AM){isPaid ? ' 🔒' : ''}</label>
+              <select value={cfg.am || ''} onChange={(e) => setCfg({ ...cfg, am: e.target.value })} disabled={isPaid}>
                 <option value="">— Sin asignar —</option>
                 {ALL_AMS.map((a) => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
             <div className="ad-field">
-              <label>Tipo de cliente</label>
-              <select value={cfg.type || (cfg.capabilities?.ecommerce ? 'ecommerce' : 'servicios')} onChange={(e) => setCfg({ ...cfg, type: e.target.value })}>
+              <label>Tipo de cliente{isPaid ? ' 🔒' : ''}</label>
+              <select value={cfg.type || (cfg.capabilities?.ecommerce ? 'ecommerce' : 'servicios')} onChange={(e) => setCfg({ ...cfg, type: e.target.value })} disabled={isPaid}>
                 <option value="ecommerce">Ecommerce</option>
                 <option value="servicios">Servicios</option>
               </select>
