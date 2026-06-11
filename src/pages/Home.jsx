@@ -180,7 +180,7 @@ export default function Home({ onOpenClient, onOptimize, onNewClient }) {
           <div className="ctrl-filters-right">
             <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onNewClient}>+ Nuevo cliente</button>
             <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => setShowHide((v) => !v)}>
-              {showHide ? 'Ocultar filtro' : `Ocultar marcas${hidden.length ? ` (${hidden.length})` : ''}`}
+              {showHide ? 'Cerrar filtro' : `Filtrar clientes${hidden.length ? ` (${hidden.length})` : ''}`}
             </button>
           </div>
         </div>
