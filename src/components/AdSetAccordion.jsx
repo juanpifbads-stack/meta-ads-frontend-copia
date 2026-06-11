@@ -171,11 +171,37 @@ function AdSetRow({ adset, onPause, window }) {
   );
 }
 
+const SORTS = [
+  { key: 'spend', label: 'Gasto' },
+  { key: 'conversions', label: 'Convs' },
+  { key: 'roas', label: 'ROAS' },
+];
+
 export default function AdSetAccordion({ adsets, onPause }) {
   const [open, setOpen] = useState(false);
   const [activeWindow, setActiveWindow] = useState('30d');
+  const [sortBy, setSortBy] = useState(null); // 'spend' | 'conversions' | 'roas' | null
+  const [sortDir, setSortDir] = useState('desc');
 
   if (!adsets || adsets.length === 0) return null;
+
+  // Click en un criterio: si ya está activo, alterna asc/desc; si no, lo activa en desc.
+  const toggleSort = (key) => {
+    if (sortBy === key) setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+    else { setSortBy(key); setSortDir('desc'); }
+  };
+
+  // Orden según la ventana activa. Los que no tienen dato van al fondo.
+  const sortedAdsets = [...adsets];
+  if (sortBy) {
+    const mk = `metrics_${activeWindow}`;
+    sortedAdsets.sort((a, b) => {
+      const va = a[mk]?.[sortBy]; const vb = b[mk]?.[sortBy];
+      const na = va == null || isNaN(Number(va)) ? -Infinity : Number(va);
+      const nb = vb == null || isNaN(Number(vb)) ? -Infinity : Number(vb);
+      return sortDir === 'asc' ? na - nb : nb - na;
+    });
+  }
 
   return (
     <div style={{ marginTop: '12px', borderTop: '0.5px solid var(--color-gray-light)' }}>
@@ -217,7 +243,39 @@ export default function AdSetAccordion({ adsets, onPause }) {
             ))}
           </div>
 
-          {adsets.map((adset) => (
+          {/* Ordenar por */}
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: '2px' }}>Ordenar</span>
+            {SORTS.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => toggleSort(s.key)}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '10px',
+                  padding: '2px 8px',
+                  border: '0.5px solid var(--color-gray-mid)',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer',
+                  backgroundColor: sortBy === s.key ? 'var(--color-brand-blue)' : 'transparent',
+                  color: sortBy === s.key ? '#fff' : 'var(--color-text-muted)',
+                  fontWeight: sortBy === s.key ? '700' : '400',
+                }}
+              >
+                {s.label}{sortBy === s.key ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
+              </button>
+            ))}
+            {sortBy && (
+              <button
+                onClick={() => setSortBy(null)}
+                style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', padding: '2px 8px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)', textDecoration: 'underline' }}
+              >
+                limpiar
+              </button>
+            )}
+          </div>
+
+          {sortedAdsets.map((adset) => (
             <AdSetRow key={adset.id} adset={adset} onPause={onPause} window={activeWindow} />
           ))}
         </div>
