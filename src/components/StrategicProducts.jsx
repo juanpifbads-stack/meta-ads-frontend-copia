@@ -69,6 +69,7 @@ export default function StrategicProducts({ slug, accessKey, products }) {
       case 'sku': return p.sku.toLowerCase();
       case 'stock': return p.stock == null ? -1 : p.stock;
       case 'units': return p.windows[win]?.units || 0;
+      case 'orders': return p.orders?.[win] || 0;
       case 'revenue': return p.windows[win]?.revenue || 0;
       case 'stockout':
         if ((p.stock != null && p.stock <= 0) || p.soldOutCount > 0) return 0; // agotados: máxima urgencia
@@ -165,6 +166,7 @@ export default function StrategicProducts({ slug, accessKey, products }) {
                 <th className="sp-th" onClick={() => toggleSort('sku')}>SKU{arrow('sku')}</th>
                 <th className="sp-th sp-r" onClick={() => toggleSort('stock')}>Stock{arrow('stock')}</th>
                 <th className="sp-th sp-r" onClick={() => toggleSort('units')}>Ventas ({win}d){arrow('units')}</th>
+                <th className="sp-th sp-r" onClick={() => toggleSort('orders')}>Pedidos ({win}d){arrow('orders')}</th>
                 <th className="sp-th sp-r" onClick={() => toggleSort('revenue')}>Facturación ({win}d){arrow('revenue')}</th>
                 <th className="sp-th sp-r" onClick={() => toggleSort('stockout')}>Quiebre de stock{arrow('stockout')}</th>
               </tr>
@@ -183,12 +185,13 @@ export default function StrategicProducts({ slug, accessKey, products }) {
                       <td className="sp-mono">{p.sku}</td>
                       <td className="sp-r">{p.stock == null ? '—' : `${p.stock} u`}</td>
                       <td className="sp-r"><strong>{p.windows[win]?.units || 0}</strong> u</td>
+                      <td className="sp-r">{p.orders?.[win] || 0}</td>
                       <td className="sp-r">{fmtMoney(p.windows[win]?.revenue || 0)}</td>
                       <td className="sp-r">{stockoutCell(p)}</td>
                     </tr>
                     {isOpen && vs.length > 0 && (
                       <tr className="sp-vsort-row">
-                        <td colSpan={6}>
+                        <td colSpan={7}>
                           <div className="sp-vsort">
                             <span className="sp-vsort-lbl">Ordenar variantes por:</span>
                             {(p.attributes || []).map((attr, ai) => (
@@ -210,6 +213,7 @@ export default function StrategicProducts({ slug, accessKey, products }) {
                         <td></td>
                         <td className="sp-r">{v.stock == null ? '—' : `${v.stock} u`}</td>
                         <td className="sp-r">{v.windows[win]?.units || 0} u</td>
+                        <td className="sp-r sp-muted">—</td>
                         <td className="sp-r">{fmtMoney(v.windows[win]?.revenue || 0)}</td>
                         <td className="sp-r">{stockoutCell(v)}</td>
                       </tr>
