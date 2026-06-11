@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../api/client.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import Analyze from './Analyze.jsx';
 import MediaPlan from './MediaPlan.jsx';
 import Admin from './Admin.jsx';
@@ -25,6 +26,8 @@ const TABS = [
 ];
 
 export default function ClientHub({ slug, onBack }) {
+  const { user } = useAuth();
+  const isPaid = !!user && user.role === 'paid' && !user.legacy;
   const [cfg, setCfg] = useState(null);
   const [health, setHealth] = useState(null);
   const [goals, setGoals] = useState({ revenue: '', roas: '' });
@@ -64,7 +67,7 @@ export default function ClientHub({ slug, onBack }) {
   if (tab === 'analizar') return <Analyze lockedAccount={accountId} onBack={() => setTab('resumen')} />;
   if (tab === 'media') return <MediaPlan lockedSlug={slug} onBack={() => setTab('resumen')} />;
   if (tab === 'admin') return <Admin lockedSlug={slug} onBack={() => setTab('resumen')} />;
-  if (tab === 'optimizar') return <Dashboard initialAccount={accountId} onBack={() => setTab('resumen')} />;
+  if (tab === 'optimizar') return <Dashboard initialAccount={accountId} lockedAccount={accountId} onBack={() => setTab('resumen')} />;
 
   const name = cfg?.name || slug;
   const spend = health?.spend || 0;
@@ -157,15 +160,17 @@ export default function ClientHub({ slug, onBack }) {
               <button className="ctrl-btn ctrl-btn--ghost" onClick={() => navigator.clipboard?.writeText(portalLink)}>Copiar link</button>
             </div>
           </div>
-          <div className="hub-portal-card">
-            <div className="hub-portal-lbl">Solo pagos (administración)</div>
-            <div className="hub-portal-link">{portalLink}/pagos</div>
-            <div className="hub-portal-key">Clave: <strong>{cfg?.paymentsKey || '—'}</strong></div>
-            <div className="hub-portal-actions">
-              <a className="ctrl-btn ctrl-btn--ghost" href={`${portalLink}/pagos`} target="_blank" rel="noreferrer">Abrir pagos</a>
-              <button className="ctrl-btn ctrl-btn--ghost" onClick={() => navigator.clipboard?.writeText(`${portalLink}/pagos`)}>Copiar link</button>
+          {!isPaid && (
+            <div className="hub-portal-card">
+              <div className="hub-portal-lbl">Solo pagos (administración)</div>
+              <div className="hub-portal-link">{portalLink}/pagos</div>
+              <div className="hub-portal-key">Clave: <strong>{cfg?.paymentsKey || '—'}</strong></div>
+              <div className="hub-portal-actions">
+                <a className="ctrl-btn ctrl-btn--ghost" href={`${portalLink}/pagos`} target="_blank" rel="noreferrer">Abrir pagos</a>
+                <button className="ctrl-btn ctrl-btn--ghost" onClick={() => navigator.clipboard?.writeText(`${portalLink}/pagos`)}>Copiar link</button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

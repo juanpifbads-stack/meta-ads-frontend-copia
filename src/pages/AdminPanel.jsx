@@ -15,11 +15,23 @@ function F({ label, value, onChange, type = 'text' }) {
 /* ── Usuarios internos ── */
 function UsersSection() {
   const [users, setUsers] = useState(null);
+  const [clients, setClients] = useState([]);
   const [nu, setNu] = useState({ email: '', name: '', role: 'paid', password: '' });
   const [msg, setMsg] = useState('');
+  const [assignOpen, setAssignOpen] = useState(null); // id del usuario con el panel de clientes abierto
 
   const load = () => apiClient.get('/admin/users').then((r) => setUsers(r.data.users || [])).catch(() => setUsers([]));
   useEffect(() => { load(); }, []);
+  useEffect(() => { apiClient.get('/admin/clients').then((r) => setClients(r.data.clients || [])).catch(() => {}); }, []);
+
+  const toggleAssign = (u, slug) => {
+    const cur = new Set(u.assigned_slugs || []);
+    cur.has(slug) ? cur.delete(slug) : cur.add(slug);
+    const next = [...cur];
+    apiClient.put(`/admin/users/${u.id}`, { assigned_slugs: next })
+      .then(() => { setUsers((list) => list.map((x) => x.id === u.id ? { ...x, assigned_slugs: next } : x)); })
+      .catch(() => setMsg('Error al asignar'));
+  };
 
   const create = () => {
     if (!nu.email || !nu.name || nu.password.length < 6) { setMsg('Completá email, nombre y contraseña de 6+ caracteres'); return; }
@@ -45,17 +57,31 @@ function UsersSection() {
       {users === null ? <p className="ad-muted">Cargando…</p> : (
         <div style={{ marginBottom: 16 }}>
           {users.map((u) => (
-            <div key={u.id} className="ad-row" style={{ alignItems: 'center', opacity: u.active ? 1 : 0.5 }}>
-              <div className="ad-field ad-field--grow"><label>{u.name}{u.active ? '' : ' · inactivo'}</label><input readOnly value={u.email} style={{ padding: '6px 8px', fontSize: 13 }} /></div>
-              <div className="ad-field">
-                <label>Rol</label>
-                <select value={u.role} onChange={(e) => setRole(u, e.target.value)}>
-                  <option value="paid">Paid</option>
-                  <option value="admin">Admin</option>
-                </select>
+            <div key={u.id} style={{ borderBottom: '1px solid #eee', paddingBottom: 8, marginBottom: 8 }}>
+              <div className="ad-row" style={{ alignItems: 'center', opacity: u.active ? 1 : 0.5 }}>
+                <div className="ad-field ad-field--grow"><label>{u.name}{u.active ? '' : ' · inactivo'}</label><input readOnly value={u.email} style={{ padding: '6px 8px', fontSize: 13 }} /></div>
+                <div className="ad-field">
+                  <label>Rol</label>
+                  <select value={u.role} onChange={(e) => setRole(u, e.target.value)}>
+                    <option value="paid">Paid</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                {u.role === 'paid' && <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => setAssignOpen(assignOpen === u.id ? null : u.id)}>Clientes ({(u.assigned_slugs || []).length})</button>}
+                <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => changePass(u)}>Cambiar contraseña</button>
+                <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => toggleActive(u)}>{u.active ? 'Desactivar' : 'Activar'}</button>
               </div>
-              <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => changePass(u)}>Cambiar contraseña</button>
-              <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => toggleActive(u)}>{u.active ? 'Desactivar' : 'Activar'}</button>
+              {u.role === 'paid' && assignOpen === u.id && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '6px 2px 2px' }}>
+                  {clients.map((c) => (
+                    <label key={c.slug} className="ad-cap" style={{ fontSize: 13 }}>
+                      <input type="checkbox" checked={(u.assigned_slugs || []).includes(c.slug)} onChange={() => toggleAssign(u, c.slug)} />
+                      <span>{c.name}</span>
+                    </label>
+                  ))}
+                  {!clients.length && <span className="ad-muted">No hay clientes.</span>}
+                </div>
+              )}
             </div>
           ))}
         </div>

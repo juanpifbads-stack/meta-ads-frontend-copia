@@ -6,7 +6,8 @@ import AccountSelector from '../components/AccountSelector.jsx';
 import AdSetCard from '../components/AdSetCard.jsx';
 import CampaignCard from '../components/CampaignCard.jsx';
 
-export default function Dashboard({ onBack, initialAccount }) {
+export default function Dashboard({ onBack, initialAccount, lockedAccount }) {
+  const fixedAccount = lockedAccount != null ? String(lockedAccount).replace('act_', '') : null;
   const { user, logout } = useAuth();
 
   // Accounts
@@ -14,7 +15,7 @@ export default function Dashboard({ onBack, initialAccount }) {
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [accountsError, setAccountsError] = useState(null);
   // Preselección si viene desde el hub de un cliente; si no, el usuario elige.
-  const [selectedAccount, setSelectedAccount] = useState(initialAccount ? String(initialAccount).replace('act_', '') : null);
+  const [selectedAccount, setSelectedAccount] = useState((lockedAccount || initialAccount) ? String(lockedAccount || initialAccount).replace('act_', '') : null);
 
   // Adsets (ABO)
   const [adsets, setAdsets] = useState([]);
@@ -194,28 +195,30 @@ export default function Dashboard({ onBack, initialAccount }) {
       {/* Main content */}
       <main className="app-main">
         <div className="content-container">
-          {/* Account Selector */}
-          <div
-            style={{
-              backgroundColor: 'var(--color-white)',
-              border: '0.5px solid var(--color-gray-mid)',
-              borderRadius: 'var(--radius-md)',
-              padding: '16px 20px',
-              marginBottom: '24px',
-            }}
-          >
-            {accountsError && (
-              <div className="alert alert-error" style={{ marginBottom: '12px' }}>
-                {accountsError}
-              </div>
-            )}
-            <AccountSelector
-              accounts={accounts}
-              selectedAccount={selectedAccount}
-              onSelect={handleSelectAccount}
-              loading={accountsLoading}
-            />
-          </div>
+          {/* Account Selector — oculto cuando se entra con una cuenta bloqueada (desde el cliente) */}
+          {!fixedAccount && (
+            <div
+              style={{
+                backgroundColor: 'var(--color-white)',
+                border: '0.5px solid var(--color-gray-mid)',
+                borderRadius: 'var(--radius-md)',
+                padding: '16px 20px',
+                marginBottom: '24px',
+              }}
+            >
+              {accountsError && (
+                <div className="alert alert-error" style={{ marginBottom: '12px' }}>
+                  {accountsError}
+                </div>
+              )}
+              <AccountSelector
+                accounts={accounts}
+                selectedAccount={selectedAccount}
+                onSelect={handleSelectAccount}
+                loading={accountsLoading}
+              />
+            </div>
+          )}
 
           {/* Account spend stats */}
           {selectedAccount && (last4Spend !== null || totalActiveBudget > 0) && (

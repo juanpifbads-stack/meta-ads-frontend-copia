@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../api/client.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import './Admin.css';
 
 const ALL_AMS = ['Juan Ignacio', 'Franco', 'Agustín', 'Chachi'];
@@ -482,6 +483,8 @@ function NewClientForm({ onClose, onCreated }) {
 }
 
 function ClientConfigEditor({ slug }) {
+  const { user } = useAuth();
+  const isPaid = user?.role === 'paid' && !user?.legacy;
   const [open, setOpen] = useState(true);
   const [cfg, setCfg] = useState(null);
   const [msg, setMsg] = useState('');
@@ -497,7 +500,8 @@ function ClientConfigEditor({ slug }) {
     config.capabilities = {
       ...(config.capabilities || {}),
       ecommerce: (config.type || 'ecommerce') === 'ecommerce',
-      variable: (config.variable?.mode || 'none') !== 'none',
+      // Un paid no edita la variable: no recalculamos esa capability (la preserva el backend).
+      ...(isPaid ? {} : { variable: (config.variable?.mode || 'none') !== 'none' }),
     };
     apiClient.put(`/admin/clients/${slug}`, { config })
       .then(() => { setMsg('✓ Guardado'); setTimeout(() => setMsg(''), 2000); })
@@ -538,12 +542,16 @@ function ClientConfigEditor({ slug }) {
           </div>
           <div className="ad-row">
             <Field label="Clave de acceso" value={cfg.accessKey || ''} onChange={(v) => setCfg({ ...cfg, accessKey: v })} />
-            <Field label="Clave de pagos" value={cfg.paymentsKey || ''} onChange={(v) => setCfg({ ...cfg, paymentsKey: v })} />
+            {!isPaid && <Field label="Clave de pagos" value={cfg.paymentsKey || ''} onChange={(v) => setCfg({ ...cfg, paymentsKey: v })} />}
           </div>
 
-          <div className="ad-sublabel">Servicios que ofrecés (con su monto)</div>
-          <ServicesEditor caps={cfg.capabilities || {}} fees={cfg.fees || {}} onToggle={setCap} onFee={setFee} />
-          <VariableEditor variable={cfg.variable || { mode: 'none', base: 0, rate: 0.03 }} onChange={(v) => setCfg({ ...cfg, variable: v })} />
+          {!isPaid && (
+            <>
+              <div className="ad-sublabel">Servicios que ofrecés (con su monto)</div>
+              <ServicesEditor caps={cfg.capabilities || {}} fees={cfg.fees || {}} onToggle={setCap} onFee={setFee} />
+              <VariableEditor variable={cfg.variable || { mode: 'none', base: 0, rate: 0.03 }} onChange={(v) => setCfg({ ...cfg, variable: v })} />
+            </>
+          )}
 
           <div className="ad-sublabel">Secciones opcionales del panel</div>
           <p className="ad-muted" style={{ margin: '0 0 6px' }}>Siempre van: {MANDATORY_LABELS.join(' · ')}.</p>

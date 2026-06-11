@@ -156,7 +156,7 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
             <div className="ctrl-brand ctrl-brand--lg">alquimia.</div>
           </div>
           <div className="ctrl-header-actions">
-            <button className="ctrl-btn" onClick={onOptimize}>⚡ Optimizar</button>
+            {isAdmin && <button className="ctrl-btn" onClick={onOptimize}>⚡ Optimizar</button>}
             {isAdmin && <button className="ctrl-btn ctrl-btn--ghost" onClick={onAdmin}>⚙ Administración</button>}
             <button className="ctrl-btn ctrl-btn--ghost" onClick={load} disabled={loading}>{loading ? 'Cargando…' : 'Actualizar'}</button>
             <button className="ctrl-btn ctrl-btn--ghost" onClick={logout}>Cerrar sesión</button>
@@ -179,12 +179,14 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
               ))}
             </div>
           </div>
-          <div className="ctrl-filters-right">
-            <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onNewClient}>+ Nuevo cliente</button>
-            <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => setShowHide((v) => !v)}>
-              {showHide ? 'Cerrar filtro' : `Filtrar clientes${hidden.length ? ` (${hidden.length})` : ''}`}
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="ctrl-filters-right">
+              <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onNewClient}>+ Nuevo cliente</button>
+              <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => setShowHide((v) => !v)}>
+                {showHide ? 'Cerrar filtro' : `Filtrar clientes${hidden.length ? ` (${hidden.length})` : ''}`}
+              </button>
+            </div>
+          )}
         </div>
 
         {showHide && (
