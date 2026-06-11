@@ -311,8 +311,16 @@ function ClientDashboard({ client }) {
       </div>
       )}
 
-      {/* KPI Cards */}
-      <section className="cp-kpis cp-kpis--3">
+      {/* Aclaración del objetivo del mes (editable desde el plan de medios → justificación de objetivos).
+          Solo para Moka/legacy: los genéricos ya la muestran abajo en la sección Justificación. */}
+      {!generic && (data.justificationText || '').trim() && (
+        <p className="cp-objective-note">{data.justificationText}</p>
+      )}
+
+      {/* Performance ecommerce */}
+      <section className="cp-section">
+        <h2 className="cp-section-title">Performance ecommerce</h2>
+        <div className="cp-kpis cp-kpis--3">
         {/* Facturación ecommerce — objetivo claro */}
         {caps.ecommerce && show('facturacion') && (
         <div className="cp-kpi cp-kpi--hero">
@@ -372,41 +380,8 @@ function ClientDashboard({ client }) {
           <div className="cp-kpi-cta" onClick={() => setShowBudgetModal(true)} style={{ cursor: 'pointer' }}>Ver detalle →</div>
         </div>
         )}
-      </section>
-
-      {/* PAGOS — línea de tiempo del mes (desplegable) */}
-      {show('pagos') && (
-      <section className="cp-section">
-        <Collapsible title="Presupuesto financiero del mes — ver pagos">
-          <PaymentsTimeline budget={budget} slug={client.slug} accessKey={client.accessKey} />
-        </Collapsible>
-      </section>
-      )}
-
-      {/* Modal de presupuesto */}
-      {showBudgetModal && (
-        <Modal title="Presupuesto económico" onClose={() => setShowBudgetModal(false)}>
-          <PaymentsSection budget={budget} facturacion={ecomCurrent} objetivo={ecomTarget} />
-        </Modal>
-      )}
-
-      {/* Tareas */}
-      {show('tareas') && (
-      <section className="cp-section">
-        <h2 className="cp-section-title">Tareas</h2>
-        <TasksSection slug={client.slug} accessKey={client.accessKey} />
-      </section>
-      )}
-
-      {/* Roadmap semanal */}
-      {show('roadmap') && (roadmap || []).length > 0 && (
-      <section className="cp-section">
-        <h2 className="cp-section-title">Roadmap del mes</h2>
-        <div className="cp-roadmap">
-          {roadmap.map((r, i) => <WeekCard key={i} week={r} />)}
         </div>
       </section>
-      )}
 
       {/* Performance Meta */}
       {caps.meta && show('performanceMeta') && (
@@ -478,6 +453,40 @@ function ClientDashboard({ client }) {
               </>
             );
           })()}
+        </div>
+      </section>
+      )}
+
+      {/* PAGOS — línea de tiempo del mes (desplegable) */}
+      {show('pagos') && (
+      <section className="cp-section">
+        <Collapsible title="Presupuesto financiero del mes — ver pagos">
+          <PaymentsTimeline budget={budget} slug={client.slug} accessKey={client.accessKey} />
+        </Collapsible>
+      </section>
+      )}
+
+      {/* Modal de presupuesto */}
+      {showBudgetModal && (
+        <Modal title="Presupuesto económico" onClose={() => setShowBudgetModal(false)}>
+          <PaymentsSection budget={budget} facturacion={ecomCurrent} objetivo={ecomTarget} />
+        </Modal>
+      )}
+
+      {/* Tareas */}
+      {show('tareas') && (
+      <section className="cp-section">
+        <h2 className="cp-section-title">Tareas</h2>
+        <TasksSection slug={client.slug} accessKey={client.accessKey} />
+      </section>
+      )}
+
+      {/* Roadmap semanal */}
+      {show('roadmap') && (roadmap || []).length > 0 && (
+      <section className="cp-section">
+        <h2 className="cp-section-title">Roadmap del mes</h2>
+        <div className="cp-roadmap">
+          {roadmap.map((r, i) => <WeekCard key={i} week={r} />)}
         </div>
       </section>
       )}

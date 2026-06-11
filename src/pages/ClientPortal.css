@@ -163,6 +163,15 @@
   font-size: 14px;
   color: var(--color-text-secondary);
 }
+/* Aclaración del objetivo del mes: baja jerarquía, cómoda de leer */
+.cp-objective-note {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--color-text-secondary);
+  max-width: 760px;
+  margin: 14px 0 4px;
+  text-align: justify;
+}
 
 /* KPIs */
 .cp-kpis {
