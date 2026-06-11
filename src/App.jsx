@@ -80,6 +80,7 @@ function AppShell() {
       onOpenClient={(s) => { setSlug(s); setView('client'); }}
       onOptimize={() => setView('optimize')}
       onNewClient={() => { setAdminNew(true); setView('admin'); }}
+      onAdmin={() => { setAdminNew(false); setView('admin'); }}
     />
   );
 

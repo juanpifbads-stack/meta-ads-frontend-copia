@@ -108,8 +108,9 @@ function ClientCard({ c, onOpen }) {
   );
 }
 
-export default function Home({ onOpenClient, onOptimize, onNewClient }) {
-  const { logout } = useAuth();
+export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin }) {
+  const { logout, user } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.legacy;
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -156,6 +157,7 @@ export default function Home({ onOpenClient, onOptimize, onNewClient }) {
           </div>
           <div className="ctrl-header-actions">
             <button className="ctrl-btn" onClick={onOptimize}>⚡ Optimizar</button>
+            {isAdmin && <button className="ctrl-btn ctrl-btn--ghost" onClick={onAdmin}>⚙ Admin</button>}
             <button className="ctrl-btn ctrl-btn--ghost" onClick={load} disabled={loading}>{loading ? 'Cargando…' : 'Actualizar'}</button>
             <button className="ctrl-btn ctrl-btn--ghost" onClick={logout}>Cerrar sesión</button>
           </div>
