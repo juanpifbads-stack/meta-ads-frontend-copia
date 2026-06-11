@@ -7,6 +7,7 @@ import Audit from './pages/Audit.jsx';
 import Home from './pages/Home.jsx';
 import ClientHub from './pages/ClientHub.jsx';
 import Admin from './pages/Admin.jsx';
+import AdminPanel from './pages/AdminPanel.jsx';
 import ClientPortal, { PaymentsPortal } from './pages/ClientPortal.jsx';
 import Onboarding from './pages/Onboarding.jsx';
 
@@ -73,6 +74,7 @@ function AppShell() {
 
   let content;
   if (view === 'optimize') content = <Dashboard onBack={() => setView('home')} />;
+  else if (view === 'adminPanel') content = <AdminPanel onBack={() => setView('home')} />;
   else if (view === 'admin') content = <Admin onBack={() => setView('home')} autoNew={adminNew} />;
   else if (view === 'client' && slug) content = <ClientHub slug={slug} onBack={() => { setView('home'); setSlug(null); }} />;
   else content = (
@@ -80,7 +82,7 @@ function AppShell() {
       onOpenClient={(s) => { setSlug(s); setView('client'); }}
       onOptimize={() => setView('optimize')}
       onNewClient={() => { setAdminNew(true); setView('admin'); }}
-      onAdmin={() => { setAdminNew(false); setView('admin'); }}
+      onAdmin={() => setView('adminPanel')}
     />
   );
 

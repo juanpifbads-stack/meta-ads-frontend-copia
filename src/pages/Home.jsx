@@ -157,7 +157,7 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
           </div>
           <div className="ctrl-header-actions">
             <button className="ctrl-btn" onClick={onOptimize}>⚡ Optimizar</button>
-            {isAdmin && <button className="ctrl-btn ctrl-btn--ghost" onClick={onAdmin}>⚙ Admin</button>}
+            {isAdmin && <button className="ctrl-btn ctrl-btn--ghost" onClick={onAdmin}>⚙ Administración</button>}
             <button className="ctrl-btn ctrl-btn--ghost" onClick={load} disabled={loading}>{loading ? 'Cargando…' : 'Actualizar'}</button>
             <button className="ctrl-btn ctrl-btn--ghost" onClick={logout}>Cerrar sesión</button>
           </div>
