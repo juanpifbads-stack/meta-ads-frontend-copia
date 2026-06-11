@@ -7,21 +7,20 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await apiClient.get('/auth/me');
-        setUser(response.data);
-      } catch (err) {
-        // 401 or network error — user not authenticated
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
+  const refresh = useCallback(async () => {
+    try {
+      const response = await apiClient.get('/auth/me');
+      setUser(response.data);
+      return response.data;
+    } catch (err) {
+      setUser(null);
+      return null;
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
 
   const logout = useCallback(async () => {
     try {
@@ -38,7 +37,11 @@ export function AuthProvider({ children }) {
     user,
     loading,
     logout,
-    isAuthenticated: !!user,
+    refresh,
+    // Llega a la app si: usuario interno con Meta conectada, o sesión legacy (solo-Meta).
+    isAuthenticated: !!user && (user.metaConnected || user.legacy),
+    // Logueado en Alquimia pero todavía sin conectar Facebook.
+    needsMeta: !!user && !user.metaConnected && !user.legacy,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

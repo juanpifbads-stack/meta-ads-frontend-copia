@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../api/client.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import './Admin.css';
 
 const ALL_AMS = ['Juan Ignacio', 'Franco', 'Agustín', 'Chachi'];
@@ -115,6 +116,8 @@ const blankPlan = () => ({
 });
 
 export default function Admin({ onBack, lockedSlug, autoNew }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.legacy;
   const [clients, setClients] = useState([]);
   const [slug, setSlug] = useState(lockedSlug || '');
   const [clientData, setClientData] = useState(null);
@@ -204,6 +207,8 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
       )}
 
       {showNew && <NewClientForm onClose={() => setShowNew(false)} onCreated={(s) => { setShowNew(false); loadClients(s); }} />}
+
+      {!showNew && isAdmin && <UsersPanel />}
 
       {!showNew && slug && <ClientConfigEditor slug={slug} />}
 
@@ -783,6 +788,69 @@ function OnboardingEditor({ slug, clients }) {
               {msg && <span className="ad-msg">{msg}</span>}
               <button className="ad-btn" onClick={save}>Guardar onboarding</button>
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UsersPanel() {
+  const [open, setOpen] = useState(false);
+  const [users, setUsers] = useState(null);
+  const [nu, setNu] = useState({ email: '', name: '', role: 'paid', password: '' });
+  const [msg, setMsg] = useState('');
+
+  const load = () => apiClient.get('/admin/users').then((r) => setUsers(r.data.users || [])).catch(() => setUsers([]));
+  useEffect(() => { if (open && users === null) load(); }, [open, users]);
+
+  const create = () => {
+    if (!nu.email || !nu.name || nu.password.length < 6) { setMsg('Completá email, nombre y contraseña de 6+ caracteres'); return; }
+    setMsg('Creando…');
+    apiClient.post('/admin/users', nu)
+      .then(() => { setNu({ email: '', name: '', role: 'paid', password: '' }); setMsg('✓ Usuario creado'); load(); setTimeout(() => setMsg(''), 2000); })
+      .catch((e) => setMsg(e.response?.data?.message || 'Error al crear'));
+  };
+  const changePass = (u) => {
+    const p = window.prompt(`Nueva contraseña para ${u.name} (mín. 6):`);
+    if (!p) return;
+    if (p.length < 6) { setMsg('Mínimo 6 caracteres'); return; }
+    apiClient.put(`/admin/users/${u.id}`, { password: p }).then(() => { setMsg(`✓ Contraseña de ${u.name} actualizada`); setTimeout(() => setMsg(''), 2500); }).catch(() => setMsg('Error'));
+  };
+  const toggleActive = (u) => apiClient.put(`/admin/users/${u.id}`, { active: !u.active }).then(load).catch(() => {});
+
+  return (
+    <div className="ad-macro">
+      <button className="ad-macro-head" onClick={() => setOpen(!open)}><span>{open ? '▾' : '▸'}</span> Usuarios internos</button>
+      {open && (
+        <div className="ad-macro-body">
+          <p className="ad-muted" style={{ margin: '0 0 8px' }}>Usuarios de Alquimia. <strong>admin</strong> ve todo; <strong>paid</strong> (cuando esté el enforcement) verá solo sus clientes y sin datos sensibles.</p>
+          {users === null ? <p className="ad-muted">Cargando…</p> : (
+            <div style={{ marginBottom: 14 }}>
+              {users.map((u) => (
+                <div key={u.id} className="ad-row" style={{ alignItems: 'center', opacity: u.active ? 1 : 0.5 }}>
+                  <div className="ad-field ad-field--grow"><label>{u.role === 'admin' ? '👑 Admin' : 'Paid'}{u.active ? '' : ' · inactivo'}</label><input readOnly value={`${u.name} · ${u.email}`} style={{ padding: '6px 8px', fontSize: 13 }} /></div>
+                  <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => changePass(u)}>Cambiar contraseña</button>
+                  <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => toggleActive(u)}>{u.active ? 'Desactivar' : 'Activar'}</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="ad-sublabel">Crear usuario</div>
+          <div className="ad-row">
+            <Field label="Email" value={nu.email} onChange={(v) => setNu((s) => ({ ...s, email: v }))} />
+            <Field label="Nombre" value={nu.name} onChange={(v) => setNu((s) => ({ ...s, name: v }))} />
+            <div className="ad-field"><label>Rol</label>
+              <select value={nu.role} onChange={(e) => setNu((s) => ({ ...s, role: e.target.value }))}>
+                <option value="paid">Paid</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <Field label="Contraseña temporal" value={nu.password} onChange={(v) => setNu((s) => ({ ...s, password: v }))} />
+          </div>
+          <div className="ad-row" style={{ justifyContent: 'flex-end' }}>
+            {msg && <span className="ad-msg">{msg}</span>}
+            <button className="ad-btn" onClick={create}>Crear usuario</button>
           </div>
         </div>
       )}
