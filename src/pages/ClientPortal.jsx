@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { getClient } from '../data/clients.js';
 import apiClient from '../api/client.js';
 import PaymentsSection from '../components/PaymentsSection.jsx';
 import PaymentsTimeline from '../components/PaymentsTimeline.jsx';
@@ -130,12 +129,17 @@ function GoalBar({ label, current, target, pct, status }) {
 }
 
 /* ── Gate de clave genérico ── */
-function KeyGate({ client, title, eyebrow, expectedKey, onPass }) {
+function KeyGate({ slug, title, eyebrow, kind = 'portal', onPass }) {
   const [keyInput, setKeyInput] = useState('');
   const [keyError, setKeyError] = useState(false);
+  const [loading, setLoading] = useState(false);
   const check = () => {
-    if (keyInput === expectedKey) onPass();
-    else setKeyError(true);
+    if (!keyInput.trim() || loading) return;
+    setLoading(true); setKeyError(false);
+    apiClient.get(`/portal/${slug}/info`, { params: { key: keyInput, kind } })
+      .then((r) => { if (r.data?.keyOk) onPass(keyInput); else setKeyError(true); })
+      .catch(() => setKeyError(true))
+      .finally(() => setLoading(false));
   };
   return (
     <div className="cp-gate">
@@ -153,7 +157,29 @@ function KeyGate({ client, title, eyebrow, expectedKey, onPass }) {
           onKeyDown={(e) => { if (e.key === 'Enter') check(); }}
         />
         {keyError && <div className="cp-gate-error">Clave incorrecta.</div>}
-        <button className="cp-btn" onClick={check}>Ingresar</button>
+        <button className="cp-btn" onClick={check} disabled={loading}>{loading ? 'Entrando…' : 'Ingresar'}</button>
+      </div>
+    </div>
+  );
+}
+
+// Resuelve la info pública del portal desde la base (nombre + si está activo).
+function usePortalInfo(slug) {
+  const [info, setInfo] = useState(undefined); // undefined = cargando, null = error
+  useEffect(() => {
+    let alive = true;
+    apiClient.get(`/portal/${slug}/info`).then((r) => { if (alive) setInfo(r.data); }).catch(() => { if (alive) setInfo(null); });
+    return () => { alive = false; };
+  }, [slug]);
+  return info;
+}
+
+function PortalMessage({ children }) {
+  return (
+    <div className="cp-gate">
+      <div className="cp-gate-box">
+        <div className="cp-brand">alquimia.</div>
+        <p className="cp-gate-msg">{children}</p>
       </div>
     </div>
   );
@@ -161,33 +187,14 @@ function KeyGate({ client, title, eyebrow, expectedKey, onPass }) {
 
 export default function ClientPortal() {
   const { slug } = useParams();
-  const client = getClient(slug);
-  const [authed, setAuthed] = useState(false);
+  const info = usePortalInfo(slug);
+  const [authKey, setAuthKey] = useState(null);
 
-  if (!client || !client.active) {
-    return (
-      <div className="cp-gate">
-        <div className="cp-gate-box">
-          <div className="cp-brand">alquimia.</div>
-          <p className="cp-gate-msg">Este portal no está disponible.</p>
-        </div>
-      </div>
-    );
-  }
+  if (info === undefined) return <PortalMessage>Cargando…</PortalMessage>;
+  if (!info || !info.exists || !info.active) return <PortalMessage>Este portal no está disponible.</PortalMessage>;
+  if (!authKey) return <KeyGate slug={slug} eyebrow="Portal de cliente" title={info.name} kind="portal" onPass={setAuthKey} />;
 
-  if (!authed) {
-    return (
-      <KeyGate
-        client={client}
-        eyebrow="Portal de cliente"
-        title={client.name}
-        expectedKey={client.accessKey}
-        onPass={() => setAuthed(true)}
-      />
-    );
-  }
-
-  return <ClientDashboard client={client} />;
+  return <ClientDashboard client={{ slug, name: info.name, accessKey: authKey }} />;
 }
 
 function ClientDashboard({ client }) {
@@ -264,6 +271,10 @@ function ClientDashboard({ client }) {
       .finally(() => { if (alive) setTnLoading(false); });
     return () => { alive = false; };
   }, [client.slug, client.accessKey]);
+
+  // Esperamos los datos del portal (vienen de la base) antes de armar el dashboard:
+  // así evitamos crashear cuando todavía no tenemos budget/ecommerceGoal/etc.
+  if (!content) return <PortalMessage>Cargando…</PortalMessage>;
 
   // Mientras carga Tienda Nube no mostramos el valor de ejemplo (evita el parpadeo).
   const ecomReady = !tnLoading;
@@ -587,38 +598,32 @@ function ClientDashboard({ client }) {
 /* ── Vista SOLO de pagos (para administración) ── */
 export function PaymentsPortal() {
   const { slug } = useParams();
-  const client = getClient(slug);
-  const [authed, setAuthed] = useState(false);
+  const info = usePortalInfo(slug);
+  const [authKey, setAuthKey] = useState(null);
 
-  if (!client || !client.active) {
-    return (
-      <div className="cp-gate">
-        <div className="cp-gate-box">
-          <div className="cp-brand">alquimia.</div>
-          <p className="cp-gate-msg">Esta vista no está disponible.</p>
-        </div>
-      </div>
-    );
-  }
+  if (info === undefined) return <PortalMessage>Cargando…</PortalMessage>;
+  if (!info || !info.exists || !info.active || !info.hasPayments) return <PortalMessage>Esta vista no está disponible.</PortalMessage>;
+  if (!authKey) return <KeyGate slug={slug} eyebrow="Pagos" title={info.name} kind="pagos" onPass={setAuthKey} />;
 
-  if (!authed) {
-    return (
-      <KeyGate
-        client={client}
-        eyebrow="Pagos"
-        title={client.name}
-        expectedKey={client.paymentsKey}
-        onPass={() => setAuthed(true)}
-      />
-    );
-  }
+  return <PaymentsView slug={slug} name={info.name} authKey={authKey} />;
+}
+
+function PaymentsView({ slug, name, authKey }) {
+  const [budget, setBudget] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    apiClient.get(`/portal/${slug}`, { params: { key: authKey } })
+      .then((r) => { if (alive) setBudget(r.data?.budget || null); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [slug, authKey]);
 
   return (
     <div className="cp-page">
       <header className="cp-header">
         <div>
           <div className="cp-brand">alquimia.</div>
-          <div className="cp-eyebrow">Pagos · {client.name}</div>
+          <div className="cp-eyebrow">Pagos · {name}</div>
         </div>
       </header>
       <div className="cp-month-banner">
@@ -626,7 +631,7 @@ export function PaymentsPortal() {
         <div className="cp-month-banner-obj">Flujo de pagos por fecha, con datos para transferir en cada componente.</div>
       </div>
       <section className="cp-section">
-        <PaymentsTimeline budget={client.budget} slug={client.slug} accessKey={client.accessKey} />
+        {budget ? <PaymentsTimeline budget={budget} slug={slug} accessKey={authKey} /> : <p className="cp-placeholder">Cargando pagos…</p>}
       </section>
       <footer className="cp-footer">panel by alquimia.</footer>
     </div>
