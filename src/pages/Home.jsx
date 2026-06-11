@@ -142,11 +142,12 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
   };
 
   const visible = useMemo(() => clients.filter((c) => {
-    if (hidden.includes(c.slug)) return false;
+    // El filtro local "ocultar marcas" es solo para admin; un paid ya viene filtrado del backend.
+    if (isAdmin && hidden.includes(c.slug)) return false;
     if (selectedAM !== 'Todos' && c.am !== selectedAM) return false;
     if (type !== 'todos' && (c.type || 'ecommerce') !== type) return false;
     return true;
-  }), [clients, hidden, selectedAM, type]);
+  }), [clients, hidden, selectedAM, type, isAdmin]);
 
   return (
     <div className="ctrl-page">
@@ -208,7 +209,15 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
 
       {error && <div className="ctrl-error">⚠ {error}</div>}
       {loading && <div className="ctrl-loading">Consultando Meta…</div>}
-      {!loading && visible.length === 0 && <div className="ctrl-loading">No hay clientes para mostrar. Creá uno con "+ Nuevo cliente".</div>}
+      {!loading && visible.length === 0 && !isAdmin && (
+        <div className="ctrl-loading">
+          No tenés clientes asignados todavía. Pedile a un administrador que te asigne clientes.
+          <div style={{ marginTop: 10, fontSize: 11, fontFamily: 'monospace', color: '#94a3b8' }}>
+            diag · asignados en sesión: [{(user?.assignedSlugs || []).join(', ') || '—'}] · recibidos del servidor: {clients.length}
+          </div>
+        </div>
+      )}
+      {!loading && visible.length === 0 && isAdmin && <div className="ctrl-loading">No hay clientes para mostrar. Creá uno con "+ Nuevo cliente".</div>}
 
       <div className="ctrl-grid">
         {visible.map((c) => <ClientCard key={c.slug} c={c} onOpen={onOpenClient} />)}
