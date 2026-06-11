@@ -83,7 +83,8 @@ function AppShell() {
     />
   );
 
-  return <>{content}<AppFooter /></>;
+  // En la home el "Cerrar sesión" vive arriba; en las demás vistas se mantiene el footer.
+  return <>{content}{view !== 'home' && <AppFooter />}</>;
 }
 
 export default function App() {

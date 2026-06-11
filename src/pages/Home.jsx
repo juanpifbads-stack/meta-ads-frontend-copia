@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import apiClient from '../api/client.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import './Control.css';
 import './Home.css';
 
@@ -108,6 +109,7 @@ function ClientCard({ c, onOpen }) {
 }
 
 export default function Home({ onOpenClient, onOptimize, onNewClient }) {
+  const { logout } = useAuth();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -145,21 +147,17 @@ export default function Home({ onOpenClient, onOptimize, onNewClient }) {
     return true;
   }), [clients, hidden, selectedAM, type]);
 
-  const monthName = new Date().toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
-
   return (
     <div className="ctrl-page">
       <div className="ctrl-header">
         <div className="ctrl-header-top">
           <div>
-            <div className="ctrl-brand">alquimia.</div>
-            <div className="ctrl-eyebrow">Inicio · {monthName}</div>
-            <h1 className="ctrl-title">Salud de los clientes</h1>
+            <div className="ctrl-brand ctrl-brand--lg">alquimia.</div>
           </div>
           <div className="ctrl-header-actions">
             <button className="ctrl-btn" onClick={onOptimize}>⚡ Optimizar</button>
-            <button className="ctrl-btn ctrl-btn--ghost" onClick={onNewClient}>+ Nuevo cliente</button>
             <button className="ctrl-btn ctrl-btn--ghost" onClick={load} disabled={loading}>{loading ? 'Cargando…' : 'Actualizar'}</button>
+            <button className="ctrl-btn ctrl-btn--ghost" onClick={logout}>Cerrar sesión</button>
           </div>
         </div>
         <div className="ctrl-filters">
@@ -179,9 +177,12 @@ export default function Home({ onOpenClient, onOptimize, onNewClient }) {
               ))}
             </div>
           </div>
-          <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => setShowHide((v) => !v)}>
-            {showHide ? 'Ocultar filtro' : `Ocultar marcas${hidden.length ? ` (${hidden.length})` : ''}`}
-          </button>
+          <div className="ctrl-filters-right">
+            <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onNewClient}>+ Nuevo cliente</button>
+            <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => setShowHide((v) => !v)}>
+              {showHide ? 'Ocultar filtro' : `Ocultar marcas${hidden.length ? ` (${hidden.length})` : ''}`}
+            </button>
+          </div>
         </div>
 
         {showHide && (

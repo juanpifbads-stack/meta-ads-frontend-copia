@@ -14,6 +14,11 @@
   letter-spacing: 0.06em;
   margin-bottom: 8px;
 }
+.ctrl-brand--lg {
+  font-size: 38px;
+  letter-spacing: 0.02em;
+  margin-bottom: 0;
+}
 
 .ctrl-eyebrow {
   font-family: var(--font-mono);
@@ -82,6 +87,13 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.ctrl-filters-right {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .ctrl-filter-label {
@@ -184,7 +196,7 @@
 /* Grid */
 .ctrl-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: 1fr;
   gap: 16px;
 }
 
