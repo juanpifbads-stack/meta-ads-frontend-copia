@@ -386,7 +386,7 @@ function ClientDashboard({ client }) {
       {/* Performance Meta */}
       {caps.meta && show('performanceMeta') && (
       <section className="cp-section">
-        <h2 className="cp-section-title">Performance Meta · junio</h2>
+        <h2 className="cp-section-title">Performance Meta y TikTok</h2>
         <div className="cp-card">
           {metaLoading && <p className="cp-placeholder">Cargando datos de Meta…</p>}
           {!metaLoading && !meta && (
