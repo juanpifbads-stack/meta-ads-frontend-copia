@@ -120,6 +120,9 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
   const [hidden, setHidden] = useState(() => {
     try { return JSON.parse(localStorage.getItem('home_hidden_clients')) || []; } catch { return []; }
   });
+  // Forma de ver las tarjetas del semáforo: 'estirado' (a lo ancho) o 'cuadrados' (grilla).
+  const [layout, setLayout] = useState(() => localStorage.getItem('home_layout') || 'estirado');
+  const changeLayout = (l) => { setLayout(l); localStorage.setItem('home_layout', l); };
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -172,12 +175,21 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
               ))}
             </div>
           </div>
+          {isAdmin && (
+            <div className="ctrl-filter-group">
+              <span className="ctrl-filter-label">Responsable</span>
+              <div className="ctrl-filter-pills">
+                {ALL_AMS.map((am) => (
+                  <button key={am} className={`ctrl-pill ${selectedAM === am ? 'ctrl-pill--active' : ''}`} onClick={() => setSelectedAM(am)}>{am}</button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="ctrl-filter-group">
-            <span className="ctrl-filter-label">Responsable</span>
+            <span className="ctrl-filter-label">Vista</span>
             <div className="ctrl-filter-pills">
-              {ALL_AMS.map((am) => (
-                <button key={am} className={`ctrl-pill ${selectedAM === am ? 'ctrl-pill--active' : ''}`} onClick={() => setSelectedAM(am)}>{am}</button>
-              ))}
+              <button className={`ctrl-pill ${layout === 'estirado' ? 'ctrl-pill--active' : ''}`} onClick={() => changeLayout('estirado')}>▭ Estirado</button>
+              <button className={`ctrl-pill ${layout === 'cuadrados' ? 'ctrl-pill--active' : ''}`} onClick={() => changeLayout('cuadrados')}>▦ Cuadrícula</button>
             </div>
           </div>
           {isAdmin && (
@@ -219,7 +231,7 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
       )}
       {!loading && visible.length === 0 && isAdmin && <div className="ctrl-loading">No hay clientes para mostrar. Creá uno con "+ Nuevo cliente".</div>}
 
-      <div className="ctrl-grid">
+      <div className={`ctrl-grid ${layout === 'cuadrados' ? 'ctrl-grid--cuadrados' : ''}`}>
         {visible.map((c) => <ClientCard key={c.slug} c={c} onOpen={onOpenClient} />)}
       </div>
     </div>

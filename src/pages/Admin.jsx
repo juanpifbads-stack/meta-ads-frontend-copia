@@ -525,13 +525,15 @@ function ClientConfigEditor({ slug }) {
           <div className="ad-row">
             <Field label="Nombre" value={cfg.name || ''} onChange={(v) => setCfg({ ...cfg, name: v })} disabled={isPaid} />
             <AdAccountSelect value={cfg.metaAccountId || ''} onChange={(v) => setCfg({ ...cfg, metaAccountId: v })} disabled={isPaid} />
-            <div className="ad-field">
-              <label>Responsable (AM){isPaid ? ' 🔒' : ''}</label>
-              <select value={cfg.am || ''} onChange={(e) => setCfg({ ...cfg, am: e.target.value })} disabled={isPaid}>
-                <option value="">— Sin asignar —</option>
-                {ALL_AMS.map((a) => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </div>
+            {!isPaid && (
+              <div className="ad-field">
+                <label>Responsable (AM)</label>
+                <select value={cfg.am || ''} onChange={(e) => setCfg({ ...cfg, am: e.target.value })}>
+                  <option value="">— Sin asignar —</option>
+                  {ALL_AMS.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+            )}
             <div className="ad-field">
               <label>Tipo de cliente{isPaid ? ' 🔒' : ''}</label>
               <select value={cfg.type || (cfg.capabilities?.ecommerce ? 'ecommerce' : 'servicios')} onChange={(e) => setCfg({ ...cfg, type: e.target.value })} disabled={isPaid}>

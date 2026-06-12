@@ -199,6 +199,10 @@
   grid-template-columns: 1fr;
   gap: 16px;
 }
+/* Vista en cuadrícula (como antes): varias tarjetas por fila */
+.ctrl-grid--cuadrados {
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+}
 
 /* Card */
 .ctrl-card {
