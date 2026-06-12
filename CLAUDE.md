@@ -2,6 +2,7 @@
 
 > Reglas que el asistente debe respetar SIEMPRE al tocar este repo.
 > Arquitectura completa y onboarding → ver `HANDOFF.md`.
+> Mejoras y pendientes para atacar más adelante → ver `BACKLOG.md`.
 
 ## Qué es
 - React + Vite. Deploy en **Vercel**. Repo `juanpifbads-stack/meta-ads-frontend-copia`, rama **`main`** → producción `meta-ads-frontend-copia.vercel.app`.
