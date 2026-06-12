@@ -48,6 +48,10 @@ function UsersSection() {
   };
   const toggleActive = (u) => apiClient.put(`/admin/users/${u.id}`, { active: !u.active }).then(load).catch(() => {});
   const setRole = (u, role) => apiClient.put(`/admin/users/${u.id}`, { role }).then(load).catch(() => {});
+  const removeUser = (u) => {
+    if (!window.confirm(`¿Eliminar definitivamente a ${u.name} (${u.email})? Esta acción no se puede deshacer.`)) return;
+    apiClient.delete(`/admin/users/${u.id}`).then(load).catch((e) => setMsg(e.response?.data?.message || 'Error al eliminar'));
+  };
 
   return (
     <div className="ad-section">
@@ -70,6 +74,7 @@ function UsersSection() {
                 {u.role === 'paid' && <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => setAssignOpen(assignOpen === u.id ? null : u.id)}>Clientes ({(u.assigned_slugs || []).length})</button>}
                 <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => changePass(u)}>Cambiar contraseña</button>
                 <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => toggleActive(u)}>{u.active ? 'Desactivar' : 'Activar'}</button>
+                <button className="ad-btn ad-btn--ghost ad-btn--sm" style={{ color: '#b91c1c', borderColor: '#fecaca' }} onClick={() => removeUser(u)}>Eliminar</button>
               </div>
               <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#64748b', padding: '2px 2px 0' }}>
                 {u.meta
