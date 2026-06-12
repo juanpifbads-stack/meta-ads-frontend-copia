@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import apiClient, { setAuthToken } from '../api/client.js';
+import apiClient, { setAuthToken, getAuthToken } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://meta-ads-backend-production-85df.up.railway.app';
@@ -25,7 +25,12 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const connectFB = () => { window.location.href = `${API_URL}/auth/meta`; };
+  const connectFB = () => {
+    // Pasamos el token del login (sid) para que el backend recupere la identidad
+    // de Alquimia durante el flujo de Facebook (las cookies de terceros se bloquean).
+    const t = getAuthToken();
+    window.location.href = `${API_URL}/auth/meta${t ? `?lt=${encodeURIComponent(t)}` : ''}`;
+  };
 
   const submit = async () => {
     if (!email || !password) return;
