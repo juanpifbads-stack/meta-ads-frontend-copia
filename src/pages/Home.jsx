@@ -154,12 +154,12 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
   };
 
   const visible = useMemo(() => clients.filter((c) => {
-    // El filtro local "ocultar marcas" es solo para admin; un paid ya viene filtrado del backend.
-    if (isAdmin && hidden.includes(c.slug)) return false;
+    // "Filtrar clientes" (ocultar marcas) lo pueden usar todos, incluidos los paid.
+    if (hidden.includes(c.slug)) return false;
     if (selectedAM !== 'Todos' && c.am !== selectedAM) return false;
     if (type !== 'todos' && (c.type || 'ecommerce') !== type) return false;
     return true;
-  }), [clients, hidden, selectedAM, type, isAdmin]);
+  }), [clients, hidden, selectedAM, type]);
 
   return (
     <div className="ctrl-page">
@@ -201,14 +201,12 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
               <button title="Cuadrícula" className={`ctrl-pill ${layout === 'cuadrados' ? 'ctrl-pill--active' : ''}`} style={{ fontSize: 16, lineHeight: 1, color: layout === 'cuadrados' ? undefined : '#15161a' }} onClick={() => changeLayout('cuadrados')}>▦</button>
             </div>
           </div>
-          {isAdmin && (
-            <div className="ctrl-filters-right">
-              <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onNewClient}>+ Nuevo cliente</button>
-              <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => setShowHide((v) => !v)}>
-                {showHide ? 'Cerrar filtro' : `Filtrar clientes${hidden.length ? ` (${hidden.length})` : ''}`}
-              </button>
-            </div>
-          )}
+          <div className="ctrl-filters-right">
+            {isAdmin && <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onNewClient}>+ Nuevo cliente</button>}
+            <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => setShowHide((v) => !v)}>
+              {showHide ? 'Cerrar filtro' : `Filtrar clientes${hidden.length ? ` (${hidden.length})` : ''}`}
+            </button>
+          </div>
         </div>
 
         {showHide && (
@@ -230,7 +228,10 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
 
       {error && <div className="ctrl-error">⚠ {error}</div>}
       {loading && <div className="ctrl-loading">Consultando Meta…</div>}
-      {!loading && visible.length === 0 && !isAdmin && (
+      {!loading && visible.length === 0 && clients.length > 0 && (
+        <div className="ctrl-loading">Ningún cliente coincide con el filtro actual. Tocá "Filtrar clientes" para ajustarlo.</div>
+      )}
+      {!loading && clients.length === 0 && !isAdmin && (
         <div className="ctrl-loading">
           No tenés clientes asignados todavía. Pedile a un administrador que te asigne clientes.
           <div style={{ marginTop: 10, fontSize: 11, fontFamily: 'monospace', color: '#94a3b8' }}>
@@ -238,7 +239,7 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
           </div>
         </div>
       )}
-      {!loading && visible.length === 0 && isAdmin && <div className="ctrl-loading">No hay clientes para mostrar. Creá uno con "+ Nuevo cliente".</div>}
+      {!loading && clients.length === 0 && isAdmin && <div className="ctrl-loading">No hay clientes para mostrar. Creá uno con "+ Nuevo cliente".</div>}
 
       <div className={`ctrl-grid ${layout === 'cuadrados' ? 'ctrl-grid--cuadrados' : ''}`}>
         {visible.map((c) => <ClientCard key={c.slug} c={c} onOpen={onOpenClient} />)}
