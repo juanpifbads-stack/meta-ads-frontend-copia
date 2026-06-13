@@ -352,11 +352,11 @@ function CurField({ value, onChange }) {
 
 const TN_APP_ID = '33450';
 
-function AdAccountSelect({ value, onChange, label, disabled }) {
+function AdAccountSelect({ value, onChange, label, disabled, all }) {
   const [accounts, setAccounts] = useState(null);
   useEffect(() => {
-    apiClient.get('/accounts').then((r) => setAccounts(r.data || [])).catch(() => setAccounts([]));
-  }, []);
+    apiClient.get('/accounts', { params: all ? { scope: 'all' } : {} }).then((r) => setAccounts(r.data || [])).catch(() => setAccounts([]));
+  }, [all]);
   const norm = (v) => String(v || '').replace('act_', '');
   const cur = norm(value);
   const inList = accounts && accounts.some((a) => norm(a.id) === cur);
@@ -379,6 +379,8 @@ function AdAccountSelect({ value, onChange, label, disabled }) {
 const slugify = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 function NewClientForm({ onClose, onCreated }) {
+  const { user } = useAuth();
+  const isPaid = user?.role === 'paid' && !user?.legacy;
   const [f, setF] = useState({
     name: '', slug: '', email: '', accessKey: '', paymentsKey: '', metaAccountId: '', am: '', type: 'ecommerce',
     caps: { meta: true, tiktok: false, contenido: false, web: false },
@@ -434,20 +436,22 @@ function NewClientForm({ onClose, onCreated }) {
             <option value="servicios">Servicios</option>
           </select>
         </div>
-        <div className="ad-field">
-          <label>Responsable (AM)</label>
-          <select value={f.am} onChange={(e) => set('am', e.target.value)}>
-            <option value="">— Sin asignar —</option>
-            {ALL_AMS.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
-        </div>
+        {!isPaid && (
+          <div className="ad-field">
+            <label>Responsable (AM)</label>
+            <select value={f.am} onChange={(e) => set('am', e.target.value)}>
+              <option value="">— Sin asignar —</option>
+              {ALL_AMS.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+        )}
       </div>
 
-      <AdAccountSelect value={f.metaAccountId} onChange={(v) => set('metaAccountId', v)} label="Cuenta publicitaria (Meta) — obligatoria" />
+      <AdAccountSelect value={f.metaAccountId} onChange={(v) => set('metaAccountId', v)} label="Cuenta publicitaria (Meta) — obligatoria" all={isPaid} />
 
       <div className="ad-row">
         <Field label="Clave de acceso (cliente)" value={f.accessKey} onChange={(v) => set('accessKey', v)} />
-        <Field label="Clave de pagos (admin)" value={f.paymentsKey} onChange={(v) => set('paymentsKey', v)} />
+        {!isPaid && <Field label="Clave de pagos (admin)" value={f.paymentsKey} onChange={(v) => set('paymentsKey', v)} />}
       </div>
 
       <div className="ad-sublabel">Estrategia macro — ¿de qué mes a qué mes?</div>
@@ -456,9 +460,13 @@ function NewClientForm({ onClose, onCreated }) {
         <MonthSelect label="Hasta" value={f.macroTo} onChange={(v) => set('macroTo', v)} />
       </div>
 
-      <div className="ad-sublabel">Servicios que ofrecés (con su monto)</div>
-      <ServicesEditor caps={f.caps} fees={f.fees} onToggle={toggleCap} onFee={setFee} />
-      <VariableEditor variable={f.variable} onChange={(v) => set('variable', v)} />
+      {!isPaid && (
+        <>
+          <div className="ad-sublabel">Servicios que ofrecés (con su monto)</div>
+          <ServicesEditor caps={f.caps} fees={f.fees} onToggle={toggleCap} onFee={setFee} />
+          <VariableEditor variable={f.variable} onChange={(v) => set('variable', v)} />
+        </>
+      )}
 
       <div className="ad-sublabel">Secciones opcionales del panel</div>
       <p className="ad-muted" style={{ margin: '0 0 6px' }}>Siempre van: {MANDATORY_LABELS.join(' · ')}.</p>
@@ -471,12 +479,16 @@ function NewClientForm({ onClose, onCreated }) {
         ))}
       </div>
 
-      <div className="ad-sublabel">Datos bancarios de alquimia</div>
-      <div className="ad-row">
-        <Field label="Titular" value={f.bankInfo.titular} onChange={(v) => setBank('titular', v)} />
-        <Field label="Alias" value={f.bankInfo.alias} onChange={(v) => setBank('alias', v)} />
-      </div>
-      <Field label="CBU / CVU" value={f.bankInfo.cbu} onChange={(v) => setBank('cbu', v)} />
+      {!isPaid && (
+        <>
+          <div className="ad-sublabel">Datos bancarios de alquimia</div>
+          <div className="ad-row">
+            <Field label="Titular" value={f.bankInfo.titular} onChange={(v) => setBank('titular', v)} />
+            <Field label="Alias" value={f.bankInfo.alias} onChange={(v) => setBank('alias', v)} />
+          </div>
+          <Field label="CBU / CVU" value={f.bankInfo.cbu} onChange={(v) => setBank('cbu', v)} />
+        </>
+      )}
       {err && <div className="ad-err">{err}</div>}
       <button className="ad-btn" onClick={create}>Crear cliente</button>
       <p className="ad-muted">Después de crearlo: cargá los planes de medios de los meses, y si tiene ecommerce conectá Tienda Nube desde la config del cliente.</p>

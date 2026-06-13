@@ -202,7 +202,7 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
             </div>
           </div>
           <div className="ctrl-filters-right">
-            {isAdmin && <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onNewClient}>+ Nuevo cliente</button>}
+            <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onNewClient}>+ Nuevo cliente</button>
             <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => setShowHide((v) => !v)}>
               {showHide ? 'Cerrar filtro' : `Filtrar clientes${hidden.length ? ` (${hidden.length})` : ''}`}
             </button>
