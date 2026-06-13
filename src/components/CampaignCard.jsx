@@ -136,6 +136,7 @@ export default function CampaignCard({ campaign, accountId, onAction }) {
         metrics_7d={metrics_7d}
         metrics_14d={metrics_14d}
         metrics_30d={metrics_30d}
+        objective={campaign.objective || null}
       />
 
       {/* Métricas post última edición */}
@@ -152,10 +153,12 @@ export default function CampaignCard({ campaign, accountId, onAction }) {
               </div>
               <div className="metric-windows">
                 <div className="metric-window">
+                  {(() => { const sales = !campaign.objective || ['OUTCOME_SALES','CONVERSIONS','CATALOG_SALES'].includes(campaign.objective); return (<>
                   <div className="metric-row"><span className="metric-label">Gasto</span><span className="metric-value" style={{ fontSize: '13px' }}>{formatCurrency(postEdit.spend)}</span></div>
-                  <div className="metric-row"><span className="metric-label">Conversiones</span><span className="metric-value" style={{ fontSize: '13px' }}>{Number(postEdit.conversions || 0).toLocaleString('es-AR')}</span></div>
-                  <div className="metric-row"><span className="metric-label">Costo/conv.</span><span className="metric-value" style={{ fontSize: '13px' }}>{formatCurrency(postEdit.cost_per_conversion)}</span></div>
-                  <div className="metric-row"><span className="metric-label">ROAS</span><span className="metric-value" style={{ fontSize: '13px', fontWeight: 700 }}>{Number(postEdit.roas || 0).toFixed(2)}×</span></div>
+                  <div className="metric-row"><span className="metric-label">{sales ? 'Conversiones' : 'Resultados'}</span><span className="metric-value" style={{ fontSize: '13px' }}>{Number(postEdit.conversions || 0).toLocaleString('es-AR')}</span></div>
+                  <div className="metric-row"><span className="metric-label">{sales ? 'Costo/conv.' : 'CPR'}</span><span className="metric-value" style={{ fontSize: '13px' }}>{formatCurrency(postEdit.cost_per_conversion)}</span></div>
+                  {sales && <div className="metric-row"><span className="metric-label">ROAS</span><span className="metric-value" style={{ fontSize: '13px', fontWeight: 700 }}>{Number(postEdit.roas || 0).toFixed(2)}×</span></div>}
+                  </>); })()}
                 </div>
               </div>
             </div>
@@ -225,7 +228,7 @@ export default function CampaignCard({ campaign, accountId, onAction }) {
       )}
 
       {/* AdSet Accordion */}
-      <AdSetAccordion adsets={adsets} onPause={handlePauseAdset} />
+      <AdSetAccordion adsets={adsets} onPause={handlePauseAdset} objective={campaign.objective || null} />
 
       {/* Action Buttons — NO pause at campaign level */}
       <div className="card-actions">

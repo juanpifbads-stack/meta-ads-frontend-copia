@@ -174,6 +174,7 @@ export default function AdSetCard({ adset, accountId, onAction }) {
           metrics_7d={metrics_7d}
           metrics_14d={metrics_14d}
           metrics_30d={metrics_30d}
+          objective={adset.campaign_objective || null}
         />
 
         {/* Métricas post última edición */}
@@ -195,10 +196,12 @@ export default function AdSetCard({ adset, accountId, onAction }) {
                 </div>
                 <div className="metric-windows">
                   <div className="metric-window">
+                    {(() => { const sales = !adset.campaign_objective || ['OUTCOME_SALES','CONVERSIONS','CATALOG_SALES'].includes(adset.campaign_objective); return (<>
                     <div className="metric-row"><span className="metric-label">Gasto</span><span className="metric-value" style={{ fontSize: '13px' }}>{formatCurrency(postEdit.spend)}</span></div>
-                    <div className="metric-row"><span className="metric-label">Conversiones</span><span className="metric-value" style={{ fontSize: '13px' }}>{Number(postEdit.conversions || 0).toLocaleString('es-AR')}</span></div>
-                    <div className="metric-row"><span className="metric-label">Costo/conv.</span><span className="metric-value" style={{ fontSize: '13px' }}>{formatCurrency(postEdit.cost_per_conversion)}</span></div>
-                    <div className="metric-row"><span className="metric-label">ROAS</span><span className="metric-value" style={{ fontSize: '13px', fontWeight: 700 }}>{Number(postEdit.roas || 0).toFixed(2)}×</span></div>
+                    <div className="metric-row"><span className="metric-label">{sales ? 'Conversiones' : 'Resultados'}</span><span className="metric-value" style={{ fontSize: '13px' }}>{Number(postEdit.conversions || 0).toLocaleString('es-AR')}</span></div>
+                    <div className="metric-row"><span className="metric-label">{sales ? 'Costo/conv.' : 'CPR'}</span><span className="metric-value" style={{ fontSize: '13px' }}>{formatCurrency(postEdit.cost_per_conversion)}</span></div>
+                    {sales && <div className="metric-row"><span className="metric-label">ROAS</span><span className="metric-value" style={{ fontSize: '13px', fontWeight: 700 }}>{Number(postEdit.roas || 0).toFixed(2)}×</span></div>}
+                    </>); })()}
                   </div>
                 </div>
               </div>

@@ -22,7 +22,9 @@ function MetricCell({ label, value, color }) {
   );
 }
 
-function AdMetricWindows({ metrics_7d, metrics_14d, metrics_30d }) {
+const SALES_OBJECTIVES = ['OUTCOME_SALES', 'CONVERSIONS', 'CATALOG_SALES'];
+function AdMetricWindows({ metrics_7d, metrics_14d, metrics_30d, objective }) {
+  const sales = !objective || SALES_OBJECTIVES.includes(objective);
   const windows = [
     { label: '7D', m: metrics_7d },
     { label: '14D', m: metrics_14d },
@@ -43,9 +45,9 @@ function AdMetricWindows({ metrics_7d, metrics_14d, metrics_30d }) {
             {label}
           </div>
           <MetricCell label="Gasto"      value={m?.spend != null ? formatCurrency(m.spend) : '—'} />
-          <MetricCell label="Convs."     value={m?.conversions != null ? m.conversions : '—'} />
-          <MetricCell label="Costo/Conv" value={m?.cost_per_conversion != null ? formatCurrency(m.cost_per_conversion) : '—'} color="var(--color-brand-blue)" />
-          <MetricCell label="ROAS"       value={m?.roas != null ? `${Number(m.roas).toFixed(2)}x` : '—'} />
+          <MetricCell label={sales ? 'Convs.' : 'Resultados'} value={m?.conversions != null ? m.conversions : '—'} />
+          <MetricCell label={sales ? 'Costo/Conv' : 'CPR'} value={m?.cost_per_conversion != null ? formatCurrency(m.cost_per_conversion) : '—'} color="var(--color-brand-blue)" />
+          {sales && <MetricCell label="ROAS" value={m?.roas != null ? `${Number(m.roas).toFixed(2)}x` : '—'} />}
         </div>
       ))}
     </div>
@@ -304,6 +306,7 @@ export default function AdDetailModal({ adsetId, adsetName, accountId, campaignO
                       metrics_7d={ad.metrics_7d}
                       metrics_14d={ad.metrics_14d}
                       metrics_30d={ad.metrics_30d}
+                      objective={campaignObjective}
                     />
                   </div>
                 );

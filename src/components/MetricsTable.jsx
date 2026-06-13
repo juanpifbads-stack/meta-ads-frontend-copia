@@ -19,7 +19,14 @@ function MetricCell({ label, value, isCost }) {
   );
 }
 
-function WindowColumn({ label, metrics }) {
+// Objetivos de ventas → métricas ecommerce (ROAS). El resto (leads, mensajes,
+// tráfico…) son cuentas/campañas de servicios → Resultados + CPR.
+const SALES_OBJECTIVES = ['OUTCOME_SALES', 'CONVERSIONS', 'CATALOG_SALES'];
+function isSalesObjective(objective) {
+  return !objective || SALES_OBJECTIVES.includes(objective);
+}
+
+function WindowColumn({ label, metrics, sales }) {
   if (!metrics) {
     return (
       <div className="metric-window">
@@ -52,19 +59,29 @@ function WindowColumn({ label, metrics }) {
     <div className="metric-window">
       <span className="metric-window-label">{label}</span>
       <MetricCell label="Gasto" value={spend} />
-      <MetricCell label="Convs." value={conversions} />
-      <MetricCell label="Costo/Conv" value={cpc} isCost />
-      <MetricCell label="ROAS" value={roas} />
+      {sales ? (
+        <>
+          <MetricCell label="Convs." value={conversions} />
+          <MetricCell label="Costo/Conv" value={cpc} isCost />
+          <MetricCell label="ROAS" value={roas} />
+        </>
+      ) : (
+        <>
+          <MetricCell label="Resultados" value={conversions} />
+          <MetricCell label="CPR" value={cpc} isCost />
+        </>
+      )}
     </div>
   );
 }
 
-export default function MetricsTable({ metrics_7d, metrics_14d, metrics_30d }) {
+export default function MetricsTable({ metrics_7d, metrics_14d, metrics_30d, objective }) {
+  const sales = isSalesObjective(objective);
   return (
     <div className="metric-windows">
-      <WindowColumn label="7D" metrics={metrics_7d} />
-      <WindowColumn label="14D" metrics={metrics_14d} />
-      <WindowColumn label="30D" metrics={metrics_30d} />
+      <WindowColumn label="7D" metrics={metrics_7d} sales={sales} />
+      <WindowColumn label="14D" metrics={metrics_14d} sales={sales} />
+      <WindowColumn label="30D" metrics={metrics_30d} sales={sales} />
     </div>
   );
 }

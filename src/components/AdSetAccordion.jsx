@@ -11,7 +11,7 @@ const formatCurrency = (value) => {
 
 const WINDOWS = ['7d', '14d', '30d'];
 
-function AdSetRow({ adset, onPause, window }) {
+function AdSetRow({ adset, onPause, window, sales }) {
   const [confirming, setConfirming] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -81,15 +81,17 @@ function AdSetRow({ adset, onPause, window }) {
             </div>
           </div>
           <div>
-            <div className="metric-label" style={{ fontSize: '9px' }}>Convs {window.toUpperCase()}</div>
+            <div className="metric-label" style={{ fontSize: '9px' }}>{sales ? 'Convs' : 'Result.'} {window.toUpperCase()}</div>
             <div style={{ color: 'var(--color-text-primary)', fontWeight: '700' }}>
               {m.conversions != null ? m.conversions : '—'}
             </div>
           </div>
           <div>
-            <div className="metric-label" style={{ fontSize: '9px' }}>ROAS {window.toUpperCase()}</div>
+            <div className="metric-label" style={{ fontSize: '9px' }}>{sales ? 'ROAS' : 'CPR'} {window.toUpperCase()}</div>
             <div style={{ color: 'var(--color-text-primary)', fontWeight: '700' }}>
-              {m.roas != null ? `${Number(m.roas).toFixed(2)}x` : '—'}
+              {sales
+                ? (m.roas != null ? `${Number(m.roas).toFixed(2)}x` : '—')
+                : (m.cost_per_conversion ? formatCurrency(m.cost_per_conversion) : '—')}
             </div>
           </div>
         </div>
@@ -177,7 +179,8 @@ const SORTS = [
   { key: 'roas', label: 'ROAS' },
 ];
 
-export default function AdSetAccordion({ adsets, onPause }) {
+export default function AdSetAccordion({ adsets, onPause, objective }) {
+  const sales = !objective || ['OUTCOME_SALES', 'CONVERSIONS', 'CATALOG_SALES'].includes(objective);
   const [open, setOpen] = useState(false);
   const [activeWindow, setActiveWindow] = useState('30d');
   const [sortBy, setSortBy] = useState(null); // 'spend' | 'conversions' | 'roas' | null
@@ -276,7 +279,7 @@ export default function AdSetAccordion({ adsets, onPause }) {
           </div>
 
           {sortedAdsets.map((adset) => (
-            <AdSetRow key={adset.id} adset={adset} onPause={onPause} window={activeWindow} />
+            <AdSetRow key={adset.id} adset={adset} onPause={onPause} window={activeWindow} sales={sales} />
           ))}
         </div>
       )}
