@@ -67,7 +67,7 @@ function ClientCard({ c, onOpen }) {
       <div className="ctrl-card-head">
         <div className="ctrl-card-info">
           <div className="ctrl-card-brand">{c.name}</div>
-          <div className="ctrl-card-am">👤 {c.am || '—'} · {c.type === 'servicios' ? 'Servicios' : 'Ecommerce'}</div>
+          <div className="ctrl-card-am">👤 {c.am || '—'} · {c.type === 'servicios' ? 'Servicios' : 'Ecommerce'}{health?.currency ? ` · 💱 ${health.currency}` : ''}</div>
         </div>
         <div className="ctrl-card-badges">
           {!isServ && <Badge band={roasBand} prefix="ROAS" kind="roas" />}
@@ -197,8 +197,8 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
           <div className="ctrl-filter-group">
             <span className="ctrl-filter-label">Vista</span>
             <div className="ctrl-filter-pills">
-              <button className={`ctrl-pill ${layout === 'estirado' ? 'ctrl-pill--active' : ''}`} onClick={() => changeLayout('estirado')}>▭ Estirado</button>
-              <button className={`ctrl-pill ${layout === 'cuadrados' ? 'ctrl-pill--active' : ''}`} onClick={() => changeLayout('cuadrados')}>▦ Cuadrícula</button>
+              <button title="Estirado" className={`ctrl-pill ${layout === 'estirado' ? 'ctrl-pill--active' : ''}`} style={{ fontSize: 16, lineHeight: 1, color: layout === 'estirado' ? undefined : '#15161a' }} onClick={() => changeLayout('estirado')}>▬</button>
+              <button title="Cuadrícula" className={`ctrl-pill ${layout === 'cuadrados' ? 'ctrl-pill--active' : ''}`} style={{ fontSize: 16, lineHeight: 1, color: layout === 'cuadrados' ? undefined : '#15161a' }} onClick={() => changeLayout('cuadrados')}>▦</button>
             </div>
           </div>
           {isAdmin && (
