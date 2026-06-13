@@ -51,6 +51,9 @@ function ClientCard({ c, onOpen }) {
   const spend = health?.spend || 0;
   const purchaseValue = health?.purchaseValue || 0;
   const roas = health?.roas || 0;
+  const isServ = (health?.kind === 'servicios') || c.type === 'servicios';
+  const results = health?.results || 0;
+  const cpr = health?.cpr || 0;
 
   const expected = revGoal > 0 ? (revGoal / daysInMonth()) * elapsedPace() : 0;
   // Desvío: cuánto te alejaste del esperado (no el % del 100). Ej: vas 100, debías 150 → -33%.
@@ -67,8 +70,8 @@ function ClientCard({ c, onOpen }) {
           <div className="ctrl-card-am">👤 {c.am || '—'} · {c.type === 'servicios' ? 'Servicios' : 'Ecommerce'}</div>
         </div>
         <div className="ctrl-card-badges">
-          <Badge band={roasBand} prefix="ROAS" kind="roas" />
-          <Badge band={paceBand} prefix="Fact." kind="fact" />
+          {!isServ && <Badge band={roasBand} prefix="ROAS" kind="roas" />}
+          {!isServ && <Badge band={paceBand} prefix="Fact." kind="fact" />}
         </div>
       </div>
 
@@ -76,6 +79,12 @@ function ClientCard({ c, onOpen }) {
         <div className="hm-noaccount">Sin cuenta de Meta asignada · entrá y asignala en Admin</div>
       ) : !health ? (
         <div className="hm-noaccount">No se pudieron traer las métricas.</div>
+      ) : isServ ? (
+        <div className="ctrl-metrics">
+          <div className="ctrl-metric"><div className="ctrl-metric-label">Importe gastado</div><div className="ctrl-metric-value">{fmtMoney(spend)}</div></div>
+          <div className="ctrl-metric"><div className="ctrl-metric-label">Resultados</div><div className="ctrl-metric-value">{results || '—'}</div></div>
+          <div className="ctrl-metric"><div className="ctrl-metric-label">CPR</div><div className="ctrl-metric-value">{cpr ? fmtMoney(cpr) : '—'}</div></div>
+        </div>
       ) : (
         <>
           <div className="ctrl-metrics">
