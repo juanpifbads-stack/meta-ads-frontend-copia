@@ -118,7 +118,7 @@ function buildTrendSvg(points, { w = 640, h = 240, visible = ['roas', 'facturaci
 
 const DISCLAIMER = 'Esto es una proyección.';
 
-export default function MediaPlan({ onBack, lockedSlug }) {
+export default function MediaPlan({ onBack, lockedSlug, initialMonth }) {
   const [clients, setClients] = useState([]);
   const [slug, setSlug] = useState(lockedSlug || '');
   const [months, setMonths] = useState([]);
@@ -142,7 +142,7 @@ export default function MediaPlan({ onBack, lockedSlug }) {
     apiClient.get(`/admin/${s}/media-months`).then((r) => setMonths(r.data.months || [])).catch(() => setMonths([]));
   }, []);
 
-  useEffect(() => { if (slug) { loadMonths(slug); setMonth(currentYM()); } }, [slug, loadMonths]);
+  useEffect(() => { if (slug) { loadMonths(slug); setMonth(initialMonth || currentYM()); } }, [slug, loadMonths, initialMonth]);
 
   useEffect(() => {
     if (!slug || !month) return;

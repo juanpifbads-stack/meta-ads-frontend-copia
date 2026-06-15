@@ -17,6 +17,53 @@ function daysInMonth() { const n = new Date(); return new Date(n.getFullYear(), 
 function currentYM() { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; }
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+function fmtMonthYM(ym) { if (!ym) return ''; const [y, m] = ym.split('-'); return `${MESES[parseInt(m, 10) - 1] || ym} ${y}`; }
+
+// Landing del Plan de medios: ver el vigente, ver anteriores, o crear/editar.
+function MediaPlanHub({ slug, onBack }) {
+  const [months, setMonths] = useState(null);
+  const [editing, setEditing] = useState(null);
+  useEffect(() => {
+    apiClient.get(`/admin/${slug}/media-months`).then((r) => setMonths(r.data.months || [])).catch(() => setMonths([]));
+  }, [slug]);
+
+  if (editing) return <MediaPlan lockedSlug={slug} initialMonth={editing} onBack={() => setEditing(null)} />;
+
+  const cur = currentYM();
+  const list = months || [];
+  const hasCurrent = list.includes(cur);
+  const prev = list.filter((m) => m !== cur).sort().reverse();
+
+  return (
+    <div className="ctrl-page">
+      <div className="hub-head">
+        <div className="hub-cross"><span className="hub-cross-alq">Plan de medios</span></div>
+        <button className="ctrl-btn ctrl-btn--ghost" onClick={onBack}>← Volver</button>
+      </div>
+      <div className="ctrl-divider" />
+
+      <div className="mph-wrap">
+        <div className="mph-block">
+          <div className="hub-goals-title hub-goals-title--dark">Plan vigente · {fmtMonthYM(cur)}</div>
+          {hasCurrent
+            ? <button className="hub-op-btn" onClick={() => setEditing(cur)}>Ver / editar plan vigente</button>
+            : <p className="ad-muted">Todavía no hay un plan de medios para este mes.</p>}
+        </div>
+
+        <div className="mph-block">
+          <button className="ctrl-btn" onClick={() => setEditing(cur)}>+ Crear plan de medios</button>
+        </div>
+
+        <div className="mph-block">
+          <div className="hub-goals-title hub-goals-title--dark">Planes anteriores</div>
+          {months === null ? <p className="ad-muted">Cargando…</p>
+            : prev.length === 0 ? <p className="ad-muted">Todavía no hay planes anteriores.</p>
+            : <div className="mph-prev">{prev.map((m) => <button key={m} className="ctrl-btn ctrl-btn--ghost" onClick={() => setEditing(m)}>{fmtMonthYM(m)}</button>)}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ClientHub({ slug, onBack }) {
   const { user } = useAuth();
@@ -58,7 +105,7 @@ export default function ClientHub({ slug, onBack }) {
 
   // Procesos a pantalla completa (con su propio header + volver al resumen)
   if (tab === 'analizar') return <Analyze lockedAccount={accountId} onBack={() => setTab('resumen')} />;
-  if (tab === 'media') return <MediaPlan lockedSlug={slug} onBack={() => setTab('resumen')} />;
+  if (tab === 'media') return <MediaPlanHub slug={slug} onBack={() => setTab('resumen')} />;
   if (tab === 'config') return <Admin lockedSlug={slug} onBack={() => setTab('resumen')} />;
   if (tab === 'optimizar') return <Dashboard initialAccount={accountId} lockedAccount={accountId} onBack={() => setTab('resumen')} />;
 
@@ -99,14 +146,10 @@ export default function ClientHub({ slug, onBack }) {
           {!accountId && <div className="ctrl-error">Este cliente no tiene cuenta de Meta asignada. Asignala en ⚙ Configuración del cliente.</div>}
 
           <div className="hub-month">{monthLabel}</div>
-          <div className="hub-metrics">
-            <div className="hub-metric"><div className="hub-metric-lbl">Gasto del mes</div><div className="hub-metric-val">{fmtMoney(spend)}</div></div>
-            <div className="hub-metric"><div className="hub-metric-lbl">Valor de compras</div><div className="hub-metric-val">{purchaseValue ? fmtMoney(purchaseValue) : '—'}</div></div>
-            <div className="hub-metric"><div className="hub-metric-lbl">ROAS</div><div className="hub-metric-val">{roas > 0 ? roas.toFixed(2) + '×' : '—'}</div></div>
-          </div>
 
+          {/* Objetivo (arriba) */}
           <div className="hub-goals-card">
-            <div className="hub-goals-title">Objetivo propuesto</div>
+            <div className="hub-goals-title hub-goals-title--dark">Objetivo</div>
             {planObjective ? (
               <div className="hub-metrics">
                 <div className="hub-metric"><div className="hub-metric-lbl">Meta facturación</div><div className="hub-metric-val">{fmtMoney(revGoal)}</div></div>
@@ -122,11 +165,18 @@ export default function ClientHub({ slug, onBack }) {
             )}
           </div>
 
+          {/* Lo real (abajo) */}
+          <div className="hub-metrics">
+            <div className="hub-metric"><div className="hub-metric-lbl">Gasto del mes</div><div className="hub-metric-val">{fmtMoney(spend)}</div></div>
+            <div className="hub-metric"><div className="hub-metric-lbl">Valor de compras</div><div className="hub-metric-val">{purchaseValue ? fmtMoney(purchaseValue) : '—'}</div></div>
+            <div className="hub-metric"><div className="hub-metric-lbl">ROAS</div><div className="hub-metric-val">{roas > 0 ? roas.toFixed(2) + '×' : '—'}</div></div>
+          </div>
+
           <div className="hub-quick">
-            <button className="hub-quick-btn" onClick={() => setTab('media')}>📄 Plan de medios</button>
-            <button className="hub-quick-btn" onClick={() => setTab('analizar')}>🔎 Analizar cuenta</button>
-            <button className="hub-quick-btn" onClick={() => setTab('optimizar')}>⚡ Optimizar cuenta</button>
-            <button className="hub-quick-btn" onClick={openPortal}>🪟 Panel del cliente</button>
+            <button className="hub-op-btn" onClick={() => setTab('media')}>Plan de medios</button>
+            <button className="hub-op-btn" onClick={() => setTab('analizar')}>Analizar cuenta</button>
+            <button className="hub-op-btn" onClick={() => setTab('optimizar')}>Optimizar cuenta</button>
+            <button className="hub-op-btn" onClick={openPortal}>Panel del cliente</button>
           </div>
         </div>
       )}
