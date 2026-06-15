@@ -9,8 +9,17 @@
 .hub-resumen { display: flex; flex-direction: column; gap: 18px; }
 .hub-metrics { display: flex; gap: 14px; flex-wrap: wrap; }
 .hub-metric { flex: 1; min-width: 160px; border: 1.5px solid var(--color-gray-light, #e5e6ea); border-radius: 14px; padding: 18px; }
-.hub-metric-lbl { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #8a8d96; margin-bottom: 6px; }
+.hub-metric-lbl { font-family: var(--font-mono); font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: #15161a; font-weight: 700; margin-bottom: 6px; }
 .hub-metric-val { font-size: 28px; font-weight: 700; color: #15161a; }
+
+/* Header alquimia × cliente */
+.hub-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.hub-cross { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.hub-cross-alq { font-family: var(--font-mono); color: var(--color-brand-blue, #1b1fe8); font-weight: 700; font-size: 40px; letter-spacing: .02em; }
+.hub-cross-x { font-size: 30px; color: #8a8d96; }
+.hub-cross-client { font-size: 40px; font-weight: 800; color: #15161a; }
+.hub-config-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.hub-month { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: #15161a; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
 
 .hub-goals-card { border: 1.5px solid var(--color-gray-light, #e5e6ea); border-radius: 14px; padding: 18px; }
 .hub-goals-title { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #8a8d96; margin-bottom: 12px; }

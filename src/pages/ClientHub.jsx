@@ -16,14 +16,7 @@ function daysElapsed() { return new Date().getDate(); }
 function daysInMonth() { const n = new Date(); return new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate(); }
 function currentYM() { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; }
 
-const TABS = [
-  { k: 'resumen', l: 'Resumen' },
-  { k: 'media', l: 'Plan de medios' },
-  { k: 'analizar', l: 'Analizar cuenta' },
-  { k: 'portal', l: 'Portal del cliente' },
-  { k: 'admin', l: 'Admin' },
-  { k: 'optimizar', l: '⚡ Optimizar' },
-];
+const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 export default function ClientHub({ slug, onBack }) {
   const { user } = useAuth();
@@ -66,7 +59,7 @@ export default function ClientHub({ slug, onBack }) {
   // Procesos a pantalla completa (con su propio header + volver al resumen)
   if (tab === 'analizar') return <Analyze lockedAccount={accountId} onBack={() => setTab('resumen')} />;
   if (tab === 'media') return <MediaPlan lockedSlug={slug} onBack={() => setTab('resumen')} />;
-  if (tab === 'admin') return <Admin lockedSlug={slug} onBack={() => setTab('resumen')} />;
+  if (tab === 'config') return <Admin lockedSlug={slug} onBack={() => setTab('resumen')} />;
   if (tab === 'optimizar') return <Dashboard initialAccount={accountId} lockedAccount={accountId} onBack={() => setTab('resumen')} />;
 
   const name = cfg?.name || slug;
@@ -77,33 +70,35 @@ export default function ClientHub({ slug, onBack }) {
   const roasGoal = planObjective ? (planObjective.roas || 0) : (parseFloat(goals.roas) || 0);
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const portalLink = `${origin}/cliente/${slug}`;
+  const now = new Date();
+  const monthLabel = `${MESES[now.getMonth()]} ${now.getFullYear()}`;
+  const openPortal = () => window.open(portalLink, '_blank', 'noopener');
 
   return (
     <div className="ctrl-page">
-      <div className="ctrl-header">
-        <div className="ctrl-header-top">
-          <div>
-            <div className="ctrl-brand">alquimia.</div>
-            <div className="ctrl-eyebrow">Cliente · {cfg?.am || '—'}</div>
-            <h1 className="ctrl-title">{name}</h1>
-          </div>
-          <div className="ctrl-header-actions">
-            <button className="ctrl-btn ctrl-btn--ghost" onClick={onBack}>← Inicio</button>
-          </div>
+      {/* Header: alquimia × cliente */}
+      <div className="hub-head">
+        <div className="hub-cross">
+          <span className="hub-cross-alq">alquimia.</span>
+          <span className="hub-cross-x">×</span>
+          <span className="hub-cross-client">{name}</span>
         </div>
+        <button className="ctrl-btn ctrl-btn--ghost" onClick={onBack}>← Inicio</button>
+      </div>
 
-        <div className="hub-tabs">
-          {TABS.map((t) => (
-            <button key={t.k} className={`hub-tab ${tab === t.k ? 'hub-tab--active' : ''}`} onClick={() => setTab(t.k)}>{t.l}</button>
-          ))}
-        </div>
+      {/* Botones de configuración (arriba) */}
+      <div className="hub-config-row">
+        <button className="ctrl-btn ctrl-btn--ghost" onClick={() => setTab('config')}>⚙ Configuración del cliente</button>
+        <button className="ctrl-btn ctrl-btn--ghost" onClick={() => setTab('portal')}>🔗 Portal del cliente</button>
       </div>
 
       <div className="ctrl-divider" />
 
       {tab === 'resumen' && (
         <div className="hub-resumen">
-          {!accountId && <div className="ctrl-error">Este cliente no tiene cuenta de Meta asignada. Asignala en la pestaña Admin → Config del cliente.</div>}
+          {!accountId && <div className="ctrl-error">Este cliente no tiene cuenta de Meta asignada. Asignala en ⚙ Configuración del cliente.</div>}
+
+          <div className="hub-month">{monthLabel}</div>
           <div className="hub-metrics">
             <div className="hub-metric"><div className="hub-metric-lbl">Gasto del mes</div><div className="hub-metric-val">{fmtMoney(spend)}</div></div>
             <div className="hub-metric"><div className="hub-metric-lbl">Valor de compras</div><div className="hub-metric-val">{purchaseValue ? fmtMoney(purchaseValue) : '—'}</div></div>
@@ -111,31 +106,18 @@ export default function ClientHub({ slug, onBack }) {
           </div>
 
           <div className="hub-goals-card">
-            <div className="hub-goals-title">Metas del mes</div>
+            <div className="hub-goals-title">Objetivo propuesto</div>
             {planObjective ? (
-              <>
-                <div className="hub-metrics">
-                  <div className="hub-metric"><div className="hub-metric-lbl">Meta facturación</div><div className="hub-metric-val">{fmtMoney(revGoal)}</div></div>
-                  <div className="hub-metric"><div className="hub-metric-lbl">Meta ROAS</div><div className="hub-metric-val">{roasGoal ? roasGoal + '×' : '—'}</div></div>
-                </div>
-                <div className="hub-goals-note">
-                  <span className="ad-muted">Viene del Plan de medios de este mes.</span>
-                  <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => setTab('media')}>Editar en Plan de medios →</button>
-                </div>
-              </>
+              <div className="hub-metrics">
+                <div className="hub-metric"><div className="hub-metric-lbl">Meta facturación</div><div className="hub-metric-val">{fmtMoney(revGoal)}</div></div>
+                <div className="hub-metric"><div className="hub-metric-lbl">Meta ROAS</div><div className="hub-metric-val">{roasGoal ? roasGoal + '×' : '—'}</div></div>
+              </div>
             ) : (
               <div className="hub-goals-row">
                 <div className="ad-field"><label>Meta facturación (ARS)</label><input type="number" value={goals.revenue} placeholder="ej. 5000000" onChange={(e) => setGoals((g) => ({ ...g, revenue: e.target.value }))} /></div>
                 <div className="ad-field"><label>Meta ROAS (×)</label><input type="number" step="0.1" value={goals.roas} placeholder="ej. 3.5" onChange={(e) => setGoals((g) => ({ ...g, roas: e.target.value }))} /></div>
                 <button className="ctrl-btn" onClick={saveGoals}>Guardar metas</button>
                 {msg && <span className="ad-msg">{msg}</span>}
-                <span className="ad-muted" style={{ flexBasis: '100%' }}>Tip: si cargás el objetivo en el Plan de medios, la meta se completa sola.</span>
-              </div>
-            )}
-            {(revGoal > 0 || roasGoal > 0) && (
-              <div className="hub-progress">
-                {revGoal > 0 && <div className="hub-prog-row"><span>Facturación</span><strong>{Math.min((purchaseValue / revGoal) * 100, 999).toFixed(0)}%</strong></div>}
-                {roasGoal > 0 && <div className="hub-prog-row"><span>ROAS</span><strong>{Math.min((roas / roasGoal) * 100, 999).toFixed(0)}%</strong></div>}
               </div>
             )}
           </div>
@@ -143,8 +125,8 @@ export default function ClientHub({ slug, onBack }) {
           <div className="hub-quick">
             <button className="hub-quick-btn" onClick={() => setTab('media')}>📄 Plan de medios</button>
             <button className="hub-quick-btn" onClick={() => setTab('analizar')}>🔎 Analizar cuenta</button>
-            <button className="hub-quick-btn" onClick={() => setTab('optimizar')}>⚡ Optimizar esta cuenta</button>
-            <button className="hub-quick-btn" onClick={() => setTab('admin')}>⚙ Admin del cliente</button>
+            <button className="hub-quick-btn" onClick={() => setTab('optimizar')}>⚡ Optimizar cuenta</button>
+            <button className="hub-quick-btn" onClick={openPortal}>🪟 Panel del cliente</button>
           </div>
         </div>
       )}
@@ -171,6 +153,7 @@ export default function ClientHub({ slug, onBack }) {
               </div>
             </div>
           )}
+          <p className="ad-muted" style={{ marginTop: 4 }}>Acá vas a poder configurar también qué secciones ve el cliente (próximamente).</p>
         </div>
       )}
     </div>

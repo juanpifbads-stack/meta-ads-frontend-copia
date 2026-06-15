@@ -34,6 +34,9 @@
 - **Validar "Resultados" de servicios vs Ads Manager.** El semáforo/optimizador de cuentas de
   servicios calcula resultados = conversaciones (mensajería) + leads. Confirmar que el número da
   parecido a Ads Manager; si la cuenta usa otro resultado, ajustar. [06/2026]
+- **Facturación tienda + ticket promedio en la página interna del cliente.** Hoy "Valor de compras"
+  sale de **Meta** (atribución). Sumar un apartado con la **facturación real de Tienda Nube** y el
+  **ticket promedio** (facturación ÷ pedidos), para contrastar Meta vs tienda real. [06/2026]
 - **Integrar TikTok Ads API.** Hoy "Performance Meta y TikTok" trae **solo Meta**. El UTM de TikTok
   subcuenta brutalmente (el navegador in-app pierde los params + TikTok es canal de descubrimiento,
   la gente vuelve directo a comprar). Para medir TikTok de verdad hay que traer la **atribución que
