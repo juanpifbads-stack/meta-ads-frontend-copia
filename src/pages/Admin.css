@@ -59,3 +59,12 @@
 .ad-service-total { margin-top: 6px; font-family: var(--font-mono); font-size: 13px; color: var(--color-text-primary); }
 .ad-service-total strong { color: var(--color-brand-blue); }
 .ad-variable { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+
+/* Sub-apartados de Configuración del cliente: Cliente / Portal del cliente */
+.ad-cfg-tabs { display: flex; gap: 8px; margin: 4px 0 18px; }
+.ad-cfg-tab {
+  font-family: var(--font-mono, monospace); font-size: 13px; font-weight: 700;
+  padding: 9px 18px; border: 1.5px solid #e5e6ea; background: #fff; color: #15161a;
+  border-radius: 999px; cursor: pointer;
+}
+.ad-cfg-tab--on { background: #1b1fe8; color: #fff; border-color: #1b1fe8; }

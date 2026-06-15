@@ -127,6 +127,8 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
   const [msg, setMsg] = useState('');
 
   const [showNew, setShowNew] = useState(!!autoNew);
+  // Apartado de configuración: 'cliente' (config del cliente) | 'portal' (lo que ve: secciones + estrategia)
+  const [cfgSection, setCfgSection] = useState('cliente');
 
   const loadClients = useCallback((selectSlug) => {
     apiClient.get('/admin/clients').then((r) => {
@@ -208,20 +210,28 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
 
       {showNew && <NewClientForm onClose={() => setShowNew(false)} onCreated={(s) => { setShowNew(false); loadClients(s); }} />}
 
-      {!showNew && slug && <ClientConfigEditor slug={slug} />}
+      {/* Sub-apartados de configuración: Cliente / Portal del cliente */}
+      {!showNew && slug && (
+        <div className="ad-cfg-tabs">
+          <button className={`ad-cfg-tab ${cfgSection === 'cliente' ? 'ad-cfg-tab--on' : ''}`} onClick={() => setCfgSection('cliente')}>Cliente</button>
+          <button className={`ad-cfg-tab ${cfgSection === 'portal' ? 'ad-cfg-tab--on' : ''}`} onClick={() => setCfgSection('portal')}>Portal del cliente</button>
+        </div>
+      )}
 
-      {!showNew && slug && <OnboardingEditor slug={slug} clients={clients} />}
+      {!showNew && slug && <ClientConfigEditor slug={slug} section={cfgSection} />}
 
-      {!showNew && clientData && (
+      {!showNew && slug && cfgSection === 'portal' && <OnboardingEditor slug={slug} clients={clients} />}
+
+      {!showNew && clientData && cfgSection === 'portal' && (
         <div className="ad-strategy-head">
           <h2 className="ad-strategy-title">Estrategia</h2>
           <p className="ad-muted">La <strong>macro</strong> (largo plazo, por temporada) + los <strong>meses (micro)</strong> que la componen. Lo micro de cada mes se alimenta de su Plan de medios; acá solo cargás lo que NO está en el plan (estrategia del mes, objetivo ecommerce, roadmap, productos, presupuesto).</p>
         </div>
       )}
 
-      {!showNew && clientData && <MacroEditor slug={slug} macros={clientData.macros} reload={() => loadClient(slug)} />}
+      {!showNew && clientData && cfgSection === 'portal' && <MacroEditor slug={slug} macros={clientData.macros} reload={() => loadClient(slug)} />}
 
-      {!showNew && clientData && (clientData.months || []).length > 0 && (
+      {!showNew && clientData && cfgSection === 'portal' && (clientData.months || []).length > 0 && (
         <div className="ad-controls">
           <div className="ad-field">
             <label>Mes (micro)</label>
@@ -237,9 +247,9 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
         </div>
       )}
 
-      {!showNew && loading && <p className="ad-muted">Cargando plan…</p>}
+      {!showNew && loading && cfgSection === 'portal' && <p className="ad-muted">Cargando plan…</p>}
 
-      {!showNew && plan && !loading && (
+      {!showNew && plan && !loading && cfgSection === 'portal' && (
         <div className="ad-plan">
           {/* Estrategia mensual */}
           <Section title="Estrategia del mes">
@@ -496,7 +506,7 @@ function NewClientForm({ onClose, onCreated }) {
   );
 }
 
-function ClientConfigEditor({ slug }) {
+function ClientConfigEditor({ slug, section = 'cliente' }) {
   const { user } = useAuth();
   const isPaid = user?.role === 'paid' && !user?.legacy;
   const [open, setOpen] = useState(true);
@@ -529,77 +539,86 @@ function ClientConfigEditor({ slug }) {
   return (
     <div className="ad-macro">
       <button className="ad-macro-head" onClick={() => setOpen(!open)}>
-        <span>{open ? '▾' : '▸'}</span> Config del cliente
+        <span>{open ? '▾' : '▸'}</span> {section === 'portal' ? 'Componentes que ve el cliente' : 'Datos del cliente'}
       </button>
       {open && cfg && (
         <div className="ad-macro-body">
-          {isPaid && <p className="ad-muted" style={{ margin: '0 0 8px' }}>🔒 Algunos campos solo los puede editar un administrador.</p>}
-          <div className="ad-row">
-            <Field label="Nombre" value={cfg.name || ''} onChange={(v) => setCfg({ ...cfg, name: v })} disabled={isPaid} />
-            <AdAccountSelect value={cfg.metaAccountId || ''} onChange={(v) => setCfg({ ...cfg, metaAccountId: v })} disabled={isPaid} />
-            {!isPaid && (
-              <div className="ad-field">
-                <label>Responsable (AM)</label>
-                <select value={cfg.am || ''} onChange={(e) => setCfg({ ...cfg, am: e.target.value })}>
-                  <option value="">— Sin asignar —</option>
-                  {ALL_AMS.map((a) => <option key={a} value={a}>{a}</option>)}
-                </select>
-              </div>
-            )}
-            <div className="ad-field">
-              <label>Tipo de cliente{isPaid ? ' 🔒' : ''}</label>
-              <select value={cfg.type || (cfg.capabilities?.ecommerce ? 'ecommerce' : 'servicios')} onChange={(e) => setCfg({ ...cfg, type: e.target.value })} disabled={isPaid}>
-                <option value="ecommerce">Ecommerce</option>
-                <option value="servicios">Servicios</option>
-              </select>
-            </div>
-          </div>
-          <div className="ad-row">
-            <Field label="Email del cliente" value={cfg.email || ''} onChange={(v) => setCfg({ ...cfg, email: v })} />
-          </div>
-          <div className="ad-row">
-            <Field label="Clave de acceso" value={cfg.accessKey || ''} onChange={(v) => setCfg({ ...cfg, accessKey: v })} />
-            {!isPaid && <Field label="Clave de pagos" value={cfg.paymentsKey || ''} onChange={(v) => setCfg({ ...cfg, paymentsKey: v })} />}
-          </div>
-
-          {!isPaid && (
+          {section === 'cliente' && (
             <>
-              <div className="ad-sublabel">Servicios que ofrecés (con su monto)</div>
-              <ServicesEditor caps={cfg.capabilities || {}} fees={cfg.fees || {}} onToggle={setCap} onFee={setFee} />
-              <VariableEditor variable={cfg.variable || { mode: 'none', base: 0, rate: 0.03 }} onChange={(v) => setCfg({ ...cfg, variable: v })} />
+              {isPaid && <p className="ad-muted" style={{ margin: '0 0 8px' }}>🔒 Algunos campos solo los puede editar un administrador.</p>}
+              <div className="ad-row">
+                <Field label="Nombre" value={cfg.name || ''} onChange={(v) => setCfg({ ...cfg, name: v })} disabled={isPaid} />
+                <AdAccountSelect value={cfg.metaAccountId || ''} onChange={(v) => setCfg({ ...cfg, metaAccountId: v })} disabled={isPaid} />
+                {!isPaid && (
+                  <div className="ad-field">
+                    <label>Responsable (AM)</label>
+                    <select value={cfg.am || ''} onChange={(e) => setCfg({ ...cfg, am: e.target.value })}>
+                      <option value="">— Sin asignar —</option>
+                      {ALL_AMS.map((a) => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                  </div>
+                )}
+                <div className="ad-field">
+                  <label>Tipo de cliente{isPaid ? ' 🔒' : ''}</label>
+                  <select value={cfg.type || (cfg.capabilities?.ecommerce ? 'ecommerce' : 'servicios')} onChange={(e) => setCfg({ ...cfg, type: e.target.value })} disabled={isPaid}>
+                    <option value="ecommerce">Ecommerce</option>
+                    <option value="servicios">Servicios</option>
+                  </select>
+                </div>
+              </div>
+              <div className="ad-row">
+                <Field label="Email del cliente" value={cfg.email || ''} onChange={(v) => setCfg({ ...cfg, email: v })} />
+              </div>
+              <div className="ad-row">
+                <Field label="Clave de acceso" value={cfg.accessKey || ''} onChange={(v) => setCfg({ ...cfg, accessKey: v })} />
+                {!isPaid && <Field label="Clave de pagos" value={cfg.paymentsKey || ''} onChange={(v) => setCfg({ ...cfg, paymentsKey: v })} />}
+              </div>
+
+              {!isPaid && (
+                <>
+                  <div className="ad-sublabel">Servicios que ofrecés (con su monto)</div>
+                  <ServicesEditor caps={cfg.capabilities || {}} fees={cfg.fees || {}} onToggle={setCap} onFee={setFee} />
+                  <VariableEditor variable={cfg.variable || { mode: 'none', base: 0, rate: 0.03 }} onChange={(v) => setCfg({ ...cfg, variable: v })} />
+                </>
+              )}
+
+              <div className="ad-sublabel">Tienda Nube</div>
+              <div className="ad-tn">
+                {cfg.tiendanube?.connected
+                  ? (
+                    <>
+                      <span className="ad-tn-ok">✓ Tienda Nube conectada (#{cfg.tiendanube.storeId})</span>
+                      <a className="ad-btn ad-btn--ghost" href={tnUrl} target="_blank" rel="noreferrer">Reconectar</a>
+                    </>
+                  )
+                  : (
+                    <>
+                      <a className="ad-btn" href={tnUrl} target="_blank" rel="noreferrer">Conectar Tienda Nube</a>
+                      <span className="ad-muted">Conectá la tienda de este cliente para traer facturación y productos.</span>
+                    </>
+                  )}
+              </div>
             </>
           )}
 
-          <div className="ad-sublabel">Secciones opcionales del panel</div>
-          <p className="ad-muted" style={{ margin: '0 0 6px' }}>Siempre van: {MANDATORY_LABELS.join(' · ')}.</p>
-          <div className="ad-caps">
-            {OPTIONAL_SECTIONS.map((s) => {
-              const on = !!(cfg.panel?.sections || {})[s.key];
-              return (
-                <label key={s.key} className="ad-cap">
-                  <input type="checkbox" checked={on} onChange={() => setCfg({ ...cfg, panel: { ...(cfg.panel || {}), sections: { ...((cfg.panel || {}).sections || {}), [s.key]: !on } } })} />
-                  <span>{s.label}</span>
-                </label>
-              );
-            })}
-          </div>
+          {section === 'portal' && (
+            <>
+              <div className="ad-sublabel">Secciones que ve el cliente en su portal</div>
+              <p className="ad-muted" style={{ margin: '0 0 6px' }}>Siempre van: {MANDATORY_LABELS.join(' · ')}. Abajo, la estrategia (macro y mes) que también ve el cliente.</p>
+              <div className="ad-caps">
+                {OPTIONAL_SECTIONS.map((s) => {
+                  const on = !!(cfg.panel?.sections || {})[s.key];
+                  return (
+                    <label key={s.key} className="ad-cap">
+                      <input type="checkbox" checked={on} onChange={() => setCfg({ ...cfg, panel: { ...(cfg.panel || {}), sections: { ...((cfg.panel || {}).sections || {}), [s.key]: !on } } })} />
+                      <span>{s.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
-          <div className="ad-sublabel">Tienda Nube</div>
-          <div className="ad-tn">
-            {cfg.tiendanube?.connected
-              ? (
-                <>
-                  <span className="ad-tn-ok">✓ Tienda Nube conectada (#{cfg.tiendanube.storeId})</span>
-                  <a className="ad-btn ad-btn--ghost" href={tnUrl} target="_blank" rel="noreferrer">Reconectar</a>
-                </>
-              )
-              : (
-                <>
-                  <a className="ad-btn" href={tnUrl} target="_blank" rel="noreferrer">Conectar Tienda Nube</a>
-                  <span className="ad-muted">Conectá la tienda de este cliente para traer facturación y productos.</span>
-                </>
-              )}
-          </div>
           <div className="ad-row" style={{ justifyContent: 'flex-end' }}>
             {msg && <span className="ad-msg">{msg}</span>}
             <button className="ad-btn" onClick={save}>Guardar config</button>
