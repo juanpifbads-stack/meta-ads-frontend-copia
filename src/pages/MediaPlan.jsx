@@ -76,7 +76,7 @@ function normalize(raw) {
 }
 
 // ---- Gráfico de tendencia (SVG puro) ----
-function buildTrendSvg(points, { w = 640, h = 240, visible = ['roas', 'facturacion', 'inversion'], staticLabels = false } = {}) {
+export function buildTrendSvg(points, { w = 640, h = 240, visible = ['roas', 'facturacion', 'inversion'], staticLabels = false } = {}) {
   const pts = (points || []).filter((p) => (p.label || '').trim() || p.roas || p.facturacion || p.inversion);
   if (pts.length < 2) return '';
   const series = SERIES.filter((s) => visible.includes(s.key));

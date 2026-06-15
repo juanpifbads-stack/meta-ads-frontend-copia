@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Analyze from './Analyze.jsx';
-import MediaPlan from './MediaPlan.jsx';
+import MediaPlan, { buildTrendSvg } from './MediaPlan.jsx';
 import Admin from './Admin.jsx';
 import Dashboard from './Dashboard.jsx';
 import './Control.css';
@@ -43,6 +43,7 @@ function MediaPlanHub({ slug, onBack }) {
   const obj = plan?.objective || {};
   const dateItems = (plan?.context?.dateItems || []).filter((it) => it.date || it.name);
   const cons = (plan?.considerations || []).filter((c) => (c || '').trim());
+  const trendSvg = (plan && inc.trend !== false) ? buildTrendSvg(plan.trend || [], { staticLabels: true }) : '';
 
   return (
     <div className="ctrl-page">
@@ -52,7 +53,8 @@ function MediaPlanHub({ slug, onBack }) {
       </div>
 
       <div className="hub-config-row">
-        <button className="ctrl-btn" onClick={() => setEditing(cur)}>＋ Crear / editar plan</button>
+        <button className="ctrl-btn" onClick={() => setEditing(cur)}>＋ Crear plan</button>
+        <button className="ctrl-btn ctrl-btn--ghost" onClick={() => setEditing(cur)}>✎ Editar plan</button>
         <button className="ctrl-btn ctrl-btn--ghost" onClick={() => setShowPrev((v) => !v)}>🗂 Ver anteriores</button>
       </div>
       {showPrev && (
@@ -83,7 +85,7 @@ function MediaPlanHub({ slug, onBack }) {
             </div>
           </div>
 
-          {inc.lastMonth && (
+          {inc.lastMonth !== false && (
             <div className="mpdoc-sec">
               <div className="mpdoc-h">Cómo nos fue el mes pasado</div>
               <div className="mpdoc-kpis">
@@ -94,24 +96,40 @@ function MediaPlanHub({ slug, onBack }) {
             </div>
           )}
 
-          {inc.lastYear && (
+          {inc.lastYear !== false && (
             <div className="mpdoc-sec">
               <div className="mpdoc-h">Mismo período del año pasado</div>
-              <div className="mpdoc-kpis">
-                <div className="mpdoc-kpi"><span>Facturación</span><strong>{fmtMoney(plan.lastYearMeta?.facturacion)}</strong></div>
-                <div className="mpdoc-kpi"><span>Inversión</span><strong>{fmtMoney(plan.lastYearMeta?.inversion)}</strong></div>
-                <div className="mpdoc-kpi"><span>ROAS</span><strong>{mpRoas(plan.lastYearMeta?.roas)}</strong></div>
-              </div>
+              {(plan.lastYearMeta?.inversion || 0) > 0 ? (
+                <div className="mpdoc-kpis">
+                  <div className="mpdoc-kpi"><span>Facturación</span><strong>{fmtMoney(plan.lastYearMeta?.facturacion)}</strong></div>
+                  <div className="mpdoc-kpi"><span>Inversión</span><strong>{fmtMoney(plan.lastYearMeta?.inversion)}</strong></div>
+                  <div className="mpdoc-kpi"><span>ROAS</span><strong>{mpRoas(plan.lastYearMeta?.roas)}</strong></div>
+                </div>
+              ) : (
+                <p className="mpdoc-txt">No se puede comparar con el mismo período del año pasado ya que no hubo inversión publicitaria.</p>
+              )}
             </div>
           )}
 
-          {inc.contextDates && dateItems.length > 0 && (
+          {inc.trend !== false && trendSvg && (
+            <div className="mpdoc-sec">
+              <div className="mpdoc-h">Tendencia (últimos 3 meses)</div>
+              <div className="mpdoc-chart" dangerouslySetInnerHTML={{ __html: trendSvg }} />
+              {plan.trendNote?.trim() && <p className="mpdoc-txt" style={{ marginTop: 8 }}>{plan.trendNote}</p>}
+            </div>
+          )}
+
+          {inc.contextDates !== false && dateItems.length > 0 && (
             <div className="mpdoc-sec">
               <div className="mpdoc-h">Fechas importantes del mes</div>
               <ul className="mpdoc-list">
                 {dateItems.map((it, i) => <li key={i}><strong>{mpDate(it.date)}{it.endDate ? ` al ${mpDate(it.endDate)}` : ''}</strong> — {it.name}</li>)}
               </ul>
             </div>
+          )}
+
+          {inc.contextProducts !== false && plan.context?.products?.trim() && (
+            <div className="mpdoc-sec"><div className="mpdoc-h">Stock y reposición de productos clave</div><p className="mpdoc-txt">{plan.context.products}</p></div>
           )}
 
           {plan.objectiveJustification?.trim() && (

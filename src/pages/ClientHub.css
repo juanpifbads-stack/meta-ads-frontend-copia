@@ -69,3 +69,4 @@
 .mpdoc-kpi strong { font-size: 20px; color: #15161a; }
 .mpdoc-txt { font-size: 14px; line-height: 1.6; color: #2b2d34; white-space: pre-wrap; }
 .mpdoc-list { margin: 0; padding-left: 18px; } .mpdoc-list li { font-size: 14px; margin-bottom: 5px; color: #2b2d34; }
+.mpdoc-chart { border: 1.5px solid #e5e6ea; border-radius: 12px; padding: 12px; }
