@@ -23,6 +23,17 @@
 
 ## 🟡 Media prioridad
 
+- **Reorganizar el admin en 3 lugares (en discusión 06/2026).** Hoy "Admin del cliente" es un cajón
+  de sastre. Target: (1) **Admin del cliente** = identidad (nombre, tipo, responsable), cuenta
+  publicitaria, integración Tienda Nube, email — lo que ve el paid; (2) **Administración / Gestión
+  de agencia** (solo admin) = usuarios internos + **finanzas por cliente** (fees, variable/reparto,
+  datos bancarios, clave de pagos) sacadas del admin del cliente; (3) **Panel del cliente** =
+  apartado aparte (tipo onboarding) con las **secciones visibles** del portal + **clave de acceso**
+  + **Estrategia (macro+mes) unificada acá** (es contenido que ve el cliente). Plan de medios sigue
+  como herramienta propia (enlazada).
+- **Validar "Resultados" de servicios vs Ads Manager.** El semáforo/optimizador de cuentas de
+  servicios calcula resultados = conversaciones (mensajería) + leads. Confirmar que el número da
+  parecido a Ads Manager; si la cuenta usa otro resultado, ajustar. [06/2026]
 - **Integrar TikTok Ads API.** Hoy "Performance Meta y TikTok" trae **solo Meta**. El UTM de TikTok
   subcuenta brutalmente (el navegador in-app pierde los params + TikTok es canal de descubrimiento,
   la gente vuelve directo a comprar). Para medir TikTok de verdad hay que traer la **atribución que
