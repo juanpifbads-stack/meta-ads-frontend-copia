@@ -19,20 +19,30 @@ function currentYM() { const n = new Date(); return `${n.getFullYear()}-${String
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 function fmtMonthYM(ym) { if (!ym) return ''; const [y, m] = ym.split('-'); return `${MESES[parseInt(m, 10) - 1] || ym} ${y}`; }
 
-// Landing del Plan de medios: ver el vigente, ver anteriores, o crear/editar.
+// Vista del Plan de medios: documento del vigente (lectura) + crear / ver anteriores.
+function mpRoas(v) { return v ? `${v}×` : '—'; }
+function mpDate(d) { if (!d) return ''; const [y, m, dd] = d.split('-'); return `${dd}/${m}`; }
+
 function MediaPlanHub({ slug, onBack }) {
   const [months, setMonths] = useState(null);
+  const [plan, setPlan] = useState(null);
   const [editing, setEditing] = useState(null);
+  const [showPrev, setShowPrev] = useState(false);
+  const cur = currentYM();
+
   useEffect(() => {
     apiClient.get(`/admin/${slug}/media-months`).then((r) => setMonths(r.data.months || [])).catch(() => setMonths([]));
-  }, [slug]);
+    apiClient.get(`/admin/${slug}/media/${cur}`).then((r) => setPlan(r.data.plan || null)).catch(() => setPlan(null));
+  }, [slug, cur]);
 
   if (editing) return <MediaPlan lockedSlug={slug} initialMonth={editing} onBack={() => setEditing(null)} />;
 
-  const cur = currentYM();
   const list = months || [];
-  const hasCurrent = list.includes(cur);
   const prev = list.filter((m) => m !== cur).sort().reverse();
+  const inc = plan?.include || {};
+  const obj = plan?.objective || {};
+  const dateItems = (plan?.context?.dateItems || []).filter((it) => it.date || it.name);
+  const cons = (plan?.considerations || []).filter((c) => (c || '').trim());
 
   return (
     <div className="ctrl-page">
@@ -40,27 +50,81 @@ function MediaPlanHub({ slug, onBack }) {
         <div className="hub-cross"><span className="hub-cross-alq">Plan de medios</span></div>
         <button className="ctrl-btn ctrl-btn--ghost" onClick={onBack}>← Volver</button>
       </div>
+
+      <div className="hub-config-row">
+        <button className="ctrl-btn" onClick={() => setEditing(cur)}>＋ Crear / editar plan</button>
+        <button className="ctrl-btn ctrl-btn--ghost" onClick={() => setShowPrev((v) => !v)}>🗂 Ver anteriores</button>
+      </div>
+      {showPrev && (
+        <div className="mph-prev" style={{ marginBottom: 14 }}>
+          {months === null ? <span className="ad-muted">Cargando…</span>
+            : prev.length === 0 ? <span className="ad-muted">Todavía no hay planes anteriores.</span>
+            : prev.map((m) => <button key={m} className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => setEditing(m)}>{fmtMonthYM(m)}</button>)}
+        </div>
+      )}
+
       <div className="ctrl-divider" />
 
-      <div className="mph-wrap">
-        <div className="mph-block">
-          <div className="hub-goals-title hub-goals-title--dark">Plan vigente · {fmtMonthYM(cur)}</div>
-          {hasCurrent
-            ? <button className="hub-op-btn" onClick={() => setEditing(cur)}>Ver / editar plan vigente</button>
-            : <p className="ad-muted">Todavía no hay un plan de medios para este mes.</p>}
+      {/* Documento del plan vigente (lectura) */}
+      {!plan ? (
+        <div className="mpdoc">
+          <p className="ad-muted">Todavía no hay un plan de medios para {fmtMonthYM(cur)}. Tocá “Crear / editar plan”.</p>
         </div>
+      ) : (
+        <div className="mpdoc">
+          <div className="mpdoc-eyebrow">Plan de medios · {fmtMonthYM(cur)}</div>
 
-        <div className="mph-block">
-          <button className="ctrl-btn" onClick={() => setEditing(cur)}>+ Crear plan de medios</button>
-        </div>
+          <div className="mpdoc-sec">
+            <div className="mpdoc-h">Objetivo propuesto</div>
+            <div className="mpdoc-kpis">
+              <div className="mpdoc-kpi"><span>Facturación objetivo (en Meta)</span><strong>{fmtMoney(obj.facturacion)}</strong></div>
+              <div className="mpdoc-kpi"><span>ROAS objetivo</span><strong>{mpRoas(obj.roas)}</strong></div>
+              <div className="mpdoc-kpi"><span>Inversión necesaria</span><strong>{fmtMoney(obj.inversion)}</strong></div>
+            </div>
+          </div>
 
-        <div className="mph-block">
-          <div className="hub-goals-title hub-goals-title--dark">Planes anteriores</div>
-          {months === null ? <p className="ad-muted">Cargando…</p>
-            : prev.length === 0 ? <p className="ad-muted">Todavía no hay planes anteriores.</p>
-            : <div className="mph-prev">{prev.map((m) => <button key={m} className="ctrl-btn ctrl-btn--ghost" onClick={() => setEditing(m)}>{fmtMonthYM(m)}</button>)}</div>}
+          {inc.lastMonth && (
+            <div className="mpdoc-sec">
+              <div className="mpdoc-h">Cómo nos fue el mes pasado</div>
+              <div className="mpdoc-kpis">
+                <div className="mpdoc-kpi"><span>Facturación</span><strong>{fmtMoney(plan.lastMonthMeta?.facturacion)}</strong></div>
+                <div className="mpdoc-kpi"><span>Inversión</span><strong>{fmtMoney(plan.lastMonthMeta?.inversion)}</strong></div>
+                <div className="mpdoc-kpi"><span>ROAS</span><strong>{mpRoas(plan.lastMonthMeta?.roas)}</strong></div>
+              </div>
+            </div>
+          )}
+
+          {inc.lastYear && (
+            <div className="mpdoc-sec">
+              <div className="mpdoc-h">Mismo período del año pasado</div>
+              <div className="mpdoc-kpis">
+                <div className="mpdoc-kpi"><span>Facturación</span><strong>{fmtMoney(plan.lastYearMeta?.facturacion)}</strong></div>
+                <div className="mpdoc-kpi"><span>Inversión</span><strong>{fmtMoney(plan.lastYearMeta?.inversion)}</strong></div>
+                <div className="mpdoc-kpi"><span>ROAS</span><strong>{mpRoas(plan.lastYearMeta?.roas)}</strong></div>
+              </div>
+            </div>
+          )}
+
+          {inc.contextDates && dateItems.length > 0 && (
+            <div className="mpdoc-sec">
+              <div className="mpdoc-h">Fechas importantes del mes</div>
+              <ul className="mpdoc-list">
+                {dateItems.map((it, i) => <li key={i}><strong>{mpDate(it.date)}{it.endDate ? ` al ${mpDate(it.endDate)}` : ''}</strong> — {it.name}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {plan.objectiveJustification?.trim() && (
+            <div className="mpdoc-sec"><div className="mpdoc-h">Justificación de objetivos</div><p className="mpdoc-txt">{plan.objectiveJustification}</p></div>
+          )}
+          {cons.length > 0 && (
+            <div className="mpdoc-sec"><div className="mpdoc-h">Consideraciones y riesgos</div><ul className="mpdoc-list">{cons.map((c, i) => <li key={i}>{c}</li>)}</ul></div>
+          )}
+          {plan.nextPlanning?.trim() && (
+            <div className="mpdoc-sec"><div className="mpdoc-h">Planificación de próximos meses</div><p className="mpdoc-txt">{plan.nextPlanning}</p></div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

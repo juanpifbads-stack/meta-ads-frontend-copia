@@ -20,7 +20,7 @@
 .hub-cross-client { font-size: 40px; font-weight: 800; color: #15161a; }
 .hub-config-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
 .hub-month { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: #15161a; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
-.hub-goals-title--dark { color: #15161a; font-size: 20px; font-weight: 800; text-transform: none; letter-spacing: 0; margin-bottom: 14px; }
+.hub-goals-title.hub-goals-title--dark { color: #15161a; font-size: 20px; font-weight: 800; text-transform: none; letter-spacing: 0; margin-bottom: 14px; }
 
 /* Botones operativos (abajo) — sin emoji, estilo limpio */
 .hub-op-btn {
@@ -57,3 +57,15 @@
 .hub-portal-actions { display: flex; gap: 8px; }
 
 .hub-goals-note { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+
+/* Documento del Plan de medios (vista lectura) */
+.mpdoc { max-width: 760px; }
+.mpdoc-eyebrow { font-family: var(--font-mono, monospace); text-transform: uppercase; letter-spacing: .08em; font-size: 12px; color: #8a8d96; margin-bottom: 16px; }
+.mpdoc-sec { margin-bottom: 22px; }
+.mpdoc-h { font-size: 16px; font-weight: 800; color: #15161a; border-bottom: 2px solid #15161a; padding-bottom: 6px; margin-bottom: 10px; }
+.mpdoc-kpis { display: flex; gap: 12px; flex-wrap: wrap; }
+.mpdoc-kpi { flex: 1; min-width: 150px; border: 1.5px solid var(--color-brand-blue, #1b1fe8); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.mpdoc-kpi span { font-family: var(--font-mono, monospace); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #5b5e66; }
+.mpdoc-kpi strong { font-size: 20px; color: #15161a; }
+.mpdoc-txt { font-size: 14px; line-height: 1.6; color: #2b2d34; white-space: pre-wrap; }
+.mpdoc-list { margin: 0; padding-left: 18px; } .mpdoc-list li { font-size: 14px; margin-bottom: 5px; color: #2b2d34; }
