@@ -31,6 +31,10 @@
   apartado aparte (tipo onboarding) con las **secciones visibles** del portal + **clave de acceso**
   + **Estrategia (macro+mes) unificada acá** (es contenido que ve el cliente). Plan de medios sigue
   como herramienta propia (enlazada).
+- **Plan de medios — vista del vigente tipo "documento".** Al entrar a Plan de medios, "Ver el
+  actual" debe mostrar el plan **estático, parecido al PDF que se le manda al cliente** (componentes
+  read-only), con los botones **Crear plan de medios** y **Ver anteriores** arriba. Estética alineada
+  a alquimia (no seguir mocks literales). Hoy hay una landing simple que abre el constructor. [06/2026]
 - **Validar "Resultados" de servicios vs Ads Manager.** El semáforo/optimizador de cuentas de
   servicios calcula resultados = conversaciones (mensajería) + leads. Confirmar que el número da
   parecido a Ads Manager; si la cuenta usa otro resultado, ajustar. [06/2026]

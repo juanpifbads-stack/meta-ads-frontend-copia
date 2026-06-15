@@ -175,10 +175,10 @@ export default function ClientHub({ slug, onBack }) {
           </div>
 
           <div className="hub-quick">
-            <button className="hub-op-btn" onClick={() => setTab('media')}>Plan de medios</button>
-            <button className="hub-op-btn" onClick={() => setTab('analizar')}>Analizar cuenta</button>
-            <button className="hub-op-btn" onClick={() => setTab('optimizar')}>Optimizar cuenta</button>
-            <button className="hub-op-btn" onClick={openPortal}>Panel del cliente</button>
+            <button className="hub-op-btn" onClick={() => setTab('media')}>📄 Plan de medios</button>
+            <button className="hub-op-btn" onClick={() => setTab('analizar')}>🔎 Analizar cuenta</button>
+            <button className="hub-op-btn" onClick={() => setTab('optimizar')}>⚡ Optimizar cuenta</button>
+            <button className="hub-op-btn" onClick={openPortal}>🪟 Panel del cliente</button>
           </div>
         </div>
       )}

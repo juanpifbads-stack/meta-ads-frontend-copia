@@ -194,17 +194,15 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
         <button className="ad-btn ad-btn--ghost" onClick={onBack}>← Volver</button>
       </header>
 
-      {!showNew && (
+      {!showNew && !lockedSlug && (
         <div className="ad-controls">
-          {!lockedSlug && (
-            <div className="ad-field">
-              <label>Cliente</label>
-              <select value={slug} onChange={(e) => setSlug(e.target.value)}>
-                {clients.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-              </select>
-            </div>
-          )}
-          {!lockedSlug && <button className="ad-btn ad-btn--ghost" onClick={() => setShowNew(true)}>+ Nuevo cliente</button>}
+          <div className="ad-field">
+            <label>Cliente</label>
+            <select value={slug} onChange={(e) => setSlug(e.target.value)}>
+              {clients.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
+            </select>
+          </div>
+          <button className="ad-btn ad-btn--ghost" onClick={() => setShowNew(true)}>+ Nuevo cliente</button>
         </div>
       )}
 
