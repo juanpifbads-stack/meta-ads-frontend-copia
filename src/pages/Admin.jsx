@@ -510,8 +510,11 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
   const { user } = useAuth();
   const isPaid = user?.role === 'paid' && !user?.legacy;
   const [open, setOpen] = useState(true);
+  const [showLinks, setShowLinks] = useState(false);
   const [cfg, setCfg] = useState(null);
   const [msg, setMsg] = useState('');
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const portalLink = `${origin}/cliente/${slug}`;
 
   useEffect(() => {
     apiClient.get(`/admin/clients/${slug}/config`).then((r) => setCfg(r.data.config)).catch(() => {});
@@ -616,6 +619,35 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
                   );
                 })}
               </div>
+
+              {/* Links del portal (toggle) */}
+              <button className="ad-btn ad-btn--ghost ad-btn--sm" style={{ marginTop: 14 }} onClick={() => setShowLinks((v) => !v)}>
+                {showLinks ? '▾ Links' : '▸ Links'}
+              </button>
+              {showLinks && (
+                <div className="ad-row" style={{ flexDirection: 'column', gap: 12, marginTop: 10 }}>
+                  <div className="ad-row-box">
+                    <div className="ad-sublabel" style={{ marginTop: 0 }}>Panel completo (cliente)</div>
+                    <div style={{ fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>{portalLink}</div>
+                    <div className="ad-muted">Clave: <strong>{cfg.accessKey || '—'}</strong></div>
+                    <div className="ad-row" style={{ marginTop: 6 }}>
+                      <a className="ad-btn ad-btn--ghost ad-btn--sm" href={portalLink} target="_blank" rel="noreferrer">Abrir</a>
+                      <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => navigator.clipboard?.writeText(portalLink)}>Copiar link</button>
+                    </div>
+                  </div>
+                  {!isPaid && (
+                    <div className="ad-row-box">
+                      <div className="ad-sublabel" style={{ marginTop: 0 }}>Solo pagos (administración)</div>
+                      <div style={{ fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>{portalLink}/pagos</div>
+                      <div className="ad-muted">Clave: <strong>{cfg.paymentsKey || '—'}</strong></div>
+                      <div className="ad-row" style={{ marginTop: 6 }}>
+                        <a className="ad-btn ad-btn--ghost ad-btn--sm" href={`${portalLink}/pagos`} target="_blank" rel="noreferrer">Abrir</a>
+                        <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => navigator.clipboard?.writeText(`${portalLink}/pagos`)}>Copiar link</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
 

@@ -8,7 +8,7 @@
 
 .hub-resumen { display: flex; flex-direction: column; gap: 18px; }
 .hub-metrics { display: flex; gap: 14px; flex-wrap: wrap; }
-.hub-metric { flex: 1; min-width: 160px; border: 1.5px solid var(--color-gray-light, #e5e6ea); border-radius: 14px; padding: 18px; }
+.hub-metric { flex: 1; min-width: 160px; border: 1.5px solid #15161a; border-radius: 14px; padding: 18px; }
 .hub-metric-lbl { font-family: var(--font-mono); font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: #15161a; font-weight: 700; margin-bottom: 6px; }
 .hub-metric-val { font-size: 28px; font-weight: 700; color: #15161a; }
 
@@ -25,11 +25,11 @@
 /* Botones operativos (abajo) — sin emoji, estilo limpio */
 .hub-op-btn {
   flex: 1; min-width: 180px; text-align: left;
-  background: #15161a; color: #fff; border: none; border-radius: 12px;
+  background: #fff; color: #15161a; border: 1.5px solid #15161a; border-radius: 12px;
   padding: 16px 18px; font-family: var(--font-mono); font-size: 14px; font-weight: 700;
   letter-spacing: .02em; cursor: pointer; transition: transform .15s ease, background .15s ease;
 }
-.hub-op-btn:hover { background: #2b2d34; transform: translateY(-2px); }
+.hub-op-btn:hover { background: #f4f4f6; transform: translateY(-2px); }
 
 /* Landing Plan de medios */
 .mph-wrap { display: flex; flex-direction: column; gap: 22px; max-width: 720px; }

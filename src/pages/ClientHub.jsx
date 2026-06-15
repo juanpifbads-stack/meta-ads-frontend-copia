@@ -133,10 +133,9 @@ export default function ClientHub({ slug, onBack }) {
         <button className="ctrl-btn ctrl-btn--ghost" onClick={onBack}>← Inicio</button>
       </div>
 
-      {/* Botones de configuración (arriba) */}
+      {/* Botón de configuración (arriba) */}
       <div className="hub-config-row">
         <button className="ctrl-btn ctrl-btn--ghost" onClick={() => setTab('config')}>⚙ Configuración del cliente</button>
-        <button className="ctrl-btn ctrl-btn--ghost" onClick={() => setTab('portal')}>🔗 Portal del cliente</button>
       </div>
 
       <div className="ctrl-divider" />
@@ -165,11 +164,14 @@ export default function ClientHub({ slug, onBack }) {
             )}
           </div>
 
-          {/* Lo real (abajo) */}
-          <div className="hub-metrics">
-            <div className="hub-metric"><div className="hub-metric-lbl">Gasto del mes</div><div className="hub-metric-val">{fmtMoney(spend)}</div></div>
-            <div className="hub-metric"><div className="hub-metric-lbl">Valor de compras</div><div className="hub-metric-val">{purchaseValue ? fmtMoney(purchaseValue) : '—'}</div></div>
-            <div className="hub-metric"><div className="hub-metric-lbl">ROAS</div><div className="hub-metric-val">{roas > 0 ? roas.toFixed(2) + '×' : '—'}</div></div>
+          {/* Actualidad (abajo) */}
+          <div className="hub-goals-card">
+            <div className="hub-goals-title hub-goals-title--dark">Actualidad</div>
+            <div className="hub-metrics">
+              <div className="hub-metric"><div className="hub-metric-lbl">Gasto del mes</div><div className="hub-metric-val">{fmtMoney(spend)}</div></div>
+              <div className="hub-metric"><div className="hub-metric-lbl">Valor de compras</div><div className="hub-metric-val">{purchaseValue ? fmtMoney(purchaseValue) : '—'}</div></div>
+              <div className="hub-metric"><div className="hub-metric-lbl">ROAS</div><div className="hub-metric-val">{roas > 0 ? roas.toFixed(2) + '×' : '—'}</div></div>
+            </div>
           </div>
 
           <div className="hub-quick">
@@ -181,31 +183,6 @@ export default function ClientHub({ slug, onBack }) {
         </div>
       )}
 
-      {tab === 'portal' && (
-        <div className="hub-portal">
-          <div className="hub-portal-card">
-            <div className="hub-portal-lbl">Panel completo (cliente)</div>
-            <div className="hub-portal-link">{portalLink}</div>
-            <div className="hub-portal-key">Clave: <strong>{cfg?.accessKey || '—'}</strong></div>
-            <div className="hub-portal-actions">
-              <a className="ctrl-btn" href={portalLink} target="_blank" rel="noreferrer">Abrir panel</a>
-              <button className="ctrl-btn ctrl-btn--ghost" onClick={() => navigator.clipboard?.writeText(portalLink)}>Copiar link</button>
-            </div>
-          </div>
-          {!isPaid && (
-            <div className="hub-portal-card">
-              <div className="hub-portal-lbl">Solo pagos (administración)</div>
-              <div className="hub-portal-link">{portalLink}/pagos</div>
-              <div className="hub-portal-key">Clave: <strong>{cfg?.paymentsKey || '—'}</strong></div>
-              <div className="hub-portal-actions">
-                <a className="ctrl-btn ctrl-btn--ghost" href={`${portalLink}/pagos`} target="_blank" rel="noreferrer">Abrir pagos</a>
-                <button className="ctrl-btn ctrl-btn--ghost" onClick={() => navigator.clipboard?.writeText(`${portalLink}/pagos`)}>Copiar link</button>
-              </div>
-            </div>
-          )}
-          <p className="ad-muted" style={{ marginTop: 4 }}>Acá vas a poder configurar también qué secciones ve el cliente (próximamente).</p>
-        </div>
-      )}
     </div>
   );
 }
