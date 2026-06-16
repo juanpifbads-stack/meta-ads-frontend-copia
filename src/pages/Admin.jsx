@@ -384,6 +384,40 @@ function AdAccountSelect({ value, onChange, label, disabled, all }) {
   );
 }
 
+// Selector de VARIAS cuentas publicitarias (para clientes con más de una cuenta).
+function MultiAccountSelect({ ids, onChange, disabled, all }) {
+  const [accounts, setAccounts] = useState(null);
+  useEffect(() => {
+    apiClient.get('/accounts', { params: all ? { scope: 'all' } : {} }).then((r) => setAccounts(r.data || [])).catch(() => setAccounts([]));
+  }, [all]);
+  const norm = (v) => String(v || '').replace('act_', '');
+  const sel = (ids || []).map(norm);
+  const nameOf = (id) => { const a = (accounts || []).find((x) => norm(x.id) === norm(id)); return a ? a.name : norm(id); };
+  const add = (id) => { const n = norm(id); if (n && !sel.includes(n)) onChange([...sel, n]); };
+  const remove = (id) => onChange(sel.filter((x) => x !== norm(id)));
+  const available = (accounts || []).filter((a) => !sel.includes(norm(a.id)));
+  return (
+    <div className="ad-field ad-field--grow">
+      <label>Cuentas publicitarias (Meta){disabled ? ' 🔒' : ''}</label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+        {sel.length === 0 && <span className="ad-muted">— Sin cuenta —</span>}
+        {sel.map((id) => (
+          <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#eef0ff', color: '#1b1fe8', borderRadius: 999, padding: '4px 10px', fontSize: 13 }}>
+            {nameOf(id)} <span className="ad-muted" style={{ fontSize: 11 }}>({id})</span>
+            {!disabled && <button className="ad-del" style={{ marginLeft: 2 }} onClick={() => remove(id)}>×</button>}
+          </span>
+        ))}
+      </div>
+      {!disabled && (
+        <select value="" onChange={(e) => { if (e.target.value) add(e.target.value); }}>
+          <option value="">+ Agregar cuenta…</option>
+          {accounts === null ? <option disabled>Cargando…</option> : available.map((a) => <option key={a.id} value={norm(a.id)}>{a.name} ({norm(a.id)})</option>)}
+        </select>
+      )}
+    </div>
+  );
+}
+
 const slugify = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 function NewClientForm({ onClose, onCreated }) {
@@ -549,7 +583,11 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
               {isPaid && <p className="ad-muted" style={{ margin: '0 0 8px' }}>🔒 Algunos campos solo los puede editar un administrador.</p>}
               <div className="ad-row">
                 <Field label="Nombre" value={cfg.name || ''} onChange={(v) => setCfg({ ...cfg, name: v })} disabled={isPaid} />
-                <AdAccountSelect value={cfg.metaAccountId || ''} onChange={(v) => setCfg({ ...cfg, metaAccountId: v })} disabled={isPaid} />
+                <MultiAccountSelect
+                  ids={cfg.metaAccountIds && cfg.metaAccountIds.length ? cfg.metaAccountIds : (cfg.metaAccountId ? [cfg.metaAccountId] : [])}
+                  onChange={(arr) => setCfg({ ...cfg, metaAccountIds: arr, metaAccountId: arr[0] || '' })}
+                  disabled={isPaid}
+                />
                 {!isPaid && (
                   <div className="ad-field">
                     <label>Responsable (AM)</label>

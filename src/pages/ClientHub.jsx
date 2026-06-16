@@ -165,10 +165,19 @@ export default function ClientHub({ slug, onBack }) {
       const c = r.data.config || {};
       setCfg(c);
       setGoals({ revenue: c.goals?.revenue ?? '', roas: c.goals?.roas ?? '' });
-      if (c.metaAccountId) {
-        apiClient.get(`/accounts/${String(c.metaAccountId).replace('act_', '')}/insights/monthly`)
-          .then((ri) => setHealth(ri.data)).catch(() => setHealth(null));
-      }
+      // Una o varias cuentas: sumamos las métricas de todas.
+      const ids = (c.metaAccountIds && c.metaAccountIds.length ? c.metaAccountIds : (c.metaAccountId ? [c.metaAccountId] : []))
+        .map((a) => String(a).replace('act_', ''));
+      if (ids.length) {
+        Promise.all(ids.map((id) => apiClient.get(`/accounts/${id}/insights/monthly`).then((ri) => ri.data).catch(() => null)))
+          .then((rows) => {
+            const valid = rows.filter(Boolean);
+            if (!valid.length) { setHealth(null); return; }
+            const spend = valid.reduce((s, x) => s + (x.spend || 0), 0);
+            const purchaseValue = valid.reduce((s, x) => s + (x.purchaseValue || 0), 0);
+            setHealth({ spend, purchaseValue, roas: spend > 0 ? purchaseValue / spend : 0 });
+          });
+      } else { setHealth(null); }
     }).catch(() => {});
     apiClient.get(`/admin/${slug}/media/${currentYM()}`)
       .then((r) => { const o = r.data.plan?.objective; setPlanObjective(o && (o.facturacion || o.roas) ? o : null); })
