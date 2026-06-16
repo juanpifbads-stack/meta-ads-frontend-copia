@@ -169,7 +169,9 @@ export default function ClientHub({ slug, onBack }) {
       const ids = (c.metaAccountIds && c.metaAccountIds.length ? c.metaAccountIds : (c.metaAccountId ? [c.metaAccountId] : []))
         .map((a) => String(a).replace('act_', ''));
       if (ids.length) {
-        Promise.all(ids.map((id) => apiClient.get(`/accounts/${id}/insights/monthly`).then((ri) => ri.data).catch(() => null)))
+        // Ecommerce: ROAS/gasto/valor cuentan SOLO campañas de ventas (excluye mensajes/leads).
+        const params = c.type === 'servicios' ? {} : { salesOnly: 1 };
+        Promise.all(ids.map((id) => apiClient.get(`/accounts/${id}/insights/monthly`, { params }).then((ri) => ri.data).catch(() => null)))
           .then((rows) => {
             const valid = rows.filter(Boolean);
             if (!valid.length) { setHealth(null); return; }
