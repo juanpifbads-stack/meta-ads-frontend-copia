@@ -82,6 +82,9 @@ function UsersSection() {
                       {u.meta.fresh
                         ? <span style={{ color: '#15803d' }}>· token vigente{u.meta.expiresAt ? ` (hasta ${new Date(u.meta.expiresAt).toLocaleDateString('es-AR')})` : ''}</span>
                         : <span style={{ color: '#b91c1c' }}>· token vencido (debe reconectar)</span>}
+                      {u.meta.fresh && u.meta.adsRead === false && (
+                        <span style={{ color: '#b91c1c' }}> · ⚠️ SIN permiso de anuncios (debe reconectar y aceptar todos los permisos)</span>
+                      )}
                     </>
                   : <span style={{ color: '#94a3b8' }}>📘 Sin Facebook vinculado todavía</span>}
               </div>
