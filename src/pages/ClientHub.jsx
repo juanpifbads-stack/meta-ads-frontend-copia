@@ -153,6 +153,7 @@ export default function ClientHub({ slug, onBack }) {
   const [cfg, setCfg] = useState(null);
   const [health, setHealth] = useState(null);
   const [goals, setGoals] = useState({ revenue: '', roas: '' });
+  const [editGoals, setEditGoals] = useState(false);
   const [planObjective, setPlanObjective] = useState(null); // objetivo del plan de medios del mes actual
   const [tab, setTab] = useState('resumen');
   const [msg, setMsg] = useState('');
@@ -181,7 +182,7 @@ export default function ClientHub({ slug, onBack }) {
   const saveGoals = () => {
     setMsg('Guardando…');
     apiClient.put(`/admin/${slug}/goals`, { revenue: parseFloat(goals.revenue) || 0, roas: parseFloat(goals.roas) || 0 })
-      .then(() => { setMsg('✓ Metas guardadas'); setTimeout(() => setMsg(''), 2000); })
+      .then(() => { setMsg('✓ Metas guardadas'); setEditGoals(false); setTimeout(() => setMsg(''), 2000); })
       .catch(() => setMsg('Error'));
   };
 
@@ -231,11 +232,14 @@ export default function ClientHub({ slug, onBack }) {
           {/* Objetivo (arriba) */}
           <div className="hub-goals-card">
             <div className="hub-goals-title hub-goals-title--dark">Objetivo</div>
-            {planObjective ? (
-              <div className="hub-metrics">
-                <div className="hub-metric"><div className="hub-metric-lbl">Meta facturación</div><div className="hub-metric-val">{fmtMoney(revGoal)}</div></div>
-                <div className="hub-metric"><div className="hub-metric-lbl">Meta ROAS</div><div className="hub-metric-val">{roasGoal ? roasGoal + '×' : '—'}</div></div>
-              </div>
+            {(revGoal > 0 || roasGoal > 0) && !editGoals ? (
+              <>
+                <div className="hub-metrics">
+                  <div className="hub-metric"><div className="hub-metric-lbl">Meta facturación</div><div className="hub-metric-val">{fmtMoney(revGoal)}</div></div>
+                  <div className="hub-metric"><div className="hub-metric-lbl">Meta ROAS</div><div className="hub-metric-val">{roasGoal ? roasGoal + '×' : '—'}</div></div>
+                </div>
+                {!planObjective && <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" style={{ marginTop: 12 }} onClick={() => setEditGoals(true)}>✎ Editar objetivo</button>}
+              </>
             ) : (
               <div className="hub-goals-row">
                 <div className="ad-field"><label>Meta facturación (ARS)</label><input type="number" value={goals.revenue} placeholder="ej. 5000000" onChange={(e) => setGoals((g) => ({ ...g, revenue: e.target.value }))} /></div>
