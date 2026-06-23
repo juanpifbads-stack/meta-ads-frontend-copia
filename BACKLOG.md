@@ -65,6 +65,12 @@
 
 ## ✅ Hecho (referencia, para no re-hacer)
 
+- **Reducción de carga a Meta (sanción 7.e.i.2).** Meta restringió la app por "impacto negativo /
+  volumen". Causa: `/admin/overview` (el Home) disparaba ~23 llamadas a Meta **en paralelo y sin
+  caché** en CADA carga. Fix: caché (`utils/cache.js`) + concurrencia limitada (`mapLimit`) en TODOS
+  los puntos que pegan a Meta: `/admin/overview` (salud 10min + lotes de 4), `meta-trend` (1h + lotes),
+  `public/meta-insights` (10min), `public/sales-source` (10min). Crons apagados. ⚠️ **No volver a
+  hacer llamadas a Meta sin caché ni en `Promise.all` sobre todos los clientes.** [06/2026]
 - Portal público manejado **desde la base** (ya no la lista estática `data/clients.js`). [06/2026]
 - Productos estratégicos: cruce de ventas **por ID de variante** (funciona aunque la tienda no use
   SKU) + nueva columna **Pedidos** (en cuántos pedidos se vendió, para detectar inflado mayorista) +
