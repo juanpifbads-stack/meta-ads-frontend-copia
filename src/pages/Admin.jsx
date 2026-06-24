@@ -443,10 +443,7 @@ export function NewClientForm({ onClose, onCreated }) {
 
   return (
     <div className="ad-section ad-new">
-      <div className="ad-row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 className="ad-section-title">Nuevo cliente</h3>
-        <button className="ad-btn ad-btn--ghost" onClick={onClose}>← Volver</button>
-      </div>
+      <h3 className="ad-section-title">Nuevo cliente</h3>
       <Field label="Nombre del cliente" value={f.name} onChange={setName} />
       {f.slug && <p className="ad-muted" style={{ margin: '-4px 0 8px' }}>URL: /cliente/<strong>{f.slug}</strong></p>}
 
