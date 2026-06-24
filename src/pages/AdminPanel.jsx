@@ -21,6 +21,7 @@ function UsersSection() {
   const [nu, setNu] = useState({ email: '', name: '', role: 'paid', password: '' });
   const [msg, setMsg] = useState('');
   const [assignOpen, setAssignOpen] = useState(null); // id del usuario con el panel de clientes abierto
+  const [open, setOpen] = useState(false);
 
   const load = () => apiClient.get('/admin/users').then((r) => setUsers(r.data.users || [])).catch(() => setUsers([]));
   useEffect(() => { load(); }, []);
@@ -57,7 +58,11 @@ function UsersSection() {
 
   return (
     <div className="ad-section">
-      <h3 className="ad-section-title">Usuarios internos</h3>
+      <h3 className="ad-section-title" onClick={() => setOpen((o) => !o)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>▸</span>
+        Usuarios internos {users && <span className="ad-muted" style={{ fontWeight: 400, fontSize: 13 }}>· {users.length}</span>}
+      </h3>
+      {open && <>
       <p className="ad-muted" style={{ margin: '0 0 12px' }}>Usuarios de Alquimia. <strong>admin</strong> ve todo; <strong>paid</strong> (cuando esté el enforcement) verá solo sus clientes y sin datos sensibles.</p>
 
       {users === null ? <p className="ad-muted">Cargando…</p> : (
@@ -123,6 +128,7 @@ function UsersSection() {
         {msg && <span className="ad-msg">{msg}</span>}
         <button className="ad-btn" onClick={create}>Crear usuario</button>
       </div>
+      </>}
     </div>
   );
 }
