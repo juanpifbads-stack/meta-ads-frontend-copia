@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import FinancePanel from '../components/FinancePanel.jsx';
+import { NewClientForm } from './Admin.jsx';
 import './Admin.css';
 
 /* Campo simple reutilizable */
@@ -103,7 +104,6 @@ function UsersSection() {
                     <option value="admin">Admin</option>
                   </select>
                 </div>
-                {u.role === 'paid' && <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => setAssignOpen(assignOpen === u.id ? null : u.id)}>Clientes ({(u.assigned_slugs || []).length})</button>}
                 <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => changePass(u)}>Cambiar contraseña</button>
                 <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => toggleActive(u)}>{u.active ? 'Desactivar' : 'Activar'}</button>
                 <button className="ad-btn ad-btn--ghost ad-btn--sm" style={{ color: '#b91c1c', borderColor: '#fecaca' }} onClick={() => removeUser(u)}>Eliminar</button>
@@ -120,17 +120,6 @@ function UsersSection() {
                     </>
                   : <span style={{ color: '#94a3b8' }}>📘 Sin Facebook vinculado todavía</span>}
               </div>
-              {u.role === 'paid' && assignOpen === u.id && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '6px 2px 2px' }}>
-                  {clients.map((c) => (
-                    <label key={c.slug} className="ad-cap" style={{ fontSize: 13 }}>
-                      <input type="checkbox" checked={(u.assigned_slugs || []).includes(c.slug)} onChange={() => toggleAssign(u, c.slug)} />
-                      <span>{c.name}</span>
-                    </label>
-                  ))}
-                  {!clients.length && <span className="ad-muted">No hay clientes.</span>}
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -141,27 +130,19 @@ function UsersSection() {
   );
 }
 
-// Lista de clientes: activar / marcar "no es cliente" (cuentas publicitarias migradas).
-const slugify = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-
+// Lista de clientes: activar / marcar "no es cliente" / eliminar; y crear (mismo form que la Home).
 function ClientsSection() {
   const [clients, setClients] = useState([]);
   const [open, setOpen] = useState(false);
   const [showNew, setShowNew] = useState(false);
-  const [nu, setNu] = useState({ name: '', slug: '' });
-  const [msg, setMsg] = useState('');
   const load = () => apiClient.get('/admin/clients?all=1').then((r) => setClients(r.data.clients || [])).catch(() => setClients([]));
   useEffect(() => { load(); }, []);
   const toggle = (c) => apiClient.put(`/admin/${c.slug}/active`, { active: !c.active })
     .then(() => setClients((cs) => cs.map((x) => x.slug === c.slug ? { ...x, active: !x.active } : x)))
     .catch(() => {});
-  const create = () => {
-    if (!nu.name.trim() || !nu.slug) { setMsg('Completá el nombre'); return; }
-    setMsg('Creando…');
-    apiClient.post('/admin/clients', { slug: nu.slug, config: { name: nu.name.trim() } })
-      .then(() => { setNu({ name: '', slug: '' }); setShowNew(false); setMsg(''); load(); })
-      .catch((e) => setMsg(e.response?.data?.message || 'Error al crear'));
+  const remove = (c) => {
+    if (!window.confirm(`¿Eliminar definitivamente a "${c.name}"? No se puede deshacer.`)) return;
+    apiClient.delete(`/admin/${c.slug}`).then(() => setClients((cs) => cs.filter((x) => x.slug !== c.slug))).catch(() => {});
   };
   const activos = clients.filter((c) => c.active).length;
   return (
@@ -174,28 +155,16 @@ function ClientsSection() {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
         <button className="ad-btn" onClick={() => setShowNew((s) => !s)}>{showNew ? 'Cerrar' : '+ Agregar cliente'}</button>
       </div>
-      {showNew && (
-        <div className="ad-newuser">
-          <div className="ad-sublabel">Nuevo cliente</div>
-          <div className="ad-row">
-            <F label="Nombre" value={nu.name} onChange={(v) => setNu({ name: v, slug: slugify(v) })} />
-            <F label="Slug (URL)" value={nu.slug} onChange={(v) => setNu((s) => ({ ...s, slug: slugify(v) }))} />
-          </div>
-          <div className="ad-row" style={{ justifyContent: 'flex-end' }}>
-            {msg && <span className="ad-msg">{msg}</span>}
-            <button className="ad-btn ad-btn--ghost" onClick={() => { setShowNew(false); setMsg(''); setNu({ name: '', slug: '' }); }}>Cancelar</button>
-            <button className="ad-btn" onClick={create}>Crear cliente</button>
-          </div>
-        </div>
-      )}
-      <p className="ad-muted">Los inactivos no aparecen en finanzas ni en el semáforo (no se borran).</p>
+      {showNew && <NewClientForm onClose={() => setShowNew(false)} onCreated={() => { setShowNew(false); load(); }} />}
+      <p className="ad-muted">Los inactivos no aparecen en finanzas ni en el semáforo (no se borran). Eliminar es definitivo.</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {clients.map((c) => (
-          <div key={c.slug} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', border: '0.5px solid #e3e1d8', borderRadius: 8, opacity: c.active ? 1 : 0.55 }}>
+          <div key={c.slug} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', border: '0.5px solid #e3e1d8', borderRadius: 8, opacity: c.active ? 1 : 0.55 }}>
             <span style={{ fontSize: 14, flex: 1 }}>{c.name}</span>
             <button className="ad-btn ad-btn--ghost" onClick={() => toggle(c)} style={c.active ? {} : { color: '#b91c1c' }}>
               {c.active ? 'Activo' : 'No es cliente'}
             </button>
+            <button className="ad-btn ad-btn--ghost" onClick={() => remove(c)} style={{ color: '#b91c1c' }} title="Eliminar definitivamente">Eliminar</button>
           </div>
         ))}
       </div>

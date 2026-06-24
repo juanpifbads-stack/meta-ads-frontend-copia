@@ -206,7 +206,7 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
         </div>
       )}
 
-      {showNew && <NewClientForm onClose={() => setShowNew(false)} onCreated={(s) => { setShowNew(false); loadClients(s); }} />}
+      {showNew && <NewClientForm onClose={onBack} onCreated={(s) => { setShowNew(false); loadClients(s); }} />}
 
       {/* Sub-apartados de configuración: Cliente / Portal del cliente */}
       {!showNew && slug && (
@@ -420,55 +420,35 @@ function MultiAccountSelect({ ids, onChange, disabled, all }) {
 
 const slugify = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
-function NewClientForm({ onClose, onCreated }) {
+export function NewClientForm({ onClose, onCreated }) {
   const { user } = useAuth();
   const isPaid = user?.role === 'paid' && !user?.legacy;
-  const [f, setF] = useState({
-    name: '', slug: '', email: '', accessKey: '', paymentsKey: '', metaAccountId: '', am: '', type: 'ecommerce',
-    caps: { meta: true, tiktok: false, contenido: false, web: false },
-    fees: { meta: 0, tiktok: 0, contenido: 0, web: 0 },
-    variable: { mode: 'none', base: 0, rate: 0.03 },
-    macroFrom: currentYM(), macroTo: currentYM(),
-    sections: {},
-    bankInfo: { titular: '', alias: '', cbu: '', observaciones: '' },
-  });
+  const [f, setF] = useState({ name: '', slug: '', type: 'ecommerce', am: '' });
   const [err, setErr] = useState('');
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
-  const setName = (v) => setF((s) => ({ ...s, name: v, slug: slugify(v), accessKey: s.accessKey || `${slugify(v)}2026` }));
-  const setBank = (k, v) => setF((s) => ({ ...s, bankInfo: { ...s.bankInfo, [k]: v } }));
-  const toggleCap = (k) => setF((s) => ({ ...s, caps: { ...s.caps, [k]: !s.caps[k] } }));
-  const setFee = (k, v) => setF((s) => ({ ...s, fees: { ...s.fees, [k]: v } }));
-  const toggleSection = (k) => setF((s) => ({ ...s, sections: { ...s.sections, [k]: !s.sections[k] } }));
+  const setName = (v) => setF((s) => ({ ...s, name: v, slug: slugify(v) }));
 
   const create = () => {
-    if (!f.name) { setErr('Poné el nombre del cliente.'); return; }
-    if (!f.metaAccountId) { setErr('Tenés que asociar una cuenta publicitaria de tu portfolio.'); return; }
-    if (!f.accessKey) { setErr('Falta la clave de acceso.'); return; }
-    if (!f.macroFrom || !f.macroTo) { setErr('Definí el período de la estrategia macro (de qué mes a qué mes).'); return; }
+    if (!f.name.trim()) { setErr('Poné el nombre del cliente.'); return; }
+    // Mínimo: nombre, tipo y responsable. El resto se configura después.
     const config = {
-      name: f.name, email: f.email || '', accessKey: f.accessKey, paymentsKey: f.paymentsKey || f.accessKey,
-      metaAccountId: f.metaAccountId || null, am: f.am || '', type: f.type,
-      capabilities: { meta: f.caps.meta, tiktok: f.caps.tiktok, contenido: f.caps.contenido, web: f.caps.web, ecommerce: f.type === 'ecommerce', variable: f.variable.mode !== 'none' },
-      fees: f.fees,
-      variable: f.variable,
-      panel: { sections: f.sections },
-      bankInfo: f.bankInfo,
+      name: f.name.trim(), type: f.type, am: isPaid ? '' : (f.am || ''),
+      accessKey: `${f.slug}2026`, paymentsKey: `${f.slug}2026`,
+      capabilities: { ecommerce: f.type === 'ecommerce' },
     };
-    const macro = { start_ym: f.macroFrom, end_ym: f.macroTo, period: `${fmtMonth(f.macroFrom)} – ${fmtMonth(f.macroTo)}`, objective: '', description: '' };
-    apiClient.post('/admin/clients', { slug: f.slug, config, macro })
+    apiClient.post('/admin/clients', { slug: f.slug, config })
       .then(() => onCreated(f.slug))
       .catch((e) => setErr(e.response?.data?.message || e.message || 'Error al crear'));
   };
 
   return (
     <div className="ad-section ad-new">
-      <div className="ad-row" style={{ justifyContent: 'space-between' }}>
+      <div className="ad-row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 className="ad-section-title">Nuevo cliente</h3>
-        <button className="ad-del" onClick={onClose}>×</button>
+        <button className="ad-btn ad-btn--ghost" onClick={onClose}>← Volver</button>
       </div>
       <Field label="Nombre del cliente" value={f.name} onChange={setName} />
       {f.slug && <p className="ad-muted" style={{ margin: '-4px 0 8px' }}>URL: /cliente/<strong>{f.slug}</strong></p>}
-      <Field label="Email del cliente" value={f.email} onChange={(v) => set('email', v)} />
 
       <div className="ad-row">
         <div className="ad-field">
@@ -489,51 +469,9 @@ function NewClientForm({ onClose, onCreated }) {
         )}
       </div>
 
-      <AdAccountSelect value={f.metaAccountId} onChange={(v) => set('metaAccountId', v)} label="Cuenta publicitaria (Meta) — obligatoria" all={isPaid} />
-
-      <div className="ad-row">
-        <Field label="Clave de acceso (cliente)" value={f.accessKey} onChange={(v) => set('accessKey', v)} />
-        {!isPaid && <Field label="Clave de pagos (admin)" value={f.paymentsKey} onChange={(v) => set('paymentsKey', v)} />}
-      </div>
-
-      <div className="ad-sublabel">Estrategia macro — ¿de qué mes a qué mes?</div>
-      <div className="ad-row">
-        <MonthSelect label="Desde" value={f.macroFrom} onChange={(v) => set('macroFrom', v)} />
-        <MonthSelect label="Hasta" value={f.macroTo} onChange={(v) => set('macroTo', v)} />
-      </div>
-
-      {!isPaid && (
-        <>
-          <div className="ad-sublabel">Servicios que ofrecés (con su monto)</div>
-          <ServicesEditor caps={f.caps} fees={f.fees} onToggle={toggleCap} onFee={setFee} />
-          <VariableEditor variable={f.variable} onChange={(v) => set('variable', v)} />
-        </>
-      )}
-
-      <div className="ad-sublabel">Secciones opcionales del panel</div>
-      <p className="ad-muted" style={{ margin: '0 0 6px' }}>Siempre van: {MANDATORY_LABELS.join(' · ')}.</p>
-      <div className="ad-caps">
-        {OPTIONAL_SECTIONS.map((s) => (
-          <label key={s.key} className="ad-cap">
-            <input type="checkbox" checked={!!f.sections[s.key]} onChange={() => toggleSection(s.key)} />
-            <span>{s.label}</span>
-          </label>
-        ))}
-      </div>
-
-      {!isPaid && (
-        <>
-          <div className="ad-sublabel">Datos bancarios de alquimia</div>
-          <div className="ad-row">
-            <Field label="Titular" value={f.bankInfo.titular} onChange={(v) => setBank('titular', v)} />
-            <Field label="Alias" value={f.bankInfo.alias} onChange={(v) => setBank('alias', v)} />
-          </div>
-          <Field label="CBU / CVU" value={f.bankInfo.cbu} onChange={(v) => setBank('cbu', v)} />
-        </>
-      )}
       {err && <div className="ad-err">{err}</div>}
       <button className="ad-btn" onClick={create}>Crear cliente</button>
-      <p className="ad-muted">Después de crearlo: cargá los planes de medios de los meses, y si tiene ecommerce conectá Tienda Nube desde la config del cliente.</p>
+      <p className="ad-muted">El resto (cuenta de Meta, claves, servicios, estrategia, etc.) se configura después en la config del cliente.</p>
     </div>
   );
 }

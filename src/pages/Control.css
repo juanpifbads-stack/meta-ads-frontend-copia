@@ -68,7 +68,7 @@
 .ctrl-btn--ghost {
   background: transparent;
   color: var(--color-text-primary);
-  border: 1.5px solid var(--color-gray-mid);
+  border: 1.5px solid #15161a;
 }
 .ctrl-btn--ghost:hover { border-color: var(--color-brand-blue); color: var(--color-brand-blue); }
 .ctrl-btn--sm { padding: 7px 14px; font-size: 12px; }
@@ -113,12 +113,12 @@
 .ctrl-pill {
   padding: 5px 12px;
   border-radius: 99px;
-  border: 1.5px solid var(--color-gray-mid);
+  border: 1.5px solid #15161a;
   background: transparent;
   font-size: 12px;
   cursor: pointer;
   font-family: var(--font-mono);
-  color: var(--color-text-secondary);
+  color: #15161a;
   transition: all 0.12s;
 }
 .ctrl-pill--active {

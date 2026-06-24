@@ -5,7 +5,7 @@
 
 .ad-btn { background: var(--color-brand-blue); color: #fff; border: none; border-radius: var(--radius-md); padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--font-mono); }
 .ad-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.ad-btn--ghost { background: transparent; color: var(--color-text-primary); border: 1.5px solid var(--color-gray-mid); }
+.ad-btn--ghost { background: transparent; color: var(--color-text-primary); border: 1.5px solid #15161a; }
 .ad-btn--ghost:hover { border-color: var(--color-brand-blue); color: var(--color-brand-blue); }
 
 .ad-controls { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; background: var(--color-surface); border: 1.5px solid var(--color-gray-light); border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 18px; }
@@ -15,7 +15,7 @@
 .ad-field { display: flex; flex-direction: column; gap: 5px; }
 .ad-field--grow { flex: 1; min-width: 160px; }
 .ad-field label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); }
-.ad-field input, .ad-field select, .ad-field textarea { border: 1.5px solid var(--color-gray-light); border-radius: var(--radius-sm); padding: 8px 11px; font-size: 13px; background: var(--color-surface); color: var(--color-text-primary); outline: none; font-family: inherit; }
+.ad-field input, .ad-field select, .ad-field textarea { border: 1.5px solid #15161a; border-radius: var(--radius-sm); padding: 8px 11px; font-size: 13px; background: var(--color-surface); color: var(--color-text-primary); outline: none; font-family: inherit; }
 .ad-field input:focus, .ad-field textarea:focus, .ad-field select:focus { border-color: var(--color-brand-blue); }
 .ad-field textarea { resize: vertical; min-height: 54px; }
 

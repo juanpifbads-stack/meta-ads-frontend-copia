@@ -1,14 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import apiClient, { getAuthToken } from '../api/client.js';
+import apiClient from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
-
-const API_URL = import.meta.env.VITE_API_URL || 'https://meta-ads-backend-production-85df.up.railway.app';
-// Re-dispara el OAuth de Facebook para reescribir un token fresco (con permisos).
-// Útil cuando el token está vigente pero sin ads_read (hay que reconectar aceptando todo).
-const reconnectFB = () => {
-  const t = getAuthToken();
-  window.location.href = `${API_URL}/auth/meta${t ? `?lt=${encodeURIComponent(t)}` : ''}`;
-};
 import './Control.css';
 import './Home.css';
 
@@ -177,10 +169,8 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
             <div className="ctrl-brand ctrl-brand--lg">alquimia.</div>
           </div>
           <div className="ctrl-header-actions">
-            <button className="ctrl-btn" onClick={onOptimize}>⚡ Optimizar</button>
             {isAdmin && <button className="ctrl-btn ctrl-btn--ghost" onClick={onAdmin}>⚙ Administración</button>}
-            <button className="ctrl-btn ctrl-btn--ghost" onClick={load} disabled={loading}>{loading ? 'Cargando…' : 'Actualizar'}</button>
-            <button className="ctrl-btn ctrl-btn--ghost" onClick={reconnectFB} title="Volvé a conectar tu Facebook aceptando todos los permisos (si ves $0 en las cuentas)">🔄 Reconectar Facebook</button>
+            <button className="ctrl-btn ctrl-btn--ghost" onClick={onNewClient}>+ Nuevo cliente</button>
             <button className="ctrl-btn ctrl-btn--ghost" onClick={logout}>Cerrar sesión</button>
           </div>
         </div>
@@ -211,7 +201,6 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
             </div>
           </div>
           <div className="ctrl-filters-right">
-            <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onNewClient}>+ Nuevo cliente</button>
             <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => setShowHide((v) => !v)}>
               {showHide ? 'Cerrar filtro' : `Filtrar clientes${hidden.length ? ` (${hidden.length})` : ''}`}
             </button>
