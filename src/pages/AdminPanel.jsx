@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client.js';
+import { useAuth } from '../context/AuthContext.jsx';
+import FinancePanel from '../components/FinancePanel.jsx';
 import './Admin.css';
 
 /* Campo simple reutilizable */
@@ -126,6 +128,7 @@ function UsersSection() {
 }
 
 export default function AdminPanel({ onBack }) {
+  const { user } = useAuth();
   return (
     <div className="ad-page">
       <header className="ad-header">
@@ -138,11 +141,8 @@ export default function AdminPanel({ onBack }) {
 
       <UsersSection />
 
-      {/* Próximamente: gestión de agencia (finanzas, fees, reparto) — solo admin. */}
-      <div className="ad-section">
-        <h3 className="ad-section-title">Gestión de agencia</h3>
-        <p className="ad-muted">Próximamente: parte financiera (fees, reparto, etc.). Solo visible para administradores.</p>
-      </div>
+      {/* Finanzas de la agencia — SOLO socios. */}
+      {user?.isSocio && <FinancePanel />}
     </div>
   );
 }
