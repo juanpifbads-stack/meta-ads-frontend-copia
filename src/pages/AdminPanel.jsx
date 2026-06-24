@@ -131,7 +131,7 @@ function UsersSection() {
 }
 
 // Lista de clientes: activar / marcar "no es cliente" / eliminar; y crear (mismo form que la Home).
-function ClientsSection() {
+function ClientsSection({ onOpenClient }) {
   const [clients, setClients] = useState([]);
   const [open, setOpen] = useState(false);
   const [showNew, setShowNew] = useState(false);
@@ -160,7 +160,7 @@ function ClientsSection() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {clients.map((c) => (
           <div key={c.slug} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', border: '0.5px solid #e3e1d8', borderRadius: 8, opacity: c.active ? 1 : 0.55 }}>
-            <span style={{ fontSize: 14, flex: 1 }}>{c.name}</span>
+            <button onClick={() => onOpenClient && onOpenClient(c.slug)} title="Abrir cliente" style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--color-text-primary)', padding: 0 }}>{c.name} →</button>
             <button className="ad-btn ad-btn--ghost" onClick={() => toggle(c)} style={c.active ? {} : { color: '#b91c1c' }}>
               {c.active ? 'Activo' : 'No es cliente'}
             </button>
@@ -173,7 +173,7 @@ function ClientsSection() {
   );
 }
 
-export default function AdminPanel({ onBack }) {
+export default function AdminPanel({ onBack, onOpenClient }) {
   const { user } = useAuth();
   return (
     <div className="ad-page">
@@ -187,7 +187,7 @@ export default function AdminPanel({ onBack }) {
 
       <UsersSection />
 
-      <ClientsSection />
+      <ClientsSection onOpenClient={onOpenClient} />
 
       {/* Finanzas de la agencia — SOLO socios. */}
       {user?.isSocio && <FinancePanel />}

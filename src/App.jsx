@@ -74,7 +74,7 @@ function AppShell() {
 
   let content;
   if (view === 'optimize') content = <Dashboard onBack={() => setView('home')} />;
-  else if (view === 'adminPanel') content = <AdminPanel onBack={() => setView('home')} />;
+  else if (view === 'adminPanel') content = <AdminPanel onBack={() => setView('home')} onOpenClient={(s) => { setSlug(s); setView('client'); }} />;
   else if (view === 'admin') content = <Admin onBack={() => setView('home')} autoNew={adminNew} />;
   else if (view === 'client' && slug) content = <ClientHub slug={slug} onBack={() => { setView('home'); setSlug(null); }} />;
   else content = (
