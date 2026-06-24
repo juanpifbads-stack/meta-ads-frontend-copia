@@ -22,6 +22,7 @@ function UsersSection() {
   const [msg, setMsg] = useState('');
   const [assignOpen, setAssignOpen] = useState(null); // id del usuario con el panel de clientes abierto
   const [open, setOpen] = useState(false);
+  const [showNew, setShowNew] = useState(false);
 
   const load = () => apiClient.get('/admin/users').then((r) => setUsers(r.data.users || [])).catch(() => setUsers([]));
   useEffect(() => { load(); }, []);
@@ -40,7 +41,7 @@ function UsersSection() {
     if (!nu.email || !nu.name || nu.password.length < 6) { setMsg('Completá email, nombre y contraseña de 6+ caracteres'); return; }
     setMsg('Creando…');
     apiClient.post('/admin/users', nu)
-      .then(() => { setNu({ email: '', name: '', role: 'paid', password: '' }); setMsg('✓ Usuario creado'); load(); setTimeout(() => setMsg(''), 2000); })
+      .then(() => { setNu({ email: '', name: '', role: 'paid', password: '' }); setMsg('✓ Usuario creado'); setShowNew(false); load(); setTimeout(() => setMsg(''), 2000); })
       .catch((e) => setMsg(e.response?.data?.message || 'Error al crear'));
   };
   const changePass = (u) => {
@@ -61,9 +62,30 @@ function UsersSection() {
       <h3 className="ad-section-title" onClick={() => setOpen((o) => !o)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>▸</span>
         Usuarios internos {users && <span className="ad-muted" style={{ fontWeight: 400, fontSize: 13 }}>· {users.length}</span>}
+        <button className="ad-btn" style={{ marginLeft: 'auto' }} onClick={(e) => { e.stopPropagation(); setOpen(true); setShowNew((s) => !s); }}>+ Agregar usuario</button>
       </h3>
       {open && <>
-      <p className="ad-muted" style={{ margin: '0 0 12px' }}>Usuarios de Alquimia. <strong>admin</strong> ve todo; <strong>paid</strong> (cuando esté el enforcement) verá solo sus clientes y sin datos sensibles.</p>
+      {showNew && (
+        <div className="ad-newuser">
+          <div className="ad-sublabel">Crear usuario</div>
+          <div className="ad-row">
+            <F label="Email" value={nu.email} onChange={(v) => setNu((s) => ({ ...s, email: v }))} type="email" />
+            <F label="Nombre" value={nu.name} onChange={(v) => setNu((s) => ({ ...s, name: v }))} />
+            <div className="ad-field">
+              <label>Rol</label>
+              <select value={nu.role} onChange={(e) => setNu((s) => ({ ...s, role: e.target.value }))}>
+                <option value="paid">Paid</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <F label="Contraseña temporal" value={nu.password} onChange={(v) => setNu((s) => ({ ...s, password: v }))} />
+          </div>
+          <div className="ad-row" style={{ justifyContent: 'flex-end' }}>
+            {msg && <span className="ad-msg">{msg}</span>}
+            <button className="ad-btn" onClick={create}>Crear usuario</button>
+          </div>
+        </div>
+      )}
 
       {users === null ? <p className="ad-muted">Cargando…</p> : (
         <div style={{ marginBottom: 16 }}>
@@ -111,23 +133,6 @@ function UsersSection() {
         </div>
       )}
 
-      <div className="ad-sublabel">Crear usuario</div>
-      <div className="ad-row">
-        <F label="Email" value={nu.email} onChange={(v) => setNu((s) => ({ ...s, email: v }))} type="email" />
-        <F label="Nombre" value={nu.name} onChange={(v) => setNu((s) => ({ ...s, name: v }))} />
-        <div className="ad-field">
-          <label>Rol</label>
-          <select value={nu.role} onChange={(e) => setNu((s) => ({ ...s, role: e.target.value }))}>
-            <option value="paid">Paid</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-        <F label="Contraseña temporal" value={nu.password} onChange={(v) => setNu((s) => ({ ...s, password: v }))} />
-      </div>
-      <div className="ad-row" style={{ justifyContent: 'flex-end' }}>
-        {msg && <span className="ad-msg">{msg}</span>}
-        <button className="ad-btn" onClick={create}>Crear usuario</button>
-      </div>
       </>}
     </div>
   );
