@@ -130,6 +130,7 @@ function UsersSection() {
 // Lista de clientes: activar / marcar "no es cliente" (cuentas publicitarias migradas).
 function ClientsSection() {
   const [clients, setClients] = useState([]);
+  const [open, setOpen] = useState(false);
   const load = () => apiClient.get('/admin/clients?all=1').then((r) => setClients(r.data.clients || [])).catch(() => setClients([]));
   useEffect(() => { load(); }, []);
   const toggle = (c) => apiClient.put(`/admin/${c.slug}/active`, { active: !c.active })
@@ -138,8 +139,12 @@ function ClientsSection() {
   const activos = clients.filter((c) => c.active).length;
   return (
     <div className="ad-section">
-      <h3 className="ad-section-title">Clientes</h3>
-      <p className="ad-muted">{activos} activos de {clients.length}. Los inactivos no aparecen en finanzas ni en el semáforo (no se borran).</p>
+      <h3 className="ad-section-title" onClick={() => setOpen((o) => !o)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>▸</span>
+        Clientes <span className="ad-muted" style={{ fontWeight: 400, fontSize: 13 }}>· {activos} activos de {clients.length}</span>
+      </h3>
+      {open && <>
+      <p className="ad-muted">Los inactivos no aparecen en finanzas ni en el semáforo (no se borran).</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {clients.map((c) => (
           <div key={c.slug} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', border: '0.5px solid #e3e1d8', borderRadius: 8, opacity: c.active ? 1 : 0.55 }}>
@@ -150,6 +155,7 @@ function ClientsSection() {
           </div>
         ))}
       </div>
+      </>}
     </div>
   );
 }
