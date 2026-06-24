@@ -130,7 +130,7 @@ function UsersSection() {
 // Lista de clientes: activar / marcar "no es cliente" (cuentas publicitarias migradas).
 function ClientsSection() {
   const [clients, setClients] = useState([]);
-  const load = () => apiClient.get('/admin/clients').then((r) => setClients(r.data.clients || [])).catch(() => setClients([]));
+  const load = () => apiClient.get('/admin/clients?all=1').then((r) => setClients(r.data.clients || [])).catch(() => setClients([]));
   useEffect(() => { load(); }, []);
   const toggle = (c) => apiClient.put(`/admin/${c.slug}/active`, { active: !c.active })
     .then(() => setClients((cs) => cs.map((x) => x.slug === c.slug ? { ...x, active: !x.active } : x)))
