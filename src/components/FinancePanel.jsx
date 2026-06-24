@@ -12,11 +12,14 @@ const fmt = (x) => Math.round(x || 0).toLocaleString('es-AR');
 
 function defaultLine(servicio) {
   return {
-    servicio, tipo: 'post', moneda: 'ARS', fee: 0, socio_pct: 50, opex_pct: 30, opex_operador: '',
-    reparto: [{ persona: '', pct: 100 }], variable: { modo: 'none', base: 0, rate: 0, fuente: 'manual' },
+    servicio, tipo: 'post', moneda: 'ARS', fee: '', socio_pct: 50, opex_pct: 30, opex_operador: '',
+    reparto: [{ persona: '', pct: 100 }], variable: { modo: 'none', base: '', rate: '', fuente: 'manual' },
     cobro: { tipo: 'inicio_mes' },
   };
 }
+
+// Solo dígitos, punto y coma (sin spinner, sin forzar 0). El backend coacciona a número.
+const numProps = { type: 'text', inputMode: 'decimal' };
 
 // ─── Configuración ───────────────────────────────────────────────────────────
 function ConfigTab({ clients, people, month }) {
@@ -75,19 +78,26 @@ function ConfigTab({ clients, people, month }) {
       {lines.map((l, i) => (
         <div className="fp-card" key={l.id || `new-${i}`}>
           <div className="fp-card-head">
-            <strong>{servLabel(l.servicio)}</strong>
+            {l.id
+              ? <strong>{servLabel(l.servicio)}</strong>
+              : (
+                <select value={l.servicio} onChange={(e) => setLine(i, { servicio: e.target.value })}>
+                  {SERVICIOS.filter((s) => s.k === l.servicio || !lines.some((x, xi) => xi !== i && x.servicio === s.k))
+                    .map((s) => <option key={s.k} value={s.k}>{s.l}</option>)}
+                </select>
+              )}
             <span className="fp-tag">{l.tipo === 'pre' ? 'pre-agencia' : 'post-agencia'}</span>
             <button className="fp-btn fp-btn--danger" style={{ marginLeft: 'auto' }} onClick={() => delLine(l)}>Quitar</button>
           </div>
           <div className="fp-grid">
             <label>Tipo<select value={l.tipo} onChange={(e) => setLine(i, { tipo: e.target.value })}><option value="post">Post-agencia</option><option value="pre">Pre-agencia</option></select></label>
             <label>Moneda<select value={l.moneda} onChange={(e) => setLine(i, { moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
-            <label>Fee mensual<input type="number" value={l.fee} onChange={(e) => setLine(i, { fee: parseFloat(e.target.value) || 0 })} /></label>
+            <label>Fee mensual<input {...numProps} value={l.fee ?? ''} onChange={(e) => setLine(i, { fee: e.target.value })} /></label>
           </div>
 
           {l.tipo === 'post' ? (
             <div className="fp-grid">
-              <label>Sueldo socios %<input type="number" value={l.socio_pct} onChange={(e) => setLine(i, { socio_pct: parseFloat(e.target.value) || 0 })} /></label>
+              <label>Sueldo socios %<input {...numProps} value={l.socio_pct ?? ''} onChange={(e) => setLine(i, { socio_pct: e.target.value })} /></label>
               <label>OPEX %<select value={l.opex_pct} onChange={(e) => setLine(i, { opex_pct: parseFloat(e.target.value) })}><option value="30">30 %</option><option value="40">40 %</option></select></label>
               <label>Operador (OPEX)<select value={l.opex_operador || ''} onChange={(e) => setLine(i, { opex_operador: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
             </div>
@@ -97,7 +107,7 @@ function ConfigTab({ clients, people, month }) {
               {(l.reparto || []).map((r, ri) => (
                 <div className="fp-pre-row" key={ri}>
                   <select value={r.persona || ''} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, persona: e.target.value } : x) })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select>
-                  <input type="number" value={r.pct} style={{ width: 70 }} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, pct: parseFloat(e.target.value) || 0 } : x) })} /><span className="fp-pct">%</span>
+                  <input {...numProps} value={r.pct ?? ''} style={{ width: 70 }} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, pct: e.target.value } : x) })} /><span className="fp-pct">%</span>
                   {l.reparto.length > 1 && <button className="fp-btn fp-btn--danger" onClick={() => setLine(i, { reparto: l.reparto.filter((_, xi) => xi !== ri) })}>×</button>}
                 </div>
               ))}
@@ -107,8 +117,8 @@ function ConfigTab({ clients, people, month }) {
 
           <div className="fp-grid">
             <label>Variable<select value={l.variable?.modo || 'none'} onChange={(e) => setVar(i, { modo: e.target.value })}><option value="none">Sin variable</option><option value="differential">Diferencial</option><option value="percent">Sobre total</option></select></label>
-            {l.variable?.modo !== 'none' && <label>Base<input type="number" value={l.variable?.base || 0} onChange={(e) => setVar(i, { base: parseFloat(e.target.value) || 0 })} /></label>}
-            {l.variable?.modo !== 'none' && <label>Rate %<input type="number" value={l.variable?.rate || 0} onChange={(e) => setVar(i, { rate: parseFloat(e.target.value) || 0 })} /></label>}
+            {l.variable?.modo !== 'none' && <label>Base<input {...numProps} value={l.variable?.base ?? ''} onChange={(e) => setVar(i, { base: e.target.value })} /></label>}
+            {l.variable?.modo !== 'none' && <label>Rate %<input {...numProps} value={l.variable?.rate ?? ''} onChange={(e) => setVar(i, { rate: e.target.value })} /></label>}
             {l.variable?.modo !== 'none' && <label>Facturación<select value={l.variable?.fuente || 'manual'} onChange={(e) => setVar(i, { fuente: e.target.value })}><option value="tiendanube">Tienda Nube</option><option value="manual">Manual</option></select></label>}
           </div>
 
