@@ -62,9 +62,11 @@ function UsersSection() {
       <h3 className="ad-section-title" onClick={() => setOpen((o) => !o)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>▸</span>
         Usuarios internos {users && <span className="ad-muted" style={{ fontWeight: 400, fontSize: 13 }}>· {users.length}</span>}
-        <button className="ad-btn" style={{ marginLeft: 'auto' }} onClick={(e) => { e.stopPropagation(); setOpen(true); setShowNew((s) => !s); }}>+ Agregar usuario</button>
       </h3>
       {open && <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+        <button className="ad-btn" onClick={() => setShowNew((s) => !s)}>{showNew ? 'Cerrar' : '+ Agregar usuario'}</button>
+      </div>
       {showNew && (
         <div className="ad-newuser">
           <div className="ad-sublabel">Crear usuario</div>
@@ -82,6 +84,7 @@ function UsersSection() {
           </div>
           <div className="ad-row" style={{ justifyContent: 'flex-end' }}>
             {msg && <span className="ad-msg">{msg}</span>}
+            <button className="ad-btn ad-btn--ghost" onClick={() => { setShowNew(false); setMsg(''); }}>Cancelar</button>
             <button className="ad-btn" onClick={create}>Crear usuario</button>
           </div>
         </div>
