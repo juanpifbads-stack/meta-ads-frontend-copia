@@ -127,6 +127,33 @@ function UsersSection() {
   );
 }
 
+// Lista de clientes: activar / marcar "no es cliente" (cuentas publicitarias migradas).
+function ClientsSection() {
+  const [clients, setClients] = useState([]);
+  const load = () => apiClient.get('/admin/clients').then((r) => setClients(r.data.clients || [])).catch(() => setClients([]));
+  useEffect(() => { load(); }, []);
+  const toggle = (c) => apiClient.put(`/admin/${c.slug}/active`, { active: !c.active })
+    .then(() => setClients((cs) => cs.map((x) => x.slug === c.slug ? { ...x, active: !x.active } : x)))
+    .catch(() => {});
+  const activos = clients.filter((c) => c.active).length;
+  return (
+    <div className="ad-section">
+      <h3 className="ad-section-title">Clientes</h3>
+      <p className="ad-muted">{activos} activos de {clients.length}. Los inactivos no aparecen en finanzas ni en el semáforo (no se borran).</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {clients.map((c) => (
+          <div key={c.slug} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', border: '0.5px solid #e3e1d8', borderRadius: 8, opacity: c.active ? 1 : 0.55 }}>
+            <span style={{ fontSize: 14, flex: 1 }}>{c.name}</span>
+            <button className="ad-btn ad-btn--ghost" onClick={() => toggle(c)} style={c.active ? {} : { color: '#b91c1c' }}>
+              {c.active ? 'Activo' : 'No es cliente'}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPanel({ onBack }) {
   const { user } = useAuth();
   return (
@@ -140,6 +167,8 @@ export default function AdminPanel({ onBack }) {
       </header>
 
       <UsersSection />
+
+      <ClientsSection />
 
       {/* Finanzas de la agencia — SOLO socios. */}
       {user?.isSocio && <FinancePanel />}

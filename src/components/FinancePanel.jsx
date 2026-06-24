@@ -23,8 +23,9 @@ const numProps = { type: 'text', inputMode: 'decimal' };
 
 // ─── Configuración ───────────────────────────────────────────────────────────
 function ConfigTab({ clients, people, month }) {
-  const [slug, setSlug] = useState(clients[0]?.slug || '');
+  const [slug, setSlug] = useState('');
   const [lines, setLines] = useState([]);
+  useEffect(() => { if (!slug) { const f = clients.find((c) => c.active !== false); if (f) setSlug(f.slug); } }, [clients, slug]);
   const [fx, setFx] = useState('');
   const [msg, setMsg] = useState('');
 
@@ -65,7 +66,7 @@ function ConfigTab({ clients, people, month }) {
       <div className="fp-bar">
         <label className="fp-inline">Cliente
           <select value={slug} onChange={(e) => setSlug(e.target.value)}>
-            {clients.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
+            {clients.filter((c) => c.active !== false).map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
           </select>
         </label>
         <label className="fp-inline" style={{ marginLeft: 'auto' }}>Tipo de cambio (ARS por USD)
