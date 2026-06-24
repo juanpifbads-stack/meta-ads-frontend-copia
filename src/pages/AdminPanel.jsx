@@ -142,14 +142,27 @@ function UsersSection() {
 }
 
 // Lista de clientes: activar / marcar "no es cliente" (cuentas publicitarias migradas).
+const slugify = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
 function ClientsSection() {
   const [clients, setClients] = useState([]);
   const [open, setOpen] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [nu, setNu] = useState({ name: '', slug: '' });
+  const [msg, setMsg] = useState('');
   const load = () => apiClient.get('/admin/clients?all=1').then((r) => setClients(r.data.clients || [])).catch(() => setClients([]));
   useEffect(() => { load(); }, []);
   const toggle = (c) => apiClient.put(`/admin/${c.slug}/active`, { active: !c.active })
     .then(() => setClients((cs) => cs.map((x) => x.slug === c.slug ? { ...x, active: !x.active } : x)))
     .catch(() => {});
+  const create = () => {
+    if (!nu.name.trim() || !nu.slug) { setMsg('Completá el nombre'); return; }
+    setMsg('Creando…');
+    apiClient.post('/admin/clients', { slug: nu.slug, config: { name: nu.name.trim() } })
+      .then(() => { setNu({ name: '', slug: '' }); setShowNew(false); setMsg(''); load(); })
+      .catch((e) => setMsg(e.response?.data?.message || 'Error al crear'));
+  };
   const activos = clients.filter((c) => c.active).length;
   return (
     <div className="ad-section">
@@ -158,6 +171,23 @@ function ClientsSection() {
         Clientes <span className="ad-muted" style={{ fontWeight: 400, fontSize: 13 }}>· {activos} activos de {clients.length}</span>
       </h3>
       {open && <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+        <button className="ad-btn" onClick={() => setShowNew((s) => !s)}>{showNew ? 'Cerrar' : '+ Agregar cliente'}</button>
+      </div>
+      {showNew && (
+        <div className="ad-newuser">
+          <div className="ad-sublabel">Nuevo cliente</div>
+          <div className="ad-row">
+            <F label="Nombre" value={nu.name} onChange={(v) => setNu({ name: v, slug: slugify(v) })} />
+            <F label="Slug (URL)" value={nu.slug} onChange={(v) => setNu((s) => ({ ...s, slug: slugify(v) }))} />
+          </div>
+          <div className="ad-row" style={{ justifyContent: 'flex-end' }}>
+            {msg && <span className="ad-msg">{msg}</span>}
+            <button className="ad-btn ad-btn--ghost" onClick={() => { setShowNew(false); setMsg(''); setNu({ name: '', slug: '' }); }}>Cancelar</button>
+            <button className="ad-btn" onClick={create}>Crear cliente</button>
+          </div>
+        </div>
+      )}
       <p className="ad-muted">Los inactivos no aparecen en finanzas ni en el semáforo (no se borran).</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {clients.map((c) => (
