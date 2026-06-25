@@ -180,7 +180,7 @@ const CONTENT_GUIDE = `Compartinos el material (fotos y videos) en una carpeta d
 Cuando esté lista, pegá abajo el link de la carpeta y asegurate de darnos permiso de visualización.`;
 
 /* ── Formulario de onboarding (3 secciones, progreso, resumable, buyer personas) ── */
-function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPersonas, intros, onClose, onSaved }) {
+export function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPersonas, intros, onClose, onSaved }) {
   // Mapa { akey: answer } inicial desde lo ya respondido.
   const [answers, setAnswers] = useState(() => {
     const m = {};
@@ -350,7 +350,7 @@ function OnboardingForm({ slug, authKey, questions, initialAnswers, initialPerso
 }
 
 /* ── Modal: compartir carpeta de contenido (link de Drive) ── */
-function ContentModal({ slug, authKey, initialLink, onClose, onSaved }) {
+export function ContentModal({ slug, authKey, initialLink, onClose, onSaved }) {
   const [link, setLink] = useState(initialLink || '');
   const [saving, setSaving] = useState(false);
   const save = () => {

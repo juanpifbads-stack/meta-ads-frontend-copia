@@ -5,6 +5,7 @@ import PaymentsSection from '../components/PaymentsSection.jsx';
 import PaymentsTimeline from '../components/PaymentsTimeline.jsx';
 import StrategicProducts from '../components/StrategicProducts.jsx';
 import TasksSection from '../components/TasksSection.jsx';
+import OnboardingTasks from '../components/OnboardingTasks.jsx';
 import { sumByCurrency, fmtTotals } from '../utils/budget.js';
 import './ClientPortal.css';
 
@@ -535,6 +536,9 @@ function ClientDashboard({ client }) {
       {show('tareas') && (
       <section className="cp-section">
         <h2 className="cp-section-title">Tareas</h2>
+        {generic && data.onboarding && (data.onboarding.pedirFormulario || data.onboarding.pedirContenido) && (
+          <OnboardingTasks slug={client.slug} accessKey={client.accessKey} toggles={data.onboarding} />
+        )}
         <TasksSection slug={client.slug} accessKey={client.accessKey} />
       </section>
       )}

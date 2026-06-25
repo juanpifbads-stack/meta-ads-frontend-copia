@@ -435,6 +435,8 @@ export function NewClientForm({ onClose, onCreated }) {
       name: f.name.trim(), type: f.type, am: isPaid ? '' : (f.am || ''),
       accessKey: `${f.slug}2026`, paymentsKey: `${f.slug}2026`,
       capabilities: { ecommerce: f.type === 'ecommerce' },
+      // Cliente nuevo arranca en onboarding (formulario + contenido + fechas).
+      onboarding: { pedirFormulario: true, pedirContenido: true, mostrarFechas: true },
     };
     apiClient.post('/admin/clients', { slug: f.slug, config })
       .then(() => onCreated(f.slug))
@@ -586,6 +588,20 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
                     <label key={s.key} className="ad-cap">
                       <input type="checkbox" checked={on} onChange={() => setCfg({ ...cfg, panel: { ...(cfg.panel || {}), sections: { ...((cfg.panel || {}).sections || {}), [s.key]: !on } } })} />
                       <span>{s.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              <div className="ad-sublabel" style={{ marginTop: 14 }}>Onboarding</div>
+              <p className="ad-muted" style={{ margin: '0 0 6px' }}>Qué se le pide al cliente al arrancar. Apagá todo si ya es un cliente activo.</p>
+              <div className="ad-caps">
+                {[['pedirFormulario', 'Pedir formulario de marca'], ['pedirContenido', 'Pedir carpeta de contenido'], ['mostrarFechas', 'Mostrar fechas / calendario']].map(([k, label]) => {
+                  const on = !!(cfg.onboarding || {})[k];
+                  return (
+                    <label key={k} className="ad-cap">
+                      <input type="checkbox" checked={on} onChange={() => setCfg({ ...cfg, onboarding: { ...(cfg.onboarding || {}), [k]: !on } })} />
+                      <span>{label}</span>
                     </label>
                   );
                 })}
