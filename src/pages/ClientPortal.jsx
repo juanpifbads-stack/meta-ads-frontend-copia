@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import apiClient from '../api/client.js';
 import PaymentsSection from '../components/PaymentsSection.jsx';
@@ -205,6 +205,11 @@ function ClientDashboard({ client }) {
   const [content, setContent] = useState(null);
   const [month, setMonth] = useState(null);
   const [welcomeDone, setWelcomeDone] = useState(false); // bienvenida breve en cada ingreso (solo genéricos)
+  const [ob, setOb] = useState(null); // estado del onboarding (para saber si sigue pendiente)
+  const reloadOb = useCallback(() => {
+    apiClient.get(`/onboarding/${client.slug}`, { params: { key: client.accessKey } })
+      .then((r) => setOb(r.data)).catch(() => setOb(null));
+  }, [client.slug, client.accessKey]);
 
   useEffect(() => {
     let alive = true;
@@ -214,6 +219,12 @@ function ClientDashboard({ client }) {
       .catch(() => {});
     return () => { alive = false; };
   }, [client.slug, client.accessKey, month]);
+
+  // Si el cliente está en modo onboarding, traemos su estado para saber si sigue pendiente.
+  useEffect(() => {
+    const o = content && content.onboarding;
+    if (content && content.panel && o && (o.pedirFormulario || o.pedirContenido)) reloadOb();
+  }, [content, reloadOb]);
 
   const data = content || client;
   const {
@@ -229,7 +240,17 @@ function ClientDashboard({ client }) {
   const MANDATORY = ['macro', 'estrategiaMes', 'facturacion', 'ritmo', 'performanceMeta', 'justificacion', 'consideraciones', 'tareas'];
   const panelSections = data.panel?.sections || null;
   const generic = !!data.panel;
-  const show = (key) => (generic ? (MANDATORY.includes(key) || !!(panelSections || {})[key]) : true);
+  // ¿El cliente está en onboarding? (tiene tareas de onboarding pendientes)
+  const onbT = data.onboarding || {};
+  const wantsOnb = generic && (onbT.pedirFormulario || onbT.pedirContenido);
+  const onboardingPending = wantsOnb && (!ob
+    || (onbT.pedirFormulario && !ob.formSubmitted)
+    || (onbT.pedirContenido && !ob.contentSubmitted));
+  // En onboarding solo se muestra Tareas (y Fechas aparte); el resto se desbloquea al completar.
+  const show = (key) => {
+    if (onboardingPending) return key === 'tareas';
+    return generic ? (MANDATORY.includes(key) || !!(panelSections || {})[key]) : true;
+  };
 
   // Bienvenida breve y saltable en cada ingreso (solo clientes nuevos/genéricos; Moka/legacy no).
   if (content && generic && !welcomeDone) {
@@ -349,6 +370,7 @@ function ClientDashboard({ client }) {
       )}
 
       {/* Performance ecommerce */}
+      {!onboardingPending && (
       <section className="cp-section">
         <h2 className="cp-section-title">Performance ecommerce</h2>
         <div className="cp-kpis cp-kpis--3">
@@ -413,6 +435,7 @@ function ClientDashboard({ client }) {
         )}
         </div>
       </section>
+      )}
 
       {/* Performance Meta */}
       {caps.meta && show('performanceMeta') && (
@@ -545,7 +568,7 @@ function ClientDashboard({ client }) {
       <section className="cp-section">
         <h2 className="cp-section-title">Tareas</h2>
         {generic && data.onboarding && (data.onboarding.pedirFormulario || data.onboarding.pedirContenido) && (
-          <OnboardingTasks slug={client.slug} accessKey={client.accessKey} toggles={data.onboarding} />
+          <OnboardingTasks slug={client.slug} accessKey={client.accessKey} toggles={data.onboarding} onChange={reloadOb} />
         )}
         <TasksSection slug={client.slug} accessKey={client.accessKey} />
       </section>

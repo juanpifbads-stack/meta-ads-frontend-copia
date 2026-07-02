@@ -437,6 +437,8 @@ export function NewClientForm({ onClose, onCreated }) {
       capabilities: { ecommerce: f.type === 'ecommerce' },
       // Cliente nuevo arranca en onboarding (formulario + contenido + fechas).
       onboarding: { pedirFormulario: true, pedirContenido: true, mostrarFechas: true },
+      // `panel` activa el modo portal moderno (progresivo). Sin esto caía a modo legacy (Moka).
+      panel: { sections: {} },
     };
     apiClient.post('/admin/clients', { slug: f.slug, config })
       .then(() => onCreated(f.slug))

@@ -4,7 +4,7 @@ import { OnboardingForm, ContentModal } from '../pages/Onboarding.jsx';
 
 // Tareas de onboarding (formulario + carpeta de contenido) dentro del panel del cliente.
 // Reusa los modales del onboarding. Se muestra solo si los toggles están prendidos.
-export default function OnboardingTasks({ slug, accessKey, toggles }) {
+export default function OnboardingTasks({ slug, accessKey, toggles, onChange }) {
   const [ob, setOb] = useState(null);
   const [modal, setModal] = useState(null); // 'form' | 'content'
 
@@ -13,6 +13,7 @@ export default function OnboardingTasks({ slug, accessKey, toggles }) {
       .then((r) => setOb(r.data)).catch(() => setOb(null));
   }, [slug, accessKey]);
   useEffect(() => { load(); }, [load]);
+  const saved = () => { setModal(null); load(); if (onChange) onChange(); };
 
   const wantForm = !!toggles?.pedirFormulario;
   const wantContent = !!toggles?.pedirContenido;
@@ -33,11 +34,11 @@ export default function OnboardingTasks({ slug, accessKey, toggles }) {
       {modal === 'form' && (
         <OnboardingForm slug={slug} authKey={accessKey} questions={ob.questions || []} initialAnswers={ob.answers || []}
           initialPersonas={ob.personas || [{ id: 'p1', description: '' }]} intros={ob.sectionIntros || {}}
-          onClose={() => setModal(null)} onSaved={() => { setModal(null); load(); }} />
+          onClose={() => setModal(null)} onSaved={saved} />
       )}
       {modal === 'content' && (
         <ContentModal slug={slug} authKey={accessKey} initialLink={ob.content?.driveLink || ''}
-          onClose={() => setModal(null)} onSaved={() => { setModal(null); load(); }} />
+          onClose={() => setModal(null)} onSaved={saved} />
       )}
     </div>
   );
