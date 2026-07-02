@@ -252,10 +252,9 @@ function ClientDashboard({ client }) {
     return generic ? (MANDATORY.includes(key) || !!(panelSections || {})[key]) : true;
   };
 
-  // Bienvenida breve y saltable en cada ingreso (solo clientes nuevos/genéricos; Moka/legacy no).
-  if (content && generic && !welcomeDone) {
-    return <Welcome name={data.name} onDone={() => setWelcomeDone(true)} />;
-  }
+  // Bienvenida breve y saltable: se renderiza como overlay dentro del return
+  // (NO como early-return, para no romper el orden de hooks).
+  const showWelcome = !!content && generic && !welcomeDone;
 
   // Contenido alimentado por el plan de medios (solo para portales genéricos).
   const mediaObjective = generic ? data.mediaObjective : null;
@@ -329,6 +328,11 @@ function ClientDashboard({ client }) {
 
   return (
     <div className="cp-page">
+      {showWelcome && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'var(--color-background, #fff)' }}>
+          <Welcome name={data.name} onDone={() => setWelcomeDone(true)} />
+        </div>
+      )}
       {/* Header */}
       <header className="cp-header">
         <div>
