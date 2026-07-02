@@ -108,18 +108,6 @@ function UsersSection() {
                 <button className="ad-btn ad-btn--ghost ad-btn--sm" onClick={() => toggleActive(u)}>{u.active ? 'Desactivar' : 'Activar'}</button>
                 <button className="ad-btn ad-btn--ghost ad-btn--sm" style={{ color: '#b91c1c', borderColor: '#fecaca' }} onClick={() => removeUser(u)}>Eliminar</button>
               </div>
-              <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#64748b', padding: '2px 2px 0' }}>
-                {u.meta
-                  ? <>📘 Facebook vinculado: <strong style={{ color: '#15161a' }}>{u.meta.name || u.meta.email || '—'}</strong>{' '}
-                      {u.meta.fresh
-                        ? <span style={{ color: '#15803d' }}>· token vigente{u.meta.expiresAt ? ` (hasta ${new Date(u.meta.expiresAt).toLocaleDateString('es-AR')})` : ''}</span>
-                        : <span style={{ color: '#b91c1c' }}>· token vencido (debe reconectar)</span>}
-                      {u.meta.fresh && u.meta.adsRead === false && (
-                        <span style={{ color: '#b91c1c' }}> · ⚠️ SIN permiso de anuncios (debe reconectar y aceptar todos los permisos)</span>
-                      )}
-                    </>
-                  : <span style={{ color: '#94a3b8' }}>📘 Sin Facebook vinculado todavía</span>}
-              </div>
             </div>
           ))}
         </div>

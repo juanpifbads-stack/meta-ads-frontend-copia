@@ -38,10 +38,10 @@ export function AuthProvider({ children }) {
     loading,
     logout,
     refresh,
-    // Llega a la app si: usuario interno con Meta conectada, o sesión legacy (solo-Meta).
-    isAuthenticated: !!user && (user.metaConnected || user.legacy),
-    // Logueado en Alquimia pero todavía sin conectar Facebook.
-    needsMeta: !!user && !user.metaConnected && !user.legacy,
+    // Modelo con token de agencia: entrar con Alquimia (usuario/contraseña) alcanza.
+    // Ya no se conecta Facebook por persona.
+    isAuthenticated: !!user,
+    needsMeta: false,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

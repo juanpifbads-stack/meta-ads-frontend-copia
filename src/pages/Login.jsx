@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import apiClient, { setAuthToken, getAuthToken } from '../api/client.js';
+import apiClient, { setAuthToken } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
-
-const API_URL = import.meta.env.VITE_API_URL || 'https://meta-ads-backend-production-85df.up.railway.app';
 
 const card = {
   backgroundColor: 'var(--color-white)', border: '0.5px solid var(--color-gray-mid)',
@@ -19,18 +17,11 @@ const inputStyle = {
 };
 
 export default function Login() {
-  const { needsMeta, user, refresh, logout } = useAuth();
+  const { refresh } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const connectFB = () => {
-    // Pasamos el token del login (sid) para que el backend recupere la identidad
-    // de Alquimia durante el flujo de Facebook (las cookies de terceros se bloquean).
-    const t = getAuthToken();
-    window.location.href = `${API_URL}/auth/meta${t ? `?lt=${encodeURIComponent(t)}` : ''}`;
-  };
 
   const submit = async () => {
     if (!email || !password) return;
@@ -38,48 +29,13 @@ export default function Login() {
     try {
       const r = await apiClient.post('/auth/login', { email: email.trim(), password });
       setAuthToken(r.data.token);
-      const me = await refresh();          // actualiza el contexto (rol, metaConnected…)
-      if (r.data.needsMeta || (me && !me.metaConnected)) {
-        connectFB();                       // hay que conectar/refrescar Facebook
-      }
-      // si no, isAuthenticated pasa a true y PublicRoute redirige a /app
+      await refresh(); // isAuthenticated pasa a true → PublicRoute redirige a /app
     } catch (e) {
       setError(e.response?.data?.message || 'No se pudo iniciar sesión.');
     } finally {
       setLoading(false);
     }
   };
-
-  // Logueado en Alquimia pero falta conectar Facebook → paso 2.
-  if (needsMeta) {
-    return (
-      <div style={page}>
-        <div style={card}>
-          <div className="logo-group" style={{ marginBottom: 24 }}>
-            <span className="logo-text">alquimia.</span>
-            <div className="logo-line" />
-            <span className="logo-subtitle" style={{ marginTop: 6, fontSize: 12 }}>/ ads dashboard</span>
-          </div>
-          <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: 24 }}>
-            Hola{user?.name ? `, ${user.name}` : ''}. Conectá tu cuenta de Facebook para acceder a las métricas de Meta.
-          </p>
-          <button onClick={connectFB} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', fontSize: 13, padding: '12px 20px', letterSpacing: '0.04em' }}>
-            Conectar con Facebook →
-          </button>
-          <p style={{ marginTop: 16, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)', textAlign: 'center', lineHeight: 1.5 }}>
-            Lo pedimos en cada ingreso para mantener tu acceso a Meta siempre vigente.
-          </p>
-          <button
-            onClick={logout}
-            style={{ marginTop: 14, width: '100%', background: 'transparent', border: 'none', cursor: 'pointer',
-              fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-muted)', textDecoration: 'underline' }}
-          >
-            ← No sos vos? Cambiar de cuenta
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // Paso 1: login con Alquimia.
   return (
