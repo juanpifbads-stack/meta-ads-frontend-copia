@@ -66,7 +66,10 @@ function ClientCard({ c, onOpen }) {
     <button className="hm-card" onClick={() => onOpen(c.slug)}>
       <div className="ctrl-card-head">
         <div className="ctrl-card-info">
-          <div className="ctrl-card-brand">{c.name}</div>
+          <div className="ctrl-card-brand">
+            {c.name}
+            {c.stage === 'onboarding' && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: '#854f0b', background: '#faeeda', padding: '2px 8px', borderRadius: 6, verticalAlign: 'middle' }}>Onboarding</span>}
+          </div>
           <div className="ctrl-card-am">👤 {c.am || '—'} · {c.type === 'servicios' ? 'Servicios' : 'Ecommerce'}{health?.currency ? ` · 💱 ${health.currency}` : ''}</div>
         </div>
         <div className="ctrl-card-badges">

@@ -81,7 +81,7 @@ function Gate({ slug, onPass }) {
 }
 
 /* ── Animación de bienvenida ── */
-function Welcome({ name, onDone }) {
+export function Welcome({ name, onDone }) {
   const [step, setStep] = useState(0);
   useEffect(() => {
     const t1 = setTimeout(() => setStep(1), 1400);

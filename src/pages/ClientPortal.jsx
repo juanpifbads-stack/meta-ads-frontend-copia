@@ -6,6 +6,8 @@ import PaymentsTimeline from '../components/PaymentsTimeline.jsx';
 import StrategicProducts from '../components/StrategicProducts.jsx';
 import TasksSection from '../components/TasksSection.jsx';
 import OnboardingTasks from '../components/OnboardingTasks.jsx';
+import OnboardingDates from '../components/OnboardingDates.jsx';
+import { Welcome } from './Onboarding.jsx';
 import { sumByCurrency, fmtTotals } from '../utils/budget.js';
 import './ClientPortal.css';
 
@@ -202,6 +204,7 @@ function ClientDashboard({ client }) {
   // Contenido desde la base (con fallback al config de código).
   const [content, setContent] = useState(null);
   const [month, setMonth] = useState(null);
+  const [welcomeDone, setWelcomeDone] = useState(false); // bienvenida breve en cada ingreso (solo genéricos)
 
   useEffect(() => {
     let alive = true;
@@ -227,6 +230,11 @@ function ClientDashboard({ client }) {
   const panelSections = data.panel?.sections || null;
   const generic = !!data.panel;
   const show = (key) => (generic ? (MANDATORY.includes(key) || !!(panelSections || {})[key]) : true);
+
+  // Bienvenida breve y saltable en cada ingreso (solo clientes nuevos/genéricos; Moka/legacy no).
+  if (content && generic && !welcomeDone) {
+    return <Welcome name={data.name} onDone={() => setWelcomeDone(true)} />;
+  }
 
   // Contenido alimentado por el plan de medios (solo para portales genéricos).
   const mediaObjective = generic ? data.mediaObjective : null;
@@ -540,6 +548,14 @@ function ClientDashboard({ client }) {
           <OnboardingTasks slug={client.slug} accessKey={client.accessKey} toggles={data.onboarding} />
         )}
         <TasksSection slug={client.slug} accessKey={client.accessKey} />
+      </section>
+      )}
+
+      {/* Fechas / calendario (onboarding) — gateado por el toggle mostrarFechas */}
+      {generic && data.onboarding && data.onboarding.mostrarFechas && (
+      <section className="cp-section">
+        <h2 className="cp-section-title">Fechas</h2>
+        <OnboardingDates slug={client.slug} accessKey={client.accessKey} />
       </section>
       )}
 
