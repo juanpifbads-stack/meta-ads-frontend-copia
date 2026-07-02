@@ -453,10 +453,13 @@ function ClientDashboard({ client }) {
           {!metaLoading && !meta && (
             <p className="cp-placeholder">No se pudieron cargar los datos de Meta en este momento.</p>
           )}
-          {!metaLoading && meta && meta.metaError && (
+          {!metaLoading && meta && meta.noAccess && (
+            <p className="cp-placeholder">🔒 Sin acceso a la cuenta de Meta todavía.</p>
+          )}
+          {!metaLoading && meta && !meta.noAccess && meta.metaError && (
             <p className="cp-placeholder">Meta no devolvió datos: {meta.metaError}</p>
           )}
-          {!metaLoading && meta && !meta.metaError && (() => {
+          {!metaLoading && meta && !meta.noAccess && !meta.metaError && (() => {
             const roasStatus = meta.roas >= effMetaGoal.roasTarget ? 'good' : meta.roas >= effMetaGoal.roasTarget * 0.7 ? 'warn' : 'bad';
             const revPct = effMetaGoal.revenueTarget > 0 ? (meta.purchaseValue / effMetaGoal.revenueTarget) * 100 : 0;
             // Desvío de facturación atribuida vs ritmo esperado del mes

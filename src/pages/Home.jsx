@@ -80,6 +80,8 @@ function ClientCard({ c, onOpen }) {
 
       {!c.metaAccountId ? (
         <div className="hm-noaccount">Sin cuenta de Meta asignada · entrá y asignala en Admin</div>
+      ) : c.noAccess ? (
+        <div className="hm-noaccount">🔒 Sin acceso a la cuenta · falta darle permiso al System User en el Business Manager</div>
       ) : !health ? (
         <div className="hm-noaccount">No se pudieron traer las métricas.</div>
       ) : isServ ? (
