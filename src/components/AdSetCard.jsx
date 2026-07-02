@@ -70,7 +70,7 @@ export default function AdSetCard({ adset, accountId, onAction }) {
       await onAction({ type: 'pause', entityId: adset.id, entityType: 'adset' });
       setPauseSuccess(true);
     } catch (err) {
-      setPauseError(err.message || 'Error al pausar el conjunto.');
+      setPauseError(err.response?.data?.message || err.message || 'Error al pausar el conjunto.');
     } finally {
       setPauseLoading(false);
     }

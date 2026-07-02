@@ -28,7 +28,7 @@ function AdSetRow({ adset, onPause, window, sales }) {
       setPaused(true);
       setConfirming(false);
     } catch (err) {
-      setError(err.message || 'Error al pausar.');
+      setError(err.response?.data?.message || err.message || 'Error al pausar.');
     } finally {
       setLoading(false);
     }

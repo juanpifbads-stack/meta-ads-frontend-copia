@@ -63,7 +63,7 @@ export default function BudgetActionPanel({
         onSuccess && onSuccess(newBudget);
       }, 800);
     } catch (err) {
-      setError(err.message || 'Error al actualizar el presupuesto.');
+      setError(err.response?.data?.message || err.message || 'Error al actualizar el presupuesto.');
       setConfirming(false);
     } finally {
       setLoading(false);

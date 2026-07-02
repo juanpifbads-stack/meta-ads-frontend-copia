@@ -167,7 +167,7 @@ export default function AdDetailModal({ adsetId, adsetName, accountId, campaignO
       });
       setPausedIds((prev) => new Set([...prev, ad.id]));
     } catch (err) {
-      setPauseErrors((prev) => ({ ...prev, [ad.id]: err.message || 'Error al pausar.' }));
+      setPauseErrors((prev) => ({ ...prev, [ad.id]: err.response?.data?.message || err.message || 'Error al pausar.' }));
     } finally {
       setPausingId(null);
     }
