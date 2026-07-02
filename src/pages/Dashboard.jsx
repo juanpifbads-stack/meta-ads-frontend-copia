@@ -30,6 +30,23 @@ export default function Dashboard({ onBack, initialAccount, lockedAccount }) {
   // Last 4 days avg spend
   const [last4Spend, setLast4Spend] = useState(null);
 
+  // Candado del optimizador (para no pisarse entre usuarios).
+  const [lease, setLease] = useState(null);
+  useEffect(() => {
+    if (!selectedAccount) { setLease(null); return; }
+    let alive = true;
+    const acquire = () => apiClient.post(`/accounts/${selectedAccount}/lease`, {})
+      .then((r) => { if (alive) setLease(r.data); }).catch(() => {});
+    acquire();
+    const iv = setInterval(acquire, 60 * 1000); // refresca el candado mientras esté abierto
+    return () => {
+      alive = false; clearInterval(iv);
+      apiClient.delete(`/accounts/${selectedAccount}/lease`).catch(() => {}); // lo suelta al salir
+    };
+  }, [selectedAccount]);
+  const takeoverLease = () => apiClient.post(`/accounts/${selectedAccount}/lease`, { takeover: true })
+    .then((r) => setLease(r.data)).catch(() => {});
+
   // Load accounts on mount
   useEffect(() => {
     const fetchAccounts = async () => {
@@ -293,6 +310,14 @@ export default function Dashboard({ onBack, initialAccount, lockedAccount }) {
           {/* Content */}
           {!isLoading && selectedAccount && (
             <>
+              {/* Candado: aviso si otra persona está optimizando esta cuenta */}
+              {lease?.heldByOther && lease.holder && (
+                <div style={{ background: '#fef9c3', color: '#854d0e', border: '1px solid #fde68a', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', fontSize: '13px' }}>
+                  <span>🔒 <strong>{lease.holder.name}</strong> está optimizando esta cuenta ahora mismo. Coordiná para no pisarse — tus cambios se van a rechazar hasta que tomes el control.</span>
+                  <button className="btn btn-secondary" style={{ fontSize: '11px', padding: '5px 10px', whiteSpace: 'nowrap' }} onClick={takeoverLease}>Tomar control</button>
+                </div>
+              )}
+
               {/* ABO Adsets */}
               {adsetsError && (
                 <div className="alert alert-error" style={{ marginBottom: '16px' }}>
