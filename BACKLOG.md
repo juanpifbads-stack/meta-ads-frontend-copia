@@ -71,6 +71,15 @@
   los puntos que pegan a Meta: `/admin/overview` (salud 10min + lotes de 4), `meta-trend` (1h + lotes),
   `public/meta-insights` (10min), `public/sales-source` (10min). Crons apagados. ⚠️ **No volver a
   hacer llamadas a Meta sin caché ni en `Promise.all` sobre todos los clientes.** [06/2026]
+- **Meta blindado a fondo (reglas duras en CLAUDE.md del backend).** (1) **Limitador global**
+  `utils/metaLimit.js` (`metaRun`): ≤6 llamadas simultáneas a Meta en todo el proceso, TODA llamada
+  pasa por ahí (`metaGet`). (2) **Snapshot de Meta** (`meta_snapshot` + cron `jobs/metaSnapshot.js`
+  cada 30min, `services/metaData.js`): inicio y portales LEEN de la DB, no de Meta en vivo. (3)
+  **`meta_month`** (`db/metaMonthCache.js`): los meses cerrados del plan de medios se calculan una
+  vez y se guardan para siempre. (4) **System User token** (`META_SYSTEM_TOKEN` vía `db/metaToken.js`).
+  (5) **Candado del optimizador** (`leaseGuard` en `routes/actions.js` + `utils/leases.js`): rechaza
+  pausas/presupuesto si otro está optimizando la cuenta. Requiere correr `sql/meta_snapshot.sql` y
+  `sql/meta_month.sql`. [06/2026]
 - Portal público manejado **desde la base** (ya no la lista estática `data/clients.js`). [06/2026]
 - Productos estratégicos: cruce de ventas **por ID de variante** (funciona aunque la tienda no use
   SKU) + nueva columna **Pedidos** (en cuántos pedidos se vendió, para detectar inflado mayorista) +
