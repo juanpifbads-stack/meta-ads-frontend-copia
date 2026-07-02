@@ -228,7 +228,7 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
       <div className="ctrl-divider" />
 
       {error && <div className="ctrl-error">⚠ {error}</div>}
-      {loading && <div className="ctrl-loading">Consultando Meta…</div>}
+      {loading && <div className="ctrl-loading">Cargando…</div>}
       {!loading && visible.length === 0 && clients.length > 0 && (
         <div className="ctrl-loading">Ningún cliente coincide con el filtro actual. Tocá "Filtrar clientes" para ajustarlo.</div>
       )}
