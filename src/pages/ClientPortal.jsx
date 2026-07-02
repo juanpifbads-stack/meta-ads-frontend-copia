@@ -191,11 +191,13 @@ function PortalMessage({ children }) {
 export default function ClientPortal() {
   const { slug } = useParams();
   const info = usePortalInfo(slug);
-  const [authKey, setAuthKey] = useState(null);
+  // La clave queda recordada en el navegador → no se pide en cada ingreso/refresh.
+  const [authKey, setAuthKey] = useState(() => { try { return localStorage.getItem(`portalKey:${slug}`) || null; } catch { return null; } });
+  const pass = (k) => { try { localStorage.setItem(`portalKey:${slug}`, k); } catch { /* noop */ } setAuthKey(k); };
 
   if (info === undefined) return <PortalMessage>Cargando…</PortalMessage>;
   if (!info || !info.exists || !info.active) return <PortalMessage>Este portal no está disponible.</PortalMessage>;
-  if (!authKey) return <KeyGate slug={slug} eyebrow="Portal de cliente" title={info.name} kind="portal" onPass={setAuthKey} />;
+  if (!authKey) return <KeyGate slug={slug} eyebrow="Portal de cliente" title={info.name} kind="portal" onPass={pass} />;
 
   return <ClientDashboard client={{ slug, name: info.name, accessKey: authKey }} />;
 }
@@ -335,9 +337,10 @@ function ClientDashboard({ client }) {
       )}
       {/* Header */}
       <header className="cp-header">
-        <div>
-          <div className="cp-brand">alquimia.</div>
-          <div className="cp-eyebrow">Panel de {client.name}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span className="cp-brand">alquimia.</span>
+          <span style={{ color: 'var(--color-text-muted, #94a3b8)', fontSize: 20 }}>×</span>
+          <span style={{ fontSize: 22, fontWeight: 500, color: 'var(--color-text-primary, #15161a)' }}>{data.name || client.name}</span>
         </div>
         {months.length > 0 && (
           <div className="cp-month-select">

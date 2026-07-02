@@ -26,7 +26,9 @@ export default function OnboardingDates({ slug, accessKey }) {
     const ka = (a.when && a.when.date) || 'zzzz'; const kb = (b.when && b.when.date) || 'zzzz'; return ka.localeCompare(kb);
   });
   const meeting = ob.meeting1;
-  if (!items.length && !(meeting && meeting.date)) return null;
+  if (!items.length && !(meeting && meeting.date)) {
+    return <div style={{ ...cardStyle, color: '#64748b', fontSize: 13 }}>Todavía no hay fechas cargadas. Cuando la agencia agregue hitos o reuniones, van a aparecer acá.</div>;
+  }
 
   const setStatus = (it, next) => {
     if (!it.id) return;

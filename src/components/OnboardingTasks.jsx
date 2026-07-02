@@ -20,10 +20,10 @@ export default function OnboardingTasks({ slug, accessKey, toggles, onChange }) 
   if (!ob || (!wantForm && !wantContent)) return null;
 
   const card = (title, done, onOpen) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', border: '0.5px solid var(--color-gray-mid, #d8d6cf)', borderRadius: 10, background: 'var(--color-white,#fff)' }}>
-      <span style={{ fontSize: 18, color: done ? '#15803d' : '#94a3b8' }}>{done ? '✓' : '○'}</span>
-      <span style={{ flex: 1, fontSize: 14, textDecoration: done ? 'line-through' : 'none', color: done ? '#64748b' : 'inherit' }}>{title}</span>
-      <button className="cp-btn" style={{ padding: '6px 14px', fontSize: 13, borderRadius: 8, border: '1.5px solid #15161a', background: 'transparent', cursor: 'pointer' }} onClick={onOpen}>{done ? 'Revisar' : 'Completar'}</button>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', border: '0.5px solid var(--color-gray-mid, #d8d6cf)', borderRadius: 10, background: 'var(--color-white,#fff)' }}>
+      <span style={{ fontSize: 16, color: done ? '#15803d' : '#94a3b8', flexShrink: 0 }}>{done ? '✓' : '○'}</span>
+      <span style={{ flex: 1, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: done ? 'line-through' : 'none', color: done ? '#64748b' : 'inherit' }}>{title}</span>
+      <button onClick={onOpen} style={{ flexShrink: 0, padding: '6px 16px', fontSize: 13, borderRadius: 8, border: '1.5px solid #15161a', background: done ? 'transparent' : 'var(--color-brand-blue,#2c4cff)', color: done ? '#15161a' : '#fff', borderColor: done ? '#15161a' : 'transparent', cursor: 'pointer', fontWeight: 500 }}>{done ? 'Revisar' : 'Completar'}</button>
     </div>
   );
 
