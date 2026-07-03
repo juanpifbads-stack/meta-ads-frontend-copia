@@ -5,9 +5,7 @@ import PaymentsSection from '../components/PaymentsSection.jsx';
 import PaymentsTimeline from '../components/PaymentsTimeline.jsx';
 import StrategicProducts from '../components/StrategicProducts.jsx';
 import TasksSection from '../components/TasksSection.jsx';
-import OnboardingTasks from '../components/OnboardingTasks.jsx';
-import OnboardingDates from '../components/OnboardingDates.jsx';
-import { Welcome } from './Onboarding.jsx';
+import { Welcome, OnboardingDeliverables, OnboardingCalendar } from './Onboarding.jsx';
 import { sumByCurrency, fmtTotals } from '../utils/budget.js';
 import './ClientPortal.css';
 
@@ -577,18 +575,18 @@ function ClientDashboard({ client }) {
       {show('tareas') && (
       <section className="cp-section">
         <h2 className="cp-section-title">Tareas</h2>
-        {generic && data.onboarding && (data.onboarding.pedirFormulario || data.onboarding.pedirContenido) && (
-          <OnboardingTasks slug={client.slug} accessKey={client.accessKey} toggles={data.onboarding} onChange={reloadOb} />
+        {ob && generic && data.onboarding && (data.onboarding.pedirFormulario || data.onboarding.pedirContenido) && (
+          <OnboardingDeliverables slug={client.slug} authKey={client.accessKey} data={ob} refetch={reloadOb} />
         )}
         <TasksSection slug={client.slug} accessKey={client.accessKey} />
       </section>
       )}
 
       {/* Fechas / calendario (onboarding) — gateado por el toggle mostrarFechas */}
-      {generic && data.onboarding && data.onboarding.mostrarFechas && (
+      {ob && generic && data.onboarding && data.onboarding.mostrarFechas && (
       <section className="cp-section">
         <h2 className="cp-section-title">Fechas</h2>
-        <OnboardingDates slug={client.slug} accessKey={client.accessKey} />
+        <OnboardingCalendar data={ob} />
       </section>
       )}
 

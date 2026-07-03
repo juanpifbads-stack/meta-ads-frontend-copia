@@ -385,6 +385,98 @@ export function ContentModal({ slug, authKey, initialLink, onClose, onSaved }) {
 }
 
 /* ── Roadmap (desbloqueado) ── */
+// Tarjetas de entregables (formulario + contenido) — reusable en el portal.
+export function OnboardingDeliverables({ slug, authKey, data, refetch }) {
+  const [showForm, setShowForm] = useState(false);
+  const [showContent, setShowContent] = useState(false);
+  const questions = data.questions || [];
+  const ansCount = (data.answers || []).filter((a) => (a.answer || '').trim()).length;
+  return (
+    <div className="ob-deliverables">
+      <div className="ob-deliv-grid">
+        <button className={`ob-deliv-card ${data.formSubmitted ? 'ob-deliv-card--done' : ''}`} onClick={() => questions.length && setShowForm(true)} disabled={!questions.length}>
+          <span className="ob-deliv-icon">📝</span>
+          <span className="ob-deliv-name">Responder formulario de onboarding</span>
+          <span className="ob-deliv-status">
+            {data.formSubmitted ? '✓ Enviado' : questions.length ? `${ansCount}/${questions.length} respondidas` : 'Próximamente'}
+          </span>
+        </button>
+        <button className={`ob-deliv-card ${data.contentSubmitted ? 'ob-deliv-card--done' : ''}`} onClick={() => setShowContent(true)}>
+          <span className="ob-deliv-icon">📁</span>
+          <span className="ob-deliv-name">Compartir carpeta de contenido</span>
+          <span className="ob-deliv-status">{data.contentSubmitted ? '✓ Link cargado' : 'Pegá el link de Drive'}</span>
+        </button>
+      </div>
+      {showForm && (
+        <OnboardingForm slug={slug} authKey={authKey} questions={questions} initialAnswers={data.answers}
+          initialPersonas={data.personas} intros={data.sectionIntros}
+          onClose={() => setShowForm(false)} onSaved={refetch} />
+      )}
+      {showContent && (
+        <ContentModal slug={slug} authKey={authKey} initialLink={data.content?.driveLink}
+          onClose={() => setShowContent(false)} onSaved={refetch} />
+      )}
+    </div>
+  );
+}
+
+// Calendario semanal del onboarding — reusable en el portal.
+export function OnboardingCalendar({ data }) {
+  const items = data.roadmap || [];
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekStart = (() => { const d = new Date(); const dow = (d.getDay() + 6) % 7; d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - dow + weekOffset * 7); return d; })();
+  const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(weekStart.getDate() + i); return d; });
+  const todayStr = ymd(new Date());
+  const weekStartStr = ymd(weekDays[0]);
+  const weekEndStr = ymd(weekDays[6]);
+  const multiDayBars = items.map((it) => {
+    const b = rangeBounds(it);
+    if (!b || b.to < weekStartStr || b.from > weekEndStr) return null;
+    const from = b.from < weekStartStr ? weekStartStr : b.from;
+    const to = b.to > weekEndStr ? weekEndStr : b.to;
+    const s = weekDays.findIndex((d) => ymd(d) === from);
+    const e = weekDays.findIndex((d) => ymd(d) === to);
+    return { it, s, e };
+  }).filter(Boolean);
+  const weekLabel = `${weekStart.getDate()} ${MESES[weekStart.getMonth()]} – ${weekDays[6].getDate()} ${MESES[weekDays[6].getMonth()]}`;
+  const weekTitle = weekOffset === 0 ? 'Esta semana' : weekOffset === 1 ? 'Próxima semana' : weekOffset === -1 ? 'Semana pasada' : weekLabel;
+  if (!items.length) return <p className="ob-empty">Todavía no hay fechas cargadas. Cuando la agencia agregue hitos o reuniones, van a aparecer acá.</p>;
+  return (
+    <div className="ob-cal">
+      <div className="ob-cal-head">
+        <button className="ob-cal-nav" onClick={() => setWeekOffset((o) => o - 1)} aria-label="Semana anterior">←</button>
+        <span className="ob-cal-range"><strong>{weekTitle}</strong>{weekOffset !== 0 && <span className="ob-cal-sub"> · {weekLabel}</span>}</span>
+        <div className="ob-cal-headright">
+          {weekOffset !== 0 && <button className="ob-cal-today" onClick={() => setWeekOffset(0)}>Semana actual</button>}
+          <button className="ob-cal-nav" onClick={() => setWeekOffset((o) => o + 1)} aria-label="Semana siguiente">→</button>
+        </div>
+      </div>
+      <div className="ob-cal-grid">
+        {weekDays.map((d, i) => {
+          const ds = ymd(d);
+          const dayItems = items.filter((it) => itemOnDay(it, ds) && !rangeBounds(it));
+          return (
+            <div key={ds} className={`ob-cal-day ${ds === todayStr ? 'ob-cal-day--today' : ''}`}>
+              <div className="ob-cal-dow">{DOW[i]}</div>
+              <div className="ob-cal-dom">{d.getDate()}</div>
+              {dayItems.map((it, j) => (
+                <div key={it.id || j} className={`ob-cal-pill ${it.kind === 'task' ? 'ob-cal-pill--task' : ''}`} title={it.title}>{it.title}</div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+      {multiDayBars.length > 0 && (
+        <div className="ob-cal-bars">
+          {multiDayBars.map(({ it, s, e }, k) => (
+            <div key={it.id || k} className={`ob-cal-bar ${it.kind === 'task' ? 'ob-cal-pill--task' : ''}`} style={{ gridColumn: `${s + 1} / ${e + 2}` }} title={it.title}>{it.title}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Roadmap({ name, data, slug, authKey, refetch }) {
   const items = data.roadmap || [];
   const done = items.filter((i) => i.status === 'hecho').length;
