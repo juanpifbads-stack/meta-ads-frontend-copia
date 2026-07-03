@@ -147,8 +147,11 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
       // Autoseleccionar el mes: el último cargado o, si no hay, el mes actual.
       // Así el editor micro aparece siempre (antes quedaba '' y no se veía nada).
       const months = (r.data.months || []).slice().sort();
+      // OJO: no hacer setPlan(null) acá. Si el mes elegido coincide con el que
+      // ya estaba (p.ej. currentYM), el efecto de loadPlan NO se vuelve a disparar
+      // y el editor quedaría oculto para siempre. loadPlan repone el plan solo
+      // (depende de [slug, month]).
       setMonth(months.length ? months[months.length - 1] : currentYM());
-      setPlan(null);
     }).catch(() => {});
   }, []);
 

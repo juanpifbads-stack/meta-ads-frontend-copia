@@ -389,24 +389,53 @@ export function ContentModal({ slug, authKey, initialLink, onClose, onSaved }) {
 export function OnboardingDeliverables({ slug, authKey, data, refetch }) {
   const [showForm, setShowForm] = useState(false);
   const [showContent, setShowContent] = useState(false);
+  const [showDone, setShowDone] = useState(false); // pop-up de completadas
   const questions = data.questions || [];
   const ansCount = (data.answers || []).filter((a) => (a.answer || '').trim()).length;
+
+  const formCard = (
+    <button key="form" className={`ob-deliv-card ${data.formSubmitted ? 'ob-deliv-card--done' : ''}`} onClick={() => questions.length && setShowForm(true)} disabled={!questions.length}>
+      <span className="ob-deliv-icon">📝</span>
+      <span className="ob-deliv-name">Responder formulario de onboarding</span>
+      <span className="ob-deliv-status">
+        {data.formSubmitted ? '✓ Enviado' : questions.length ? `${ansCount}/${questions.length} respondidas` : 'Próximamente'}
+      </span>
+    </button>
+  );
+  const contentCard = (
+    <button key="content" className={`ob-deliv-card ${data.contentSubmitted ? 'ob-deliv-card--done' : ''}`} onClick={() => setShowContent(true)}>
+      <span className="ob-deliv-icon">📁</span>
+      <span className="ob-deliv-name">Compartir carpeta de contenido</span>
+      <span className="ob-deliv-status">{data.contentSubmitted ? '✓ Link cargado' : 'Pegá el link de Drive'}</span>
+    </button>
+  );
+  // Las completadas se archivan: salen de la lista principal y se ven en el pop-up.
+  const pending = [!data.formSubmitted && formCard, !data.contentSubmitted && contentCard].filter(Boolean);
+  const done = [data.formSubmitted && formCard, data.contentSubmitted && contentCard].filter(Boolean);
+
   return (
     <div className="ob-deliverables" style={{ maxWidth: 'none', margin: 0 }}>
       <div className="ob-deliv-grid" style={{ gridTemplateColumns: '1fr', display: 'grid', gap: 10 }}>
-        <button className={`ob-deliv-card ${data.formSubmitted ? 'ob-deliv-card--done' : ''}`} onClick={() => questions.length && setShowForm(true)} disabled={!questions.length}>
-          <span className="ob-deliv-icon">📝</span>
-          <span className="ob-deliv-name">Responder formulario de onboarding</span>
-          <span className="ob-deliv-status">
-            {data.formSubmitted ? '✓ Enviado' : questions.length ? `${ansCount}/${questions.length} respondidas` : 'Próximamente'}
-          </span>
-        </button>
-        <button className={`ob-deliv-card ${data.contentSubmitted ? 'ob-deliv-card--done' : ''}`} onClick={() => setShowContent(true)}>
-          <span className="ob-deliv-icon">📁</span>
-          <span className="ob-deliv-name">Compartir carpeta de contenido</span>
-          <span className="ob-deliv-status">{data.contentSubmitted ? '✓ Link cargado' : 'Pegá el link de Drive'}</span>
-        </button>
+        {pending}
       </div>
+      {done.length > 0 && (
+        <button onClick={() => setShowDone(true)} style={{ marginTop: 10, padding: '8px 14px', borderRadius: 8, border: '1px solid #d8d6cf', background: 'transparent', cursor: 'pointer', fontSize: 13, color: '#6b6b6b' }}>
+          ✅ Ver tareas completadas ({done.length})
+        </button>
+      )}
+      {showDone && (
+        <div onClick={() => setShowDone(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, padding: '20px 22px', maxWidth: 520, width: '100%', maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h3 style={{ margin: 0, fontSize: 17 }}>Tareas completadas</h3>
+              <span onClick={() => setShowDone(false)} style={{ cursor: 'pointer', fontSize: 20, lineHeight: 1, color: '#6b6b6b' }}>×</span>
+            </div>
+            <div className="ob-deliv-grid" style={{ gridTemplateColumns: '1fr', display: 'grid', gap: 10 }}>
+              {done}
+            </div>
+          </div>
+        </div>
+      )}
       {showForm && (
         <OnboardingForm slug={slug} authKey={authKey} questions={questions} initialAnswers={data.answers}
           initialPersonas={data.personas} intros={data.sectionIntros}
