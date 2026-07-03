@@ -421,8 +421,9 @@ export function OnboardingDeliverables({ slug, authKey, data, refetch }) {
 }
 
 // Calendario semanal del onboarding — reusable en el portal.
-export function OnboardingCalendar({ data }) {
-  const items = data.roadmap || [];
+// extraItems: hitos/tareas con fecha que vienen de otras fuentes (tareas con deadline, eventos).
+export function OnboardingCalendar({ data, extraItems = [] }) {
+  const items = [...(data.roadmap || []), ...extraItems];
   const [weekOffset, setWeekOffset] = useState(0);
   const weekStart = (() => { const d = new Date(); const dow = (d.getDay() + 6) % 7; d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - dow + weekOffset * 7); return d; })();
   const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(weekStart.getDate() + i); return d; });

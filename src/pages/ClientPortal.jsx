@@ -4,7 +4,7 @@ import apiClient from '../api/client.js';
 import PaymentsSection from '../components/PaymentsSection.jsx';
 import PaymentsTimeline from '../components/PaymentsTimeline.jsx';
 import StrategicProducts from '../components/StrategicProducts.jsx';
-import TasksSection from '../components/TasksSection.jsx';
+import PortalTasks, { AddCalendarEvent } from '../components/PortalTasks.jsx';
 import { Welcome, OnboardingDeliverables, OnboardingCalendar } from './Onboarding.jsx';
 import { sumByCurrency, fmtTotals } from '../utils/budget.js';
 import './ClientPortal.css';
@@ -212,6 +212,19 @@ function ClientDashboard({ client }) {
     apiClient.get(`/onboarding/${client.slug}`, { params: { key: client.accessKey } })
       .then((r) => setOb(r.data)).catch(() => setOb(null));
   }, [client.slug, client.accessKey]);
+
+  // Tareas libres (globos) — se comparten entre la sección Tareas y el calendario.
+  const [tasks, setTasks] = useState([]);
+  const reloadTasks = useCallback(() => {
+    apiClient.get(`/tasks/${client.slug}`, { params: { key: client.accessKey } })
+      .then((r) => setTasks(r.data.tasks || [])).catch(() => setTasks([]));
+  }, [client.slug, client.accessKey]);
+  useEffect(() => { reloadTasks(); }, [reloadTasks]);
+  // Tareas con fecha límite + eventos → items del calendario.
+  const taskCalItems = (tasks || []).filter((t) => t.deadline).map((t) => ({
+    id: t.id, title: t.title, kind: t.kind === 'evento' ? 'hito' : 'task',
+    when: { mode: 'date', date: t.deadline }, status: t.status === 'terminada' ? 'hecho' : 'pendiente',
+  }));
 
   useEffect(() => {
     let alive = true;
@@ -581,22 +594,27 @@ function ClientDashboard({ client }) {
         </Modal>
       )}
 
-      {/* Tareas */}
+      {/* Tareas — todo como globos: entregables de onboarding + tareas libres */}
       {show('tareas') && (
       <section className="cp-section">
         <h2 className="cp-section-title">Tareas</h2>
-        {ob && generic && data.onboarding && (data.onboarding.pedirFormulario || data.onboarding.pedirContenido) && (
-          <OnboardingDeliverables slug={client.slug} authKey={client.accessKey} data={ob} refetch={reloadOb} />
-        )}
-        <TasksSection slug={client.slug} accessKey={client.accessKey} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {ob && generic && data.onboarding && (data.onboarding.pedirFormulario || data.onboarding.pedirContenido) && (
+            <OnboardingDeliverables slug={client.slug} authKey={client.accessKey} data={ob} refetch={reloadOb} />
+          )}
+          <PortalTasks slug={client.slug} accessKey={client.accessKey} tasks={tasks} reload={reloadTasks} />
+        </div>
       </section>
       )}
 
-      {/* Fechas / calendario (onboarding) — gateado por el toggle mostrarFechas */}
-      {ob && generic && data.onboarding && data.onboarding.mostrarFechas && (
+      {/* Fechas / calendario — roadmap + tareas con deadline + eventos */}
+      {generic && data.onboarding && data.onboarding.mostrarFechas && (
       <section className="cp-section">
         <h2 className="cp-section-title">Fechas</h2>
-        <OnboardingCalendar data={ob} />
+        <OnboardingCalendar data={ob || { roadmap: [] }} extraItems={taskCalItems} />
+        <div style={{ marginTop: 12 }}>
+          <AddCalendarEvent slug={client.slug} accessKey={client.accessKey} reload={reloadTasks} />
+        </div>
       </section>
       )}
 
