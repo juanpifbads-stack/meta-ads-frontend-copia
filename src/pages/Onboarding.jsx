@@ -392,7 +392,7 @@ export function OnboardingDeliverables({ slug, authKey, data, refetch }) {
   const questions = data.questions || [];
   const ansCount = (data.answers || []).filter((a) => (a.answer || '').trim()).length;
   return (
-    <div className="ob-deliverables">
+    <div className="ob-deliverables" style={{ maxWidth: 'none', margin: 0 }}>
       <div className="ob-deliv-grid" style={{ gridTemplateColumns: '1fr', display: 'grid', gap: 10 }}>
         <button className={`ob-deliv-card ${data.formSubmitted ? 'ob-deliv-card--done' : ''}`} onClick={() => questions.length && setShowForm(true)} disabled={!questions.length}>
           <span className="ob-deliv-icon">📝</span>
