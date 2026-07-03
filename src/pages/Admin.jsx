@@ -144,7 +144,10 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
   const loadClient = useCallback((s) => {
     apiClient.get(`/admin/${s}`).then((r) => {
       setClientData(r.data);
-      setMonth(''); // no autoseleccionar: el usuario elige el mes micro
+      // Autoseleccionar el mes: el último cargado o, si no hay, el mes actual.
+      // Así el editor micro aparece siempre (antes quedaba '' y no se veía nada).
+      const months = (r.data.months || []).slice().sort();
+      setMonth(months.length ? months[months.length - 1] : currentYM());
       setPlan(null);
     }).catch(() => {});
   }, []);
