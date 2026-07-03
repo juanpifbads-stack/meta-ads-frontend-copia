@@ -259,15 +259,14 @@ function ClientDashboard({ client }) {
   const MANDATORY = ['macro', 'estrategiaMes', 'facturacion', 'ritmo', 'performanceMeta', 'justificacion', 'consideraciones', 'tareas'];
   const panelSections = data.panel?.sections || null;
   const generic = !!data.panel;
-  // ¿El cliente está en onboarding? (tiene tareas de onboarding pendientes)
+  // El cliente ve SOLO onboarding (tareas + calendario) hasta que la agencia toca
+  // "Presentar portal al cliente" (onboarding.presentado). No se destraba por completar
+  // tareas: la agencia decide cuándo revelar el resto (para no mostrar nada sin presentar).
   const onbT = data.onboarding || {};
-  const wantsOnb = generic && (onbT.pedirFormulario || onbT.pedirContenido);
-  const onboardingPending = wantsOnb && (!ob
-    || (onbT.pedirFormulario && !ob.formSubmitted)
-    || (onbT.pedirContenido && !ob.contentSubmitted));
-  // En onboarding solo se muestra Tareas (y Fechas aparte); el resto se desbloquea al completar.
+  const hasOnboarding = generic && (onbT.pedirFormulario || onbT.pedirContenido || onbT.mostrarFechas);
+  const onboardingView = hasOnboarding && !onbT.presentado;
   const show = (key) => {
-    if (onboardingPending) return key === 'tareas';
+    if (onboardingView) return key === 'tareas';
     return generic ? (MANDATORY.includes(key) || !!(panelSections || {})[key]) : true;
   };
 
@@ -370,10 +369,10 @@ function ClientDashboard({ client }) {
       </header>
 
       {/* Banner de etapa onboarding: solo tareas + calendario hasta completar. */}
-      {onboardingPending && (
+      {onboardingView && (
         <div style={{ padding: '14px 18px', background: 'var(--color-background, #f3f2ec)', borderRadius: 12, margin: '0 0 18px', border: '0.5px solid var(--color-gray-mid, #e3e1d8)' }}>
           <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 4 }}>Estamos en etapa de Onboarding 🚀</div>
-          <div style={{ fontSize: 13, color: '#5f5e5a' }}>Completá las tareas de abajo para arrancar. Cuando estén listas, se habilita el resto de tu panel.</div>
+          <div style={{ fontSize: 13, color: '#5f5e5a' }}>Completá las tareas de abajo para arrancar. En breve te presentamos tu estrategia y el resto de tu panel.</div>
         </div>
       )}
 
@@ -401,8 +400,8 @@ function ClientDashboard({ client }) {
         <p className="cp-objective-note">{data.justificationText}</p>
       )}
 
-      {/* Performance ecommerce */}
-      {!onboardingPending && (
+      {/* Performance ecommerce — genéricos: solo si hay Tienda Nube (no mostrar vacío). Moka: siempre. */}
+      {!onboardingView && (generic ? !!tn : true) && (
       <section className="cp-section">
         <h2 className="cp-section-title">Performance ecommerce</h2>
         <div className="cp-kpis cp-kpis--3">
@@ -470,7 +469,7 @@ function ClientDashboard({ client }) {
       )}
 
       {/* Performance Meta */}
-      {caps.meta && show('performanceMeta') && (
+      {caps.meta && show('performanceMeta') && (generic ? ((meta && meta.spend > 0) || (effMetaGoal && effMetaGoal.revenueTarget > 0)) : true) && (
       <section className="cp-section">
         <h2 className="cp-section-title">Performance Meta y TikTok</h2>
         <div className="cp-card">

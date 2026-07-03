@@ -577,8 +577,7 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
 
           {section === 'portal' && (
             <>
-              <div className="ad-sublabel">Secciones que ve el cliente en su portal</div>
-              <p className="ad-muted" style={{ margin: '0 0 6px' }}>Siempre van: {MANDATORY_LABELS.join(' · ')}. Abajo, la estrategia (macro y mes) que también ve el cliente.</p>
+              <div className="ad-sublabel">Secciones opcionales</div>
               <div className="ad-caps">
                 {OPTIONAL_SECTIONS.map((s) => {
                   const on = !!(cfg.panel?.sections || {})[s.key];
@@ -592,7 +591,6 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
               </div>
 
               <div className="ad-sublabel" style={{ marginTop: 14 }}>Onboarding</div>
-              <p className="ad-muted" style={{ margin: '0 0 6px' }}>Qué se le pide al cliente al arrancar. Apagá todo si ya es un cliente activo.</p>
               <div className="ad-caps">
                 {[['pedirFormulario', 'Pedir formulario de marca'], ['pedirContenido', 'Pedir carpeta de contenido'], ['mostrarFechas', 'Mostrar fechas / calendario']].map(([k, label]) => {
                   const on = !!(cfg.onboarding || {})[k];
@@ -603,6 +601,15 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
                     </label>
                   );
                 })}
+              </div>
+
+              {/* Presentar: hasta prenderlo, el cliente ve SOLO tareas + calendario. */}
+              <div style={{ marginTop: 14 }}>
+                <button className={`ad-btn ${cfg.onboarding?.presentado ? 'ad-btn--ghost' : ''}`}
+                  onClick={() => setCfg({ ...cfg, onboarding: { ...(cfg.onboarding || {}), presentado: !(cfg.onboarding?.presentado) } })}>
+                  {cfg.onboarding?.presentado ? '✓ Portal presentado — volver a onboarding' : 'Presentar portal al cliente →'}
+                </button>
+                <p className="ad-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>Hasta presentarlo, el cliente ve solo tareas y calendario. Al presentarlo, ve el resto (cada sección aparece cuando tiene datos). Acordate de <strong>Guardar config</strong>.</p>
               </div>
 
               {/* Links del portal (toggle) */}
