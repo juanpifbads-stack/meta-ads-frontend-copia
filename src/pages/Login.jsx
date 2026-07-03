@@ -47,19 +47,19 @@ export default function Login() {
           <span className="logo-subtitle" style={{ marginTop: 6, fontSize: 12 }}>/ ads dashboard</span>
         </div>
 
-        <input style={inputStyle} type="email" placeholder="Email" value={email} autoFocus
-          onChange={(e) => { setEmail(e.target.value); setError(''); }}
-          onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
-        <input style={inputStyle} type="password" placeholder="Contraseña" value={password}
-          onChange={(e) => { setPassword(e.target.value); setError(''); }}
-          onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
+        <form onSubmit={(e) => { e.preventDefault(); submit(); }} autoComplete="on">
+          <input style={inputStyle} type="email" name="email" autoComplete="username" placeholder="Email" value={email} autoFocus
+            onChange={(e) => { setEmail(e.target.value); setError(''); }} />
+          <input style={inputStyle} type="password" name="password" autoComplete="current-password" placeholder="Contraseña" value={password}
+            onChange={(e) => { setPassword(e.target.value); setError(''); }} />
 
-        {error && <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 12 }}>{error}</div>}
+          {error && <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 12 }}>{error}</div>}
 
-        <button onClick={submit} disabled={loading} className="btn btn-primary"
-          style={{ width: '100%', justifyContent: 'center', fontSize: 13, padding: '12px 20px', letterSpacing: '0.04em' }}>
-          {loading ? 'Ingresando…' : 'Ingresar →'}
-        </button>
+          <button type="submit" disabled={loading} className="btn btn-primary"
+            style={{ width: '100%', justifyContent: 'center', fontSize: 13, padding: '12px 20px', letterSpacing: '0.04em' }}>
+            {loading ? 'Ingresando…' : 'Ingresar →'}
+          </button>
+        </form>
 
         <p style={{ marginTop: 16, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-muted)', textAlign: 'center', lineHeight: 1.5 }}>
           Acceso interno de Alquimia.

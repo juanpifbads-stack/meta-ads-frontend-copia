@@ -39,10 +39,13 @@ apiClient.interceptors.response.use(
     const status = error.response?.status;
 
     if (status === 401) {
-      // No redirigir en el portal de cliente (es público, con su propia clave)
+      // Solo deslogueamos si falla la verificación de sesión (/auth/me). Un 401
+      // transitorio en otro endpoint (hipo de Supabase, permiso puntual) NO debe
+      // cerrar la sesión ni mandar al login — eso hacía re-pedir la clave a cada rato.
+      const url = error.config?.url || '';
       const path = window.location.pathname;
-      if (path !== '/' && !path.startsWith('/cliente')) {
-        setAuthToken(null); // token/sesión inválida
+      if (url.includes('/auth/me') && path !== '/' && !path.startsWith('/cliente')) {
+        setAuthToken(null); // sesión realmente inválida
         window.location.href = '/';
       }
     }
