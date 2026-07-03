@@ -434,7 +434,7 @@ export function NewClientForm({ onClose, onCreated }) {
     const config = {
       name: f.name.trim(), type: f.type, am: isPaid ? '' : (f.am || ''),
       accessKey: `${f.slug}2026`, paymentsKey: `${f.slug}2026`,
-      capabilities: { ecommerce: f.type === 'ecommerce' },
+      capabilities: { ecommerce: f.type === 'ecommerce', meta: true },
       // Cliente nuevo arranca en onboarding (formulario + contenido + fechas).
       onboarding: { pedirFormulario: true, pedirContenido: true, mostrarFechas: true },
       // `panel` activa el modo portal moderno (progresivo). Sin esto caía a modo legacy (Moka).
@@ -552,13 +552,8 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
                 {!isPaid && <Field label="Clave de pagos" value={cfg.paymentsKey || ''} onChange={(v) => setCfg({ ...cfg, paymentsKey: v })} />}
               </div>
 
-              {!isPaid && (
-                <>
-                  <div className="ad-sublabel">Servicios que ofrecés (con su monto)</div>
-                  <ServicesEditor caps={cfg.capabilities || {}} fees={cfg.fees || {}} onToggle={setCap} onFee={setFee} />
-                  <VariableEditor variable={cfg.variable || { mode: 'none', base: 0, rate: 0.03 }} onChange={(v) => setCfg({ ...cfg, variable: v })} />
-                </>
-              )}
+              {/* Servicios/monto y componente variable: se manejan en el panel de Finanzas
+                  (fee por servicio + variable). Se sacaron de acá para no duplicar. */}
 
               <div className="ad-sublabel">Tienda Nube</div>
               <div className="ad-tn">

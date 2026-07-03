@@ -204,7 +204,9 @@ function ClientDashboard({ client }) {
   // Contenido desde la base (con fallback al config de código).
   const [content, setContent] = useState(null);
   const [month, setMonth] = useState(null);
-  const [welcomeDone, setWelcomeDone] = useState(false); // bienvenida breve en cada ingreso (solo genéricos)
+  // Presentación: solo la PRIMERA vez que el cliente entra (se recuerda en su navegador).
+  const [welcomeDone, setWelcomeDone] = useState(() => { try { return !!localStorage.getItem(`welcomeSeen:${client.slug}`); } catch { return true; } });
+  const dismissWelcome = () => { try { localStorage.setItem(`welcomeSeen:${client.slug}`, '1'); } catch { /* noop */ } setWelcomeDone(true); };
   const [ob, setOb] = useState(null); // estado del onboarding (para saber si sigue pendiente)
   const reloadOb = useCallback(() => {
     apiClient.get(`/onboarding/${client.slug}`, { params: { key: client.accessKey } })
@@ -330,7 +332,7 @@ function ClientDashboard({ client }) {
     <div className="cp-page">
       {showWelcome && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'var(--color-background, #fff)' }}>
-          <Welcome name={data.name} onDone={() => setWelcomeDone(true)} />
+          <Welcome name={data.name} onDone={dismissWelcome} />
         </div>
       )}
       {/* Header */}
