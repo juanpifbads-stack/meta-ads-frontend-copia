@@ -400,8 +400,8 @@ function ClientDashboard({ client }) {
         <p className="cp-objective-note">{data.justificationText}</p>
       )}
 
-      {/* Performance ecommerce — genéricos: solo si hay Tienda Nube (no mostrar vacío). Moka: siempre. */}
-      {!onboardingView && (generic ? !!tn : true) && (
+      {/* Performance ecommerce — genéricos: si hay Tienda Nube o un objetivo ecommerce. Moka: siempre. */}
+      {!onboardingView && (generic ? (!!tn || ecomTarget > 0) : true) && (
       <section className="cp-section">
         <h2 className="cp-section-title">Performance ecommerce</h2>
         <div className="cp-kpis cp-kpis--3">
@@ -469,7 +469,7 @@ function ClientDashboard({ client }) {
       )}
 
       {/* Performance Meta */}
-      {caps.meta && show('performanceMeta') && (generic ? ((meta && meta.spend > 0) || (effMetaGoal && effMetaGoal.revenueTarget > 0)) : true) && (
+      {caps.meta && show('performanceMeta') && (generic ? (!!data.metaAccountId || (effMetaGoal && effMetaGoal.revenueTarget > 0)) : true) && (
       <section className="cp-section">
         <h2 className="cp-section-title">Performance Meta y TikTok</h2>
         <div className="cp-card">
