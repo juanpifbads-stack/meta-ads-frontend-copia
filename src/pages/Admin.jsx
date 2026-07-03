@@ -121,7 +121,7 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
   const [clients, setClients] = useState([]);
   const [slug, setSlug] = useState(lockedSlug || '');
   const [clientData, setClientData] = useState(null);
-  const [month, setMonth] = useState('');
+  const [month, setMonth] = useState(currentYM()); // arranca en el mes actual → el micro siempre está disponible
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
@@ -216,26 +216,23 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
         </div>
       )}
 
-      {!showNew && slug && <ClientConfigEditor slug={slug} section={cfgSection} />}
-
-      {!showNew && slug && cfgSection === 'portal' && <OnboardingEditor slug={slug} clients={clients} />}
+      {/* Cliente: solo su config. Portal: Estrategia PRIMERO, y abajo la config del portal. */}
+      {!showNew && slug && cfgSection === 'cliente' && <ClientConfigEditor slug={slug} section={cfgSection} />}
 
       {!showNew && clientData && cfgSection === 'portal' && (
         <div className="ad-strategy-head">
           <h2 className="ad-strategy-title">Estrategia</h2>
-          <p className="ad-muted">La <strong>macro</strong> (largo plazo, por temporada) + los <strong>meses (micro)</strong> que la componen. Lo micro de cada mes se alimenta de su Plan de medios; acá solo cargás lo que NO está en el plan (estrategia del mes, objetivo ecommerce, roadmap, productos, presupuesto).</p>
         </div>
       )}
 
       {!showNew && clientData && cfgSection === 'portal' && <MacroEditor slug={slug} macros={clientData.macros} reload={() => loadClient(slug)} />}
 
-      {!showNew && clientData && cfgSection === 'portal' && (clientData.months || []).length > 0 && (
+      {!showNew && clientData && cfgSection === 'portal' && (
         <div className="ad-controls">
           <div className="ad-field">
             <label>Mes (micro)</label>
             <select value={month} onChange={(e) => setMonth(e.target.value)}>
-              <option value="">— Elegí el mes —</option>
-              {[...(clientData?.months || [])].sort().map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
+              {Array.from(new Set([...(clientData?.months || []), currentYM()])).sort().map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
             </select>
           </div>
           <div className="ad-save" style={{ marginLeft: 'auto' }}>
@@ -316,6 +313,10 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
           </div>
         </div>
       )}
+
+      {/* Config del portal (secciones, onboarding, links) — DEBAJO de Estrategia. */}
+      {!showNew && slug && cfgSection === 'portal' && <ClientConfigEditor slug={slug} section={cfgSection} />}
+      {!showNew && slug && cfgSection === 'portal' && <OnboardingEditor slug={slug} clients={clients} />}
     </div>
   );
 }

@@ -352,6 +352,14 @@ function ClientDashboard({ client }) {
         )}
       </header>
 
+      {/* Banner de etapa onboarding: solo tareas + calendario hasta completar. */}
+      {onboardingPending && (
+        <div style={{ padding: '14px 18px', background: 'var(--color-background, #f3f2ec)', borderRadius: 12, margin: '0 0 18px', border: '0.5px solid var(--color-gray-mid, #e3e1d8)' }}>
+          <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 4 }}>Estamos en etapa de Onboarding 🚀</div>
+          <div style={{ fontSize: 13, color: '#5f5e5a' }}>Completá las tareas de abajo para arrancar. Cuando estén listas, se habilita el resto de tu panel.</div>
+        </div>
+      )}
+
       {/* Estrategia macro — período bien grande */}
       {show('macro') && strategyMacro && (
       <section className="cp-hero">
