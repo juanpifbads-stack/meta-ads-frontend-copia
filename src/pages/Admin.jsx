@@ -257,51 +257,9 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
             <p className="ad-muted">El objetivo de facturación (ecommerce y Meta), ROAS, inversión, justificación y consideraciones se cargan en el <strong>Plan de medios</strong> de este mes.</p>
           </Section>
 
-          {/* Roadmap */}
-          <Section title="Roadmap del mes">
-            {(plan.roadmap || []).map((w, i) => (
-              <div key={i} className="ad-row-box">
-                <div className="ad-row">
-                  <Field label="Semana" value={w.week} onChange={(v) => upd((p) => { p.roadmap[i].week = v; })} />
-                  <div className="ad-field">
-                    <label>Estado</label>
-                    <select value={w.status} onChange={(e) => upd((p) => { p.roadmap[i].status = e.target.value; })}>
-                      {STATUS_OPTS.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
-                    </select>
-                  </div>
-                  <button className="ad-del" onClick={() => upd((p) => { p.roadmap.splice(i, 1); })}>×</button>
-                </div>
-                <Field label="Objetivo de la semana" value={w.goal} onChange={(v) => upd((p) => { p.roadmap[i].goal = v; })} />
-                <div className="ad-sublabel">Sesiones de grabación</div>
-                {(w.recordings || []).map((r, j) => (
-                  <div key={j} className="ad-row-box" style={{ background: '#fff' }}>
-                    <div className="ad-row">
-                      <div className="ad-field"><label>Fecha</label><input type="date" value={r.date || ''} onChange={(e) => upd((p) => { p.roadmap[i].recordings[j].date = e.target.value; })} /></div>
-                      <div className="ad-field">
-                        <label>Actriz</label>
-                        <select value={r.actress || ''} onChange={(e) => upd((p) => { p.roadmap[i].recordings[j].actress = e.target.value; })}>
-                          <option value="">— Actriz —</option>
-                          <option value="Delfina">Delfina</option>
-                          <option value="Carina">Carina</option>
-                          {r.actress && !['Delfina', 'Carina'].includes(r.actress) && <option value={r.actress}>{r.actress}</option>}
-                        </select>
-                      </div>
-                      <div className="ad-field">
-                        <label>Semana</label>
-                        <select value={i} onChange={(e) => moveRecording(i, j, parseInt(e.target.value, 10))}>
-                          {(plan.roadmap || []).map((wk, wi) => <option key={wi} value={wi}>{wk.week || `Semana ${wi + 1}`}</option>)}
-                        </select>
-                      </div>
-                      <button className="ad-del" onClick={() => upd((p) => { p.roadmap[i].recordings.splice(j, 1); })}>×</button>
-                    </div>
-                    <Field label="Nota" value={r.note} onChange={(v) => upd((p) => { p.roadmap[i].recordings[j].note = v; })} />
-                  </div>
-                ))}
-                <button className="ad-add" onClick={() => upd((p) => { p.roadmap[i].recordings = p.roadmap[i].recordings || []; p.roadmap[i].recordings.push({ date: '', actress: '', note: '' }); })}>+ Sesión de grabación</button>
-              </div>
-            ))}
-            <button className="ad-add" onClick={() => upd((p) => { p.roadmap = p.roadmap || []; p.roadmap.push({ week: `Semana ${p.roadmap.length + 1}`, goal: '', status: 'pendiente', recordings: [] }); })}>+ Semana</button>
-          </Section>
+          {/* Roadmap del mes: se sacó de acá. Lo que haya que agendar va al calendario
+              del portal; las aclaraciones, a la justificación del plan de medios.
+              La data de plan.roadmap (Moka) se preserva; solo dejó de editarse acá. */}
 
           {/* Productos estratégicos — se traen de Tienda Nube */}
           <Section title="Productos estratégicos">
