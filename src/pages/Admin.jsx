@@ -213,6 +213,7 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
         <div className="ad-cfg-tabs">
           <button className={`ad-cfg-tab ${cfgSection === 'cliente' ? 'ad-cfg-tab--on' : ''}`} onClick={() => setCfgSection('cliente')}>Cliente</button>
           <button className={`ad-cfg-tab ${cfgSection === 'portal' ? 'ad-cfg-tab--on' : ''}`} onClick={() => setCfgSection('portal')}>Portal del cliente</button>
+          <button className={`ad-cfg-tab ${cfgSection === 'onboarding' ? 'ad-cfg-tab--on' : ''}`} onClick={() => setCfgSection('onboarding')}>Onboarding</button>
         </div>
       )}
 
@@ -316,7 +317,8 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
 
       {/* Config del portal (secciones, onboarding, links) — DEBAJO de Estrategia. */}
       {!showNew && slug && cfgSection === 'portal' && <ClientConfigEditor slug={slug} section={cfgSection} />}
-      {!showNew && slug && cfgSection === 'portal' && <OnboardingEditor slug={slug} clients={clients} />}
+      {!showNew && slug && cfgSection === 'onboarding' && <ClientConfigEditor slug={slug} section="onboarding" />}
+      {!showNew && slug && cfgSection === 'onboarding' && <OnboardingEditor slug={slug} clients={clients} />}
     </div>
   );
 }
@@ -513,10 +515,10 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
 
   return (
     <div className="ad-macro">
-      <button className="ad-macro-head" onClick={() => setOpen(!open)}>
-        <span>{open ? '▾' : '▸'}</span> {section === 'portal' ? 'Componentes que ve el cliente' : 'Datos del cliente'}
-      </button>
-      {open && cfg && (
+      <div className="ad-macro-head" style={{ cursor: 'default' }}>
+        {section === 'onboarding' ? 'Configuración de onboarding' : section === 'portal' ? 'Componentes que ve el cliente' : 'Datos del cliente'}
+      </div>
+      {cfg && (
         <div className="ad-macro-body">
           {section === 'cliente' && (
             <>
@@ -575,6 +577,31 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
             </>
           )}
 
+          {section === 'onboarding' && (
+            <>
+              <div className="ad-sublabel" style={{ marginTop: 0 }}>Qué se le pide al cliente</div>
+              <div className="ad-caps">
+                {[['pedirFormulario', 'Pedir formulario de marca'], ['pedirContenido', 'Pedir carpeta de contenido'], ['mostrarFechas', 'Mostrar fechas / calendario']].map(([k, label]) => {
+                  const on = !!(cfg.onboarding || {})[k];
+                  return (
+                    <label key={k} className="ad-cap">
+                      <input type="checkbox" checked={on} onChange={() => setCfg({ ...cfg, onboarding: { ...(cfg.onboarding || {}), [k]: !on } })} />
+                      <span>{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {/* Presentar: hasta prenderlo, el cliente ve SOLO tareas + calendario. */}
+              <div style={{ marginTop: 14 }}>
+                <button className={`ad-btn ${cfg.onboarding?.presentado ? 'ad-btn--ghost' : ''}`}
+                  onClick={() => setCfg({ ...cfg, onboarding: { ...(cfg.onboarding || {}), presentado: !(cfg.onboarding?.presentado) } })}>
+                  {cfg.onboarding?.presentado ? '✓ Portal presentado — volver a onboarding' : 'Presentar portal al cliente →'}
+                </button>
+                <p className="ad-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>Hasta presentarlo, el cliente ve solo tareas y calendario. Al presentarlo, ve el resto (cada sección aparece cuando tiene datos). Acordate de <strong>Guardar config</strong>.</p>
+              </div>
+            </>
+          )}
+
           {section === 'portal' && (
             <>
               <div className="ad-sublabel">Secciones opcionales</div>
@@ -588,28 +615,6 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
                     </label>
                   );
                 })}
-              </div>
-
-              <div className="ad-sublabel" style={{ marginTop: 14 }}>Onboarding</div>
-              <div className="ad-caps">
-                {[['pedirFormulario', 'Pedir formulario de marca'], ['pedirContenido', 'Pedir carpeta de contenido'], ['mostrarFechas', 'Mostrar fechas / calendario']].map(([k, label]) => {
-                  const on = !!(cfg.onboarding || {})[k];
-                  return (
-                    <label key={k} className="ad-cap">
-                      <input type="checkbox" checked={on} onChange={() => setCfg({ ...cfg, onboarding: { ...(cfg.onboarding || {}), [k]: !on } })} />
-                      <span>{label}</span>
-                    </label>
-                  );
-                })}
-              </div>
-
-              {/* Presentar: hasta prenderlo, el cliente ve SOLO tareas + calendario. */}
-              <div style={{ marginTop: 14 }}>
-                <button className={`ad-btn ${cfg.onboarding?.presentado ? 'ad-btn--ghost' : ''}`}
-                  onClick={() => setCfg({ ...cfg, onboarding: { ...(cfg.onboarding || {}), presentado: !(cfg.onboarding?.presentado) } })}>
-                  {cfg.onboarding?.presentado ? '✓ Portal presentado — volver a onboarding' : 'Presentar portal al cliente →'}
-                </button>
-                <p className="ad-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>Hasta presentarlo, el cliente ve solo tareas y calendario. Al presentarlo, ve el resto (cada sección aparece cuando tiene datos). Acordate de <strong>Guardar config</strong>.</p>
               </div>
 
               {/* Links del portal (toggle) */}
@@ -660,7 +665,7 @@ const OB_STATUS = [
 ];
 
 function OnboardingEditor({ slug, clients }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true); // en el tab Onboarding va abierto por defecto
   const [ob, setOb] = useState(null);
   const [msg, setMsg] = useState('');
   const [copied, setCopied] = useState(false);
@@ -832,13 +837,13 @@ function OnboardingEditor({ slug, clients }) {
                   <div key={q.id} className="ad-row" style={{ alignItems: 'flex-start', opacity: q.active ? 1 : 0.5 }}>
                     <label className="ad-cap" style={{ flex: 1, alignItems: 'flex-start' }}>
                       <input type="checkbox" disabled={!q.active} checked={isSelected(q.id)} onChange={() => toggleSelect(q.id)} style={{ marginTop: 8 }} />
-                      <textarea defaultValue={q.text} rows={3} onBlur={(e) => { if (e.target.value.trim() && e.target.value !== q.text) editQText(q, e.target.value.trim()); }} style={{ flex: 1, padding: '9px 11px', fontSize: 13, lineHeight: 1.55, resize: 'vertical', minHeight: 64, fontFamily: 'inherit' }} />
+                      <textarea defaultValue={q.text} rows={1} onBlur={(e) => { if (e.target.value.trim() && e.target.value !== q.text) editQText(q, e.target.value.trim()); }} style={{ flex: 1, padding: '7px 10px', fontSize: 13, lineHeight: 1.5, resize: 'vertical', minHeight: 36, fontFamily: 'inherit' }} />
                     </label>
                     <button className="ad-btn ad-btn--ghost" onClick={() => setQActive(q, !q.active)}>{q.active ? 'Archivar' : 'Reactivar'}</button>
                   </div>
                 ))}
                 <div className="ad-row" style={{ marginTop: 6, alignItems: 'flex-start' }}>
-                  <textarea className="ad-field--grow" rows={2} placeholder={`Nueva pregunta de ${sec}… (podés usar Enter para separar en párrafos)`} value={newQ[sec]} onChange={(e) => setNewQ((s) => ({ ...s, [sec]: e.target.value }))} style={{ flex: 1, padding: '9px 11px', lineHeight: 1.55, resize: 'vertical', minHeight: 52, fontFamily: 'inherit' }} />
+                  <textarea className="ad-field--grow" rows={1} placeholder={`Nueva pregunta de ${sec}…`} value={newQ[sec]} onChange={(e) => setNewQ((s) => ({ ...s, [sec]: e.target.value }))} style={{ flex: 1, padding: '7px 10px', lineHeight: 1.5, resize: 'vertical', minHeight: 36, fontFamily: 'inherit' }} />
                   <button className="ad-add" onClick={() => addQ(sec)}>+ Agregar</button>
                 </div>
               </div>
