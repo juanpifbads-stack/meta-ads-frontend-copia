@@ -259,18 +259,8 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
             <Field label="Descripción" textarea value={plan.strategyMonthly?.description || ''} onChange={(v) => upd((p) => { p.strategyMonthly = { ...p.strategyMonthly, description: v }; })} />
           </Section>
 
-          <Section title="Objetivos del mes">
-            <p className="ad-muted">El objetivo de facturación (ecommerce y Meta), ROAS, inversión, justificación y consideraciones se cargan en el <strong>Plan de medios</strong> de este mes.</p>
-          </Section>
-
-          {/* Roadmap del mes: se sacó de acá. Lo que haya que agendar va al calendario
-              del portal; las aclaraciones, a la justificación del plan de medios.
-              La data de plan.roadmap (Moka) se preserva; solo dejó de editarse acá. */}
-
-          {/* Productos estratégicos — se traen de Tienda Nube */}
-          <Section title="Productos estratégicos">
-            <p className="ad-muted">Se traen automáticamente de la <strong>Tienda Nube</strong> conectada al cliente. Si no tiene tienda conectada, esta sección no aparece.</p>
-          </Section>
+          {/* Roadmap del mes, Objetivos y Productos estratégicos: se sacaron (solo texto/ruido).
+              El objetivo va en el Plan de medios; los productos se traen de Tienda Nube. */}
 
           <div className="ad-save-bottom">
             {msg && <span className="ad-msg">{msg}</span>}
