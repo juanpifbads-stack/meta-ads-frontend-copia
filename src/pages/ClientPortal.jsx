@@ -224,7 +224,11 @@ function ClientDashboard({ client }) {
   const taskCalItems = (tasks || []).filter((t) => t.deadline).map((t) => ({
     id: t.id, title: t.title, kind: t.kind === 'evento' ? 'hito' : 'task',
     when: { mode: 'date', date: t.deadline }, status: t.status === 'terminada' ? 'hecho' : 'pendiente',
+    deletable: true, // viene de client_tasks → se puede borrar desde el calendario
   }));
+  const deleteCalItem = (item) => {
+    apiClient.delete(`/tasks/${client.slug}/${item.id}`, { params: { key: client.accessKey } }).then(reloadTasks).catch(() => {});
+  };
 
   useEffect(() => {
     let alive = true;
@@ -611,7 +615,7 @@ function ClientDashboard({ client }) {
       {generic && data.onboarding && data.onboarding.mostrarFechas && (
       <section className="cp-section">
         <h2 className="cp-section-title">Fechas</h2>
-        <OnboardingCalendar data={ob || { roadmap: [] }} extraItems={taskCalItems} />
+        <OnboardingCalendar data={ob || { roadmap: [] }} extraItems={taskCalItems} onDeleteItem={deleteCalItem} />
         <div style={{ marginTop: 12 }}>
           <AddCalendarEvent slug={client.slug} accessKey={client.accessKey} reload={reloadTasks} />
         </div>

@@ -393,7 +393,7 @@ export function OnboardingDeliverables({ slug, authKey, data, refetch }) {
   const ansCount = (data.answers || []).filter((a) => (a.answer || '').trim()).length;
   return (
     <div className="ob-deliverables">
-      <div className="ob-deliv-grid">
+      <div className="ob-deliv-grid" style={{ gridTemplateColumns: '1fr', display: 'grid', gap: 10 }}>
         <button className={`ob-deliv-card ${data.formSubmitted ? 'ob-deliv-card--done' : ''}`} onClick={() => questions.length && setShowForm(true)} disabled={!questions.length}>
           <span className="ob-deliv-icon">📝</span>
           <span className="ob-deliv-name">Responder formulario de onboarding</span>
@@ -422,9 +422,16 @@ export function OnboardingDeliverables({ slug, authKey, data, refetch }) {
 
 // Calendario semanal del onboarding — reusable en el portal.
 // extraItems: hitos/tareas con fecha que vienen de otras fuentes (tareas con deadline, eventos).
-export function OnboardingCalendar({ data, extraItems = [] }) {
-  const items = [...(data.roadmap || []), ...extraItems];
+export function OnboardingCalendar({ data, extraItems = [], onDeleteItem }) {
+  // Merge + dedupe por id (evita duplicados si un item viene de dos fuentes).
+  const seen = new Set();
+  const items = [...(data.roadmap || []), ...extraItems].filter((it) => {
+    if (!it.id) return true;
+    if (seen.has(it.id)) return false;
+    seen.add(it.id); return true;
+  });
   const [weekOffset, setWeekOffset] = useState(0);
+  const [selDay, setSelDay] = useState(null); // día abierto para ver/eliminar sus items
   const weekStart = (() => { const d = new Date(); const dow = (d.getDay() + 6) % 7; d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - dow + weekOffset * 7); return d; })();
   const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(weekStart.getDate() + i); return d; });
   const todayStr = ymd(new Date());
@@ -457,7 +464,8 @@ export function OnboardingCalendar({ data, extraItems = [] }) {
           const ds = ymd(d);
           const dayItems = items.filter((it) => itemOnDay(it, ds) && !rangeBounds(it));
           return (
-            <div key={ds} className={`ob-cal-day ${ds === todayStr ? 'ob-cal-day--today' : ''}`}>
+            <div key={ds} className={`ob-cal-day ${ds === todayStr ? 'ob-cal-day--today' : ''} ${ds === selDay ? 'ob-cal-day--sel' : ''}`}
+              onClick={() => setSelDay(ds === selDay ? null : ds)} style={{ cursor: dayItems.length ? 'pointer' : 'default' }}>
               <div className="ob-cal-dow">{DOW[i]}</div>
               <div className="ob-cal-dom">{d.getDate()}</div>
               {dayItems.map((it, j) => (
@@ -472,6 +480,25 @@ export function OnboardingCalendar({ data, extraItems = [] }) {
           {multiDayBars.map(({ it, s, e }, k) => (
             <div key={it.id || k} className={`ob-cal-bar ${it.kind === 'task' ? 'ob-cal-pill--task' : ''}`} style={{ gridColumn: `${s + 1} / ${e + 2}` }} title={it.title}>{it.title}</div>
           ))}
+        </div>
+      )}
+      {selDay && (
+        <div style={{ marginTop: 12, borderTop: '0.5px solid var(--color-gray-mid,#e3e1d8)', paddingTop: 10 }}>
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>
+            {new Date(selDay + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </div>
+          {(() => {
+            const dayItems = items.filter((it) => itemOnDay(it, selDay) && !rangeBounds(it));
+            if (!dayItems.length) return <div style={{ fontSize: 13, color: '#94a3b8' }}>Sin eventos este día.</div>;
+            return dayItems.map((it, k) => (
+              <div key={it.id || k} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: 14 }}>
+                <span style={{ flex: 1 }}>{it.kind === 'task' ? '📋' : '📌'} {it.title}</span>
+                {it.deletable && onDeleteItem && (
+                  <button onClick={() => { onDeleteItem(it); setSelDay(null); }} title="Eliminar" style={{ color: '#b91c1c', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+                )}
+              </div>
+            ));
+          })()}
         </div>
       )}
     </div>
