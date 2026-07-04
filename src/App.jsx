@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -9,7 +9,11 @@ import ClientHub from './pages/ClientHub.jsx';
 import Admin from './pages/Admin.jsx';
 import AdminPanel from './pages/AdminPanel.jsx';
 import ClientPortal, { PaymentsPortal } from './pages/ClientPortal.jsx';
-import Onboarding from './pages/Onboarding.jsx';
+// Redirige los links viejos de /cliente/:slug/onboarding al portal unificado.
+function RedirectToPortal() {
+  const { slug } = useParams();
+  return <Navigate to={`/cliente/${slug}`} replace />;
+}
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -117,8 +121,9 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      {/* Onboarding del cliente — público, misma clave que el portal */}
-      <Route path="/cliente/:slug/onboarding" element={<Onboarding />} />
+      {/* Onboarding standalone RETIRADO: ahora vive dentro del portal unificado.
+          Redirigimos los links viejos (p.ej. Baciver) al portal del cliente. */}
+      <Route path="/cliente/:slug/onboarding" element={<RedirectToPortal />} />
       {/* Portal de cliente — público, protegido por clave propia */}
       <Route path="/cliente/:slug" element={<ClientPortal />} />
       {/* Vista solo de pagos — para administración, clave separada */}
