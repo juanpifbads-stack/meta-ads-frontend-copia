@@ -234,37 +234,30 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
 
       {!showNew && clientData && cfgSection === 'portal' && <MacroEditor slug={slug} macros={clientData.macros} reload={() => loadClient(slug)} />}
 
+      {/* Estrategia micro (mensual): mismo globo que el macro. El mes se cambia
+          en vivo (carga automática), y un único botón "Guardar micro" (full-width,
+          adentro del globo, igual al macro) guarda la estrategia del mes. */}
       {!showNew && clientData && cfgSection === 'portal' && (
-        <div className="ad-controls">
-          <div className="ad-field">
-            <label>Mes (micro)</label>
-            <select value={month} onChange={(e) => setMonth(e.target.value)}>
-              {Array.from(new Set([...(clientData?.months || []), currentYM()])).sort().map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
-            </select>
-          </div>
-          <div className="ad-save" style={{ marginLeft: 'auto' }}>
-            {msg && <span className="ad-msg">{msg}</span>}
-            <button className="ad-btn" onClick={savePlan} disabled={!plan || !month}>Guardar mes</button>
-          </div>
-        </div>
-      )}
-
-      {!showNew && loading && cfgSection === 'portal' && <p className="ad-muted">Cargando plan…</p>}
-
-      {!showNew && plan && !loading && cfgSection === 'portal' && (
-        <div className="ad-plan">
-          {/* Estrategia mensual */}
-          <Section title="Estrategia del mes">
-            <Field label="Objetivo del mes" value={plan.strategyMonthly?.objective || ''} onChange={(v) => upd((p) => { p.strategyMonthly = { ...p.strategyMonthly, objective: v }; })} />
-            <Field label="Descripción" textarea value={plan.strategyMonthly?.description || ''} onChange={(v) => upd((p) => { p.strategyMonthly = { ...p.strategyMonthly, description: v }; })} />
-          </Section>
-
-          {/* Roadmap del mes, Objetivos y Productos estratégicos: se sacaron (solo texto/ruido).
-              El objetivo va en el Plan de medios; los productos se traen de Tienda Nube. */}
-
-          <div className="ad-save-bottom">
-            {msg && <span className="ad-msg">{msg}</span>}
-            <button className="ad-btn" onClick={savePlan}>Guardar plan</button>
+        <div className="ad-macro">
+          <div className="ad-macro-head" style={{ cursor: 'default' }}>Estrategia micro</div>
+          <div className="ad-macro-body">
+            <div className="ad-row-box">
+              <div className="ad-field">
+                <label>Mes</label>
+                <select value={month} onChange={(e) => setMonth(e.target.value)}>
+                  {Array.from(new Set([...(clientData?.months || []), currentYM()])).sort().map((m) => <option key={m} value={m}>{fmtMonth(m)}</option>)}
+                </select>
+              </div>
+              {loading && <p className="ad-muted">Cargando plan…</p>}
+              {plan && !loading && (
+                <>
+                  <Field label="Objetivo del mes" value={plan.strategyMonthly?.objective || ''} onChange={(v) => upd((p) => { p.strategyMonthly = { ...p.strategyMonthly, objective: v }; })} />
+                  <Field label="Descripción" textarea value={plan.strategyMonthly?.description || ''} onChange={(v) => upd((p) => { p.strategyMonthly = { ...p.strategyMonthly, description: v }; })} />
+                  {msg && <span className="ad-msg">{msg}</span>}
+                  <button className="ad-btn" onClick={savePlan} disabled={!plan || !month}>Guardar micro</button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
