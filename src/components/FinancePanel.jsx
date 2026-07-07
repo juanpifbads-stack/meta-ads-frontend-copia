@@ -14,7 +14,7 @@ function defaultLine(servicio) {
   return {
     servicio, tipo: 'post', moneda: 'ARS', fee: '', socio_pct: 50, opex_pct: 30, opex_operador: '',
     socio_modo: 'pct', socio_monto: '', opex_modo: 'pct', opex_monto: '',
-    setup_fee: '', setup_month: '',
+    setup_fee: '', setup_month: '', costos: [],
     reparto: [{ persona: '', modo: 'pct', pct: 100, monto: 0 }], variable: { modo: 'none', base: '', rate: '', fuente: 'manual' },
     cobro: { tipo: 'inicio_mes' },
   };
@@ -56,8 +56,10 @@ function ConfigTab({ clients, people, month }) {
   // Regla: lo que cobran los operadores no puede exceder el fee mensual.
   // Pre-agencia → debe dar EXACTO el fee (no hay caja). Post → no lo supera (queda caja).
   const validateLine = (l) => {
-    const fee = Number(l.fee) || 0;
-    if (fee <= 0) return 'Cargá el fee mensual antes de repartir.';
+    // Automatización: se reparte el fee NETO de costos mensuales.
+    const costos = l.servicio === 'automatizacion' ? (l.costos || []).reduce((s, c) => s + (Number(c.monto) || 0), 0) : 0;
+    const fee = Math.max(0, (Number(l.fee) || 0) - costos);
+    if (fee <= 0) return 'Cargá el fee mensual (o los costos se comen todo el fee).';
     if (l.tipo === 'pre') {
       const entries = l.reparto || [];
       const fixedTot = entries.filter((e) => (e.modo || 'pct') === 'fijo').reduce((s, e) => s + (Number(e.monto) || 0), 0);
@@ -125,10 +127,23 @@ function ConfigTab({ clients, people, month }) {
           </div>
 
           {l.servicio === 'automatizacion' && (
-            <div className="fp-grid">
-              <label>Implementación (one-shot)<input {...numProps} value={l.setup_fee ?? ''} onChange={(e) => setLine(i, { setup_fee: e.target.value })} /></label>
-              <label>Mes del cobro de implementación<input type="month" value={l.setup_month || ''} onChange={(e) => setLine(i, { setup_month: e.target.value })} /></label>
-            </div>
+            <>
+              <div className="fp-grid">
+                <label>Implementación (one-shot)<input {...numProps} value={l.setup_fee ?? ''} onChange={(e) => setLine(i, { setup_fee: e.target.value })} /></label>
+                <label>Mes del cobro de implementación<input type="month" value={l.setup_month || ''} onChange={(e) => setLine(i, { setup_month: e.target.value })} /></label>
+              </div>
+              <div className="fp-pre">
+                <div className="fp-sub">Costos mensuales (se restan antes de repartir)</div>
+                {(l.costos || []).map((c, ci) => (
+                  <div className="fp-pre-row" key={ci}>
+                    <input placeholder="Nombre del costo" value={c.nombre || ''} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, nombre: e.target.value } : x) })} style={{ flex: 1 }} />
+                    <input {...numProps} placeholder="Monto" value={c.monto ?? ''} style={{ width: 110 }} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, monto: e.target.value } : x) })} /><span className="fp-pct">{l.moneda}</span>
+                    <button className="fp-btn fp-btn--danger" onClick={() => setLine(i, { costos: l.costos.filter((_, xi) => xi !== ci) })}>×</button>
+                  </div>
+                ))}
+                <button className="fp-btn" onClick={() => setLine(i, { costos: [...(l.costos || []), { nombre: '', monto: '' }] })}>+ Costo</button>
+              </div>
+            </>
           )}
 
           {l.tipo === 'post' ? (
