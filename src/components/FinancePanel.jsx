@@ -69,10 +69,6 @@ function ConfigTab({ clients, people, month }) {
             {clients.filter((c) => c.active !== false).map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
           </select>
         </label>
-        <label className="fp-inline" style={{ marginLeft: 'auto' }} title="Dólar oficial venta del 1° del mes (automático).">
-          Tipo de cambio · venta del 1° (auto)
-          <input type="number" value={fx} readOnly style={{ width: 90 }} />
-        </label>
       </div>
       {msg && <div className="fp-msg">{msg}</div>}
 
