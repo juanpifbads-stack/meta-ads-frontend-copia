@@ -22,5 +22,6 @@
 .hm-pace-exp { opacity: .75; font-weight: 500; }
 .hm-hide-panel { margin-top: 14px; border: 1px solid var(--color-gray-light, #e3e3e8); border-radius: 12px; padding: 14px; background: #fafafa; }
 .hm-hide-title { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #8a8d96; margin-bottom: 10px; }
-.hm-hide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px 14px; }
-.hm-hide-item { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; color: #334155; }
+/* Columnas (column-major): el orden alfabético se lee de arriba hacia abajo por columna. */
+.hm-hide-grid { column-width: 180px; column-gap: 14px; }
+.hm-hide-item { display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; color: #334155; break-inside: avoid; margin-bottom: 6px; }
