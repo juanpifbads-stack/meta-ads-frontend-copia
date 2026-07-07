@@ -37,7 +37,9 @@ function statusByRatio(r) {
 function bandLabel(key, kind) {
   const fact = { margen: 'Adelantada', objetivo: 'En objetivo', cerca: 'Cerca', alejado: 'Alejada', emergencia: 'Emergencia' };
   const roas = { margen: 'En objetivo y con margen', objetivo: 'En objetivo', cerca: 'Cerca', alejado: 'Alejado', emergencia: 'Emergencia' };
-  return (kind === 'fact' ? fact : roas)[key] || '';
+  // Gasto: la banda se calcula con (esperado / gastado), así gastar de más = rojo.
+  const gasto = { margen: 'Con margen', objetivo: 'En ritmo', cerca: 'Al límite', alejado: 'Gastando de más', emergencia: 'Sobregasto' };
+  return (kind === 'fact' ? fact : kind === 'gasto' ? gasto : roas)[key] || '';
 }
 function Badge({ band, prefix, kind }) {
   if (!band) return null;
@@ -62,6 +64,14 @@ function ClientCard({ c, onOpen }) {
   const paceBand = expected > 0 && health ? statusByRatio(purchaseValue / expected) : null;
   const revPct = revGoal > 0 ? Math.min((purchaseValue / revGoal) * 100, 999) : 0;
 
+  // Presupuesto (inversión objetivo del mes) = facturación objetivo / ROAS objetivo.
+  const budget = revGoal > 0 && roasGoal > 0 ? revGoal / roasGoal : 0;
+  const expectedSpend = budget > 0 ? (budget / daysInMonth()) * elapsedPace() : 0;
+  // Banda con (esperado / gastado): gastar de más baja el ratio → tiende a rojo.
+  const spendBand = expectedSpend > 0 && spend > 0 && health ? statusByRatio(expectedSpend / spend) : null;
+  const spendPct = budget > 0 ? Math.min((spend / budget) * 100, 999) : 0;
+  const spendDev = expectedSpend > 0 ? ((spend - expectedSpend) / expectedSpend) * 100 : null;
+
   return (
     <button className="hm-card" onClick={() => onOpen(c.slug)}>
       <div className="ctrl-card-head">
@@ -75,6 +85,7 @@ function ClientCard({ c, onOpen }) {
         <div className="ctrl-card-badges">
           {!isServ && <Badge band={roasBand} prefix="ROAS" kind="roas" />}
           {!isServ && <Badge band={paceBand} prefix="Fact." kind="fact" />}
+          {!isServ && <Badge band={spendBand} prefix="Gasto" kind="gasto" />}
         </div>
       </div>
 
@@ -107,12 +118,24 @@ function ClientCard({ c, onOpen }) {
               </span>
             </div>
           )}
-          {revGoal > 0 && (
+          {(revGoal > 0 || budget > 0) && (
             <div className="ctrl-goals">
-              <div className="ctrl-goal-row">
-                <div className="ctrl-goal-top"><span>Objetivo facturación</span><span>{revPct.toFixed(0)}%</span></div>
-                <div className="ctrl-bar"><div className="ctrl-bar-fill" style={{ width: Math.min(revPct, 100) + '%', background: (paceBand || {}).color }} /></div>
-              </div>
+              {revGoal > 0 && (
+                <div className="ctrl-goal-row">
+                  <div className="ctrl-goal-top"><span>Objetivo facturación</span><span>{revPct.toFixed(0)}%</span></div>
+                  <div className="ctrl-bar"><div className="ctrl-bar-fill" style={{ width: Math.min(revPct, 100) + '%', background: (paceBand || {}).color }} /></div>
+                </div>
+              )}
+              {budget > 0 && (
+                <div className="ctrl-goal-row">
+                  <div className="ctrl-goal-top">
+                    <span>Presupuesto usado{spendDev != null ? (spendDev > 5 ? ` · +${spendDev.toFixed(0)}% vs ritmo` : spendDev < -5 ? ` · ${spendDev.toFixed(0)}% vs ritmo` : ' · en ritmo') : ''}</span>
+                    <span>{spendPct.toFixed(0)}%</span>
+                  </div>
+                  <div className="ctrl-bar"><div className="ctrl-bar-fill" style={{ width: Math.min(spendPct, 100) + '%', background: (spendBand || {}).color }} /></div>
+                  <div className="ctrl-goal-sub" style={{ fontSize: 11, color: '#8b8d94', marginTop: 2 }}>{fmtMoney(spend)} de {fmtMoney(budget)}</div>
+                </div>
+              )}
             </div>
           )}
         </>
