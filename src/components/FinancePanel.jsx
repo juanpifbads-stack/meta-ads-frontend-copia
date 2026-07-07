@@ -51,8 +51,35 @@ function ConfigTab({ clients, people, month }) {
     if (!free) return;
     setLines((ls) => [...ls, defaultLine(free.k)]);
   };
+  // Regla: lo que cobran los operadores no puede exceder el fee mensual.
+  // Pre-agencia → debe dar EXACTO el fee (no hay caja). Post → no lo supera (queda caja).
+  const validateLine = (l) => {
+    const fee = Number(l.fee) || 0;
+    if (fee <= 0) return 'Cargá el fee mensual antes de repartir.';
+    if (l.tipo === 'pre') {
+      const entries = l.reparto || [];
+      const fixedTot = entries.filter((e) => (e.modo || 'pct') === 'fijo').reduce((s, e) => s + (Number(e.monto) || 0), 0);
+      const pcts = entries.filter((e) => (e.modo || 'pct') !== 'fijo');
+      if (fixedTot > fee + 0.5) return `Los montos fijos ($${fmt(fixedTot)}) superan el fee mensual ($${fmt(fee)}).`;
+      if (pcts.length) {
+        const pctSum = pcts.reduce((s, e) => s + (Number(e.pct) || 0), 0);
+        if (Math.abs(pctSum - 100) > 0.1) return `Los % de los operadores tienen que sumar 100 (hoy suman ${pctSum}). En pre-agencia se reparte el 100% del fee.`;
+      } else if (Math.abs(fixedTot - fee) > 0.5) {
+        return `Sin operadores por %, los montos fijos tienen que sumar exactamente el fee ($${fmt(fee)}). Hoy suman $${fmt(fixedTot)}.`;
+      }
+      return null;
+    }
+    // post-agencia
+    const socioTot = fee * (Number(l.socio_pct) || 0) / 100;
+    const opex = (l.opex_modo === 'fijo') ? (Number(l.opex_monto) || 0) : fee * (Number(l.opex_pct) || 0) / 100;
+    if (socioTot + opex > fee + 0.5) return `Sueldo socios + OPEX ($${fmt(socioTot + opex)}) no puede superar el fee mensual ($${fmt(fee)}). La caja quedaría negativa.`;
+    return null;
+  };
+
   const saveLine = (i) => {
     const l = lines[i];
+    const err = validateLine(l);
+    if (err) { setMsg(err); return; }
     apiClient.post('/admin/finance/services', { client_slug: slug, ...l })
       .then(() => { setMsg(`✓ ${servLabel(l.servicio)} guardado`); setTimeout(() => setMsg(''), 2000); loadLines(slug); })
       .catch(() => setMsg('Error al guardar'));
