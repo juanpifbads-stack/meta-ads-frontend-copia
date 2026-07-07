@@ -13,7 +13,8 @@ const fmt = (x) => Math.round(x || 0).toLocaleString('es-AR');
 function defaultLine(servicio) {
   return {
     servicio, tipo: 'post', moneda: 'ARS', fee: '', socio_pct: 50, opex_pct: 30, opex_operador: '',
-    reparto: [{ persona: '', pct: 100 }], variable: { modo: 'none', base: '', rate: '', fuente: 'manual' },
+    opex_modo: 'pct', opex_monto: '',
+    reparto: [{ persona: '', modo: 'pct', pct: 100, monto: 0 }], variable: { modo: 'none', base: '', rate: '', fuente: 'manual' },
     cobro: { tipo: 'inicio_mes' },
   };
 }
@@ -95,20 +96,26 @@ function ConfigTab({ clients, people, month }) {
           {l.tipo === 'post' ? (
             <div className="fp-grid">
               <label>Sueldo socios %<input {...numProps} value={l.socio_pct ?? ''} onChange={(e) => setLine(i, { socio_pct: e.target.value })} /></label>
-              <label>OPEX %<select value={l.opex_pct} onChange={(e) => setLine(i, { opex_pct: parseFloat(e.target.value) })}><option value="30">30 %</option><option value="40">40 %</option></select></label>
+              <label>OPEX operador<select value={l.opex_modo || 'pct'} onChange={(e) => setLine(i, { opex_modo: e.target.value })}><option value="pct">% del total</option><option value="fijo">Monto fijo</option></select></label>
+              {(l.opex_modo || 'pct') === 'fijo'
+                ? <label>Monto fijo ({l.moneda})<input {...numProps} value={l.opex_monto ?? ''} onChange={(e) => setLine(i, { opex_monto: e.target.value })} /></label>
+                : <label>OPEX %<select value={l.opex_pct} onChange={(e) => setLine(i, { opex_pct: parseFloat(e.target.value) })}><option value="30">30 %</option><option value="40">40 %</option></select></label>}
               <label>Operador (OPEX)<select value={l.opex_operador || ''} onChange={(e) => setLine(i, { opex_operador: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
             </div>
           ) : (
             <div className="fp-pre">
-              <div className="fp-sub">Operadores (suma 100%)</div>
+              <div className="fp-sub">Operadores (los % reparten lo que queda después de los fijos)</div>
               {(l.reparto || []).map((r, ri) => (
                 <div className="fp-pre-row" key={ri}>
                   <select value={r.persona || ''} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, persona: e.target.value } : x) })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select>
-                  <input {...numProps} value={r.pct ?? ''} style={{ width: 70 }} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, pct: e.target.value } : x) })} /><span className="fp-pct">%</span>
+                  <select value={r.modo || 'pct'} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, modo: e.target.value } : x) })}><option value="pct">%</option><option value="fijo">Fijo</option></select>
+                  {(r.modo || 'pct') === 'fijo'
+                    ? <><input {...numProps} value={r.monto ?? ''} style={{ width: 90 }} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, monto: e.target.value } : x) })} /><span className="fp-pct">{l.moneda}</span></>
+                    : <><input {...numProps} value={r.pct ?? ''} style={{ width: 70 }} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, pct: e.target.value } : x) })} /><span className="fp-pct">%</span></>}
                   {l.reparto.length > 1 && <button className="fp-btn fp-btn--danger" onClick={() => setLine(i, { reparto: l.reparto.filter((_, xi) => xi !== ri) })}>×</button>}
                 </div>
               ))}
-              <button className="fp-btn" onClick={() => setLine(i, { reparto: [...l.reparto, { persona: '', pct: 0 }] })}>+ Operador</button>
+              <button className="fp-btn" onClick={() => setLine(i, { reparto: [...l.reparto, { persona: '', modo: 'pct', pct: 0, monto: 0 }] })}>+ Operador</button>
             </div>
           )}
 
