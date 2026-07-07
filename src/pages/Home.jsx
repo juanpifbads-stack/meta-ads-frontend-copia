@@ -239,7 +239,7 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
           <div className="hm-hide-panel">
             <div className="hm-hide-title">Mostrar / ocultar marcas</div>
             <div className="hm-hide-grid">
-              {clients.map((c) => (
+              {[...clients].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' })).map((c) => (
                 <label key={c.slug} className="hm-hide-item">
                   <input type="checkbox" checked={!hidden.includes(c.slug)} onChange={() => toggleHidden(c.slug)} />
                   <span>{c.name}</span>
