@@ -69,7 +69,8 @@ function ConfigTab({ clients, people, month }) {
             {clients.filter((c) => c.active !== false).map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
           </select>
         </label>
-        <label className="fp-inline" style={{ marginLeft: 'auto' }}>Tipo de cambio (ARS por USD)
+        <label className="fp-inline" style={{ marginLeft: 'auto' }} title="Se completa solo con el dólar oficial venta del 1° del mes. Podés sobrescribirlo si querés.">
+          Tipo de cambio · venta del 1° (auto)
           <input type="number" value={fx} onChange={(e) => setFx(e.target.value)} style={{ width: 90 }} />
           <button className="fp-btn" onClick={saveFx}>Guardar</button>
         </label>
