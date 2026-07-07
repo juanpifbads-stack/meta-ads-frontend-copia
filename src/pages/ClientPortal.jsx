@@ -341,6 +341,8 @@ function ClientDashboard({ client }) {
   const ecomPct = ecomTarget > 0 ? (ecomCurrent / ecomTarget) * 100 : 0;
   const expected = (ecomTarget / daysInMonth()) * elapsedPace();
   const ecomDeviation = expected > 0 ? ((ecomCurrent - expected) / expected) * 100 : 0;
+  // Ritmo: cuánto llevás vs lo esperado a esta altura del mes (100 = en ritmo).
+  const ecomPace = expected > 0 ? (ecomCurrent / expected) * 100 : 0;
 
   const budgetTotals = sumByCurrency(budget.items, { budget, facturacion: ecomCurrent });
 
@@ -416,7 +418,10 @@ function ClientDashboard({ client }) {
             <span className="cp-kpi-objval">{fmtMoney(ecomTarget)}</span>
           </div>
           <div className="cp-bar cp-bar--lg">
-            <div className={`cp-bar-fill ${ecomPct >= 100 ? 'cp-bar--good' : ecomPct >= 70 ? 'cp-bar--warn' : 'cp-bar--bad'}`}
+            {/* El COLOR va por ritmo (vamos vs esperado a esta altura del mes), no por
+                % del objetivo mensual: si no, estaría en rojo casi todo el mes. El ANCHO
+                sí sigue siendo el avance hacia el objetivo del mes. */}
+            <div className={`cp-bar-fill ${ecomPace >= 100 ? 'cp-bar--good' : ecomPace >= 80 ? 'cp-bar--warn' : 'cp-bar--bad'}`}
               style={{ width: `${ecomReady ? Math.min(ecomPct, 100) : 0}%` }} />
           </div>
           <div className="cp-kpi-pct">{ecomReady ? `${ecomPct.toFixed(0)}% del objetivo alcanzado` : '—'}</div>
