@@ -4,7 +4,7 @@ import './FinancePanel.css';
 
 const SERVICIOS = [
   { k: 'meta', l: 'Meta Ads' }, { k: 'tiktok', l: 'TikTok' }, { k: 'contenido', l: 'Contenido' },
-  { k: 'ecommerce', l: 'Ecommerce' }, { k: 'web', l: 'Web' },
+  { k: 'ecommerce', l: 'Ecommerce' }, { k: 'web', l: 'Web' }, { k: 'automatizacion', l: 'Automatización' },
 ];
 const servLabel = (k) => (SERVICIOS.find((s) => s.k === k) || {}).l || k;
 const currentYM = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; };
@@ -14,6 +14,7 @@ function defaultLine(servicio) {
   return {
     servicio, tipo: 'post', moneda: 'ARS', fee: '', socio_pct: 50, opex_pct: 30, opex_operador: '',
     opex_modo: 'pct', opex_monto: '',
+    setup_fee: '', setup_month: '',
     reparto: [{ persona: '', modo: 'pct', pct: 100, monto: 0 }], variable: { modo: 'none', base: '', rate: '', fuente: 'manual' },
     cobro: { tipo: 'inicio_mes' },
   };
@@ -117,8 +118,15 @@ function ConfigTab({ clients, people, month }) {
           <div className="fp-grid">
             <label>Tipo<select value={l.tipo} onChange={(e) => setLine(i, { tipo: e.target.value })}><option value="post">Post-agencia</option><option value="pre">Pre-agencia</option></select></label>
             <label>Moneda<select value={l.moneda} onChange={(e) => setLine(i, { moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
-            <label>Fee mensual<input {...numProps} value={l.fee ?? ''} onChange={(e) => setLine(i, { fee: e.target.value })} /></label>
+            <label>{l.servicio === 'automatizacion' ? 'Mantenimiento (mensual)' : 'Fee mensual'}<input {...numProps} value={l.fee ?? ''} onChange={(e) => setLine(i, { fee: e.target.value })} /></label>
           </div>
+
+          {l.servicio === 'automatizacion' && (
+            <div className="fp-grid">
+              <label>Implementación (one-shot)<input {...numProps} value={l.setup_fee ?? ''} onChange={(e) => setLine(i, { setup_fee: e.target.value })} /></label>
+              <label>Mes del cobro de implementación<input type="month" value={l.setup_month || ''} onChange={(e) => setLine(i, { setup_month: e.target.value })} /></label>
+            </div>
+          )}
 
           {l.tipo === 'post' ? (
             <div className="fp-grid">
