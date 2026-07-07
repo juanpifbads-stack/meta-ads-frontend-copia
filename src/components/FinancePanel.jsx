@@ -13,7 +13,7 @@ const fmt = (x) => Math.round(x || 0).toLocaleString('es-AR');
 function defaultLine(servicio) {
   return {
     servicio, tipo: 'post', moneda: 'ARS', fee: '', socio_pct: 50, opex_pct: 30, opex_operador: '',
-    opex_modo: 'pct', opex_monto: '',
+    socio_modo: 'pct', socio_monto: '', opex_modo: 'pct', opex_monto: '',
     setup_fee: '', setup_month: '',
     reparto: [{ persona: '', modo: 'pct', pct: 100, monto: 0 }], variable: { modo: 'none', base: '', rate: '', fuente: 'manual' },
     cobro: { tipo: 'inicio_mes' },
@@ -72,7 +72,7 @@ function ConfigTab({ clients, people, month }) {
       return null;
     }
     // post-agencia
-    const socioTot = fee * (Number(l.socio_pct) || 0) / 100;
+    const socioTot = (l.socio_modo === 'fijo') ? (Number(l.socio_monto) || 0) : fee * (Number(l.socio_pct) || 0) / 100;
     const opex = (l.opex_modo === 'fijo') ? (Number(l.opex_monto) || 0) : fee * (Number(l.opex_pct) || 0) / 100;
     if (socioTot + opex > fee + 0.5) return `Sueldo socios + OPEX ($${fmt(socioTot + opex)}) no puede superar el fee mensual ($${fmt(fee)}). La caja quedaría negativa.`;
     return null;
@@ -133,7 +133,10 @@ function ConfigTab({ clients, people, month }) {
 
           {l.tipo === 'post' ? (
             <div className="fp-grid">
-              <label>Sueldo socios %<input {...numProps} value={l.socio_pct ?? ''} onChange={(e) => setLine(i, { socio_pct: e.target.value })} /></label>
+              <label>Sueldo socios<select value={l.socio_modo || 'pct'} onChange={(e) => setLine(i, { socio_modo: e.target.value })}><option value="pct">% del total</option><option value="fijo">Monto fijo</option></select></label>
+              {(l.socio_modo || 'pct') === 'fijo'
+                ? <label>Sueldo socios fijo ({l.moneda})<input {...numProps} value={l.socio_monto ?? ''} onChange={(e) => setLine(i, { socio_monto: e.target.value })} /></label>
+                : <label>Sueldo socios %<input {...numProps} value={l.socio_pct ?? ''} onChange={(e) => setLine(i, { socio_pct: e.target.value })} /></label>}
               <label>OPEX operador<select value={l.opex_modo || 'pct'} onChange={(e) => setLine(i, { opex_modo: e.target.value })}><option value="pct">% del total</option><option value="fijo">Monto fijo</option></select></label>
               {(l.opex_modo || 'pct') === 'fijo'
                 ? <label>Monto fijo ({l.moneda})<input {...numProps} value={l.opex_monto ?? ''} onChange={(e) => setLine(i, { opex_monto: e.target.value })} /></label>
