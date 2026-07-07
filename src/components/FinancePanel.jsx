@@ -31,11 +31,12 @@ function ConfigTab({ clients, people, month }) {
   const [fx, setFx] = useState('');
   const [msg, setMsg] = useState('');
 
+  // Cargamos la config VIGENTE DEL MES elegido (así ves el fee que corresponde a ese mes).
   const loadLines = useCallback((s) => {
     if (!s) return;
-    apiClient.get(`/admin/finance/services?client=${s}`).then((r) => setLines(r.data.lines || [])).catch(() => setLines([]));
-  }, []);
-  useEffect(() => { loadLines(slug); }, [slug, loadLines]);
+    apiClient.get(`/admin/finance/services?client=${s}&month=${month}`).then((r) => setLines(r.data.lines || [])).catch(() => setLines([]));
+  }, [month]);
+  useEffect(() => { loadLines(slug); }, [slug, month, loadLines]);
   useEffect(() => {
     apiClient.get(`/admin/finance/fx?month=${month}`).then((r) => setFx(r.data.fx ? String(r.data.fx.ars_por_usd) : '')).catch(() => {});
   }, [month]);
@@ -81,9 +82,10 @@ function ConfigTab({ clients, people, month }) {
     const l = lines[i];
     const err = validateLine(l);
     if (err) { setMsg(err); return; }
-    apiClient.post('/admin/finance/services', { client_slug: slug, ...l })
-      .then(() => { setMsg(`✓ ${servLabel(l.servicio)} guardado`); setTimeout(() => setMsg(''), 2000); loadLines(slug); })
-      .catch(() => setMsg('Error al guardar'));
+    // effective_month ata la versión al 1° del mes elegido → cada mes conserva su fee.
+    apiClient.post('/admin/finance/services', { client_slug: slug, ...l, effective_month: month })
+      .then(() => { setMsg(`✓ ${servLabel(l.servicio)} guardado para ${month}`); setTimeout(() => setMsg(''), 2500); loadLines(slug); })
+      .catch((e) => setMsg(e?.response?.data?.message || 'Error al guardar'));
   };
   const delLine = (l) => {
     if (!l.id) { setLines((ls) => ls.filter((x) => x !== l)); return; }
@@ -98,6 +100,7 @@ function ConfigTab({ clients, people, month }) {
             {clients.filter((c) => c.active !== false).map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
           </select>
         </label>
+        <span className="fp-muted" style={{ marginLeft: 'auto' }}>Editando el mes <strong>{month}</strong> · guardar registra el fee desde el 1° de ese mes (los meses anteriores no cambian).</span>
       </div>
       {msg && <div className="fp-msg">{msg}</div>}
 
