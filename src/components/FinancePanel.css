@@ -55,6 +55,11 @@
 .fp-deal-editbar { align-items: center; gap: 12px; }
 .fp-deal-title { font-size: 19px; }
 
+/* P&L */
+.fp-pnl-strong td { font-weight: 600; border-top: 1px solid #15161a; border-bottom: 1px solid #e3e1d8; }
+.fp-pnl-sub td { color: #6b6b6b; font-size: 12px; padding-left: 20px; border-bottom: none; }
+.fp-pnl-sub td:first-child { padding-left: 22px; }
+
 .fp-cl-line { border-top: 0.5px solid #f0efe9; padding: 10px 0; }
 .fp-cl-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 6px; }
 .fp-cl-break { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #5f5e5a; }

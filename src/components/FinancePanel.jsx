@@ -463,6 +463,118 @@ function MovimientosTab({ people }) {
   );
 }
 
+// ─── P&L post-agencia (Profit First) ───────────────────────────────────────────
+function PnlTab({ month, people }) {
+  const [data, setData] = useState(null);
+  const [cons, setCons] = useState('ARS');
+  const [tax, setTax] = useState({ nombre: '', modo: 'pct', valor: '', moneda: 'ARS', quien_paga: '' });
+  const [g, setG] = useState({ date: new Date().toISOString().slice(0, 10), tipo: 'opex', concepto: '', monto: '', moneda: 'ARS' });
+  const [open, setOpen] = useState({ socio: true, opex: true, imp: true });
+
+  const load = useCallback(() => { apiClient.get(`/admin/finance/pnl?month=${month}`).then((r) => setData(r.data)).catch(() => setData(null)); }, [month]);
+  useEffect(() => { load(); }, [load]);
+
+  const addTax = () => { if (!tax.nombre.trim()) return; apiClient.post('/admin/finance/tax-configs', tax).then(() => { setTax({ nombre: '', modo: 'pct', valor: '', moneda: 'ARS', quien_paga: '' }); load(); }).catch(() => {}); };
+  const delTax = (id) => { if (window.confirm('¿Borrar el impuesto?')) apiClient.delete(`/admin/finance/tax-configs/${id}`).then(load).catch(() => {}); };
+  const addGasto = () => {
+    if (!(Number(g.monto) > 0)) return;
+    const payload = g.tipo === 'opex' ? { ...g, categoria: 'opex' } : { ...g, categoria: 'impuesto', tax_id: g.tipo.replace('tax:', '') };
+    apiClient.post('/admin/finance/expenses', payload).then(() => { setG({ ...g, concepto: '', monto: '' }); load(); }).catch(() => {});
+  };
+  const delGasto = (id) => { apiClient.delete(`/admin/finance/expenses/${id}`).then(load).catch(() => {}); };
+
+  if (!data) return <div className="fp-muted">Cargando…</div>;
+  const fx = data.fx || 0;
+  const conv2 = (o) => cons === 'USD' ? (o.USD + (fx ? o.ARS / fx : 0)) : (o.ARS + o.USD * fx);
+  const conv1 = (monto, moneda) => moneda === cons ? monto : (cons === 'USD' ? (fx ? monto / fx : 0) : monto * fx);
+
+  const income = conv2(data.income);
+  const socio = conv2(data.socio);
+  const opexOp = conv2(data.opexOperators);
+  const opexGastos = (data.expenses || []).filter((e) => e.categoria === 'opex');
+  const opexGastosTot = opexGastos.reduce((s, e) => s + conv1(e.monto, e.moneda), 0);
+  const opexTotal = opexOp + opexGastosTot;
+  const taxes = (data.taxConfigs || []).map((t) => ({ ...t, monto: t.modo === 'pct' ? income * (Number(t.valor) || 0) / 100 : conv1(Number(t.valor) || 0, t.moneda) }));
+  const taxesTot = taxes.reduce((s, t) => s + t.monto, 0);
+  const cajaNeta = income - socio - opexTotal - taxesTot;
+  const pct = (x) => income ? (x / income) * 100 : 0;
+  const impGastos = (data.expenses || []).filter((e) => e.categoria === 'impuesto');
+
+  const Row = ({ label, amount, cat, strong }) => (
+    <tr className={strong ? 'fp-pnl-strong' : ''} onClick={cat ? () => setOpen((o) => ({ ...o, [cat]: !o[cat] })) : undefined} style={cat ? { cursor: 'pointer' } : undefined}>
+      <td>{cat ? (open[cat] ? '▾ ' : '▸ ') : ''}{label}</td>
+      <td className="fp-muted">{pct(amount).toFixed(0)}%</td>
+      <td className="fp-cons">{fmt(amount)}</td>
+    </tr>
+  );
+  const Sub = ({ label, amount, onDel }) => (
+    <tr className="fp-pnl-sub"><td>{label}{onDel && <span onClick={onDel} style={{ cursor: 'pointer', color: '#b91c1c', marginLeft: 8 }}>×</span>}</td><td></td><td>{fmt(amount)}</td></tr>
+  );
+
+  return (
+    <div>
+      <div className="fp-bar">
+        <strong>P&L post-agencia · {month}</strong>
+        <span style={{ marginLeft: 'auto' }} className="fp-inline">Ver en
+          <button className={`fp-btn ${cons === 'ARS' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('ARS')}>ARS</button>
+          <button className={`fp-btn ${cons === 'USD' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('USD')}>USD</button>
+        </span>
+      </div>
+
+      <div className="fp-card">
+        <table className="fp-table">
+          <thead><tr><th>Categoría</th><th>%</th><th>Monto ({cons})</th></tr></thead>
+          <tbody>
+            <Row label="Ingresos post-agencia" amount={income} strong />
+            <Row label="Sueldo socios" amount={socio} cat="socio" />
+            {open.socio && data.socioBreak.map((p, i) => <Sub key={i} label={p.person} amount={conv2(p)} />)}
+            <Row label="OPEX" amount={opexTotal} cat="opex" />
+            {open.opex && data.opexBreak.map((p, i) => <Sub key={'o' + i} label={`${p.person} (operador)`} amount={conv2(p)} />)}
+            {open.opex && opexGastos.map((e) => <Sub key={e.id} label={`${e.concepto || 'Gasto'} · ${e.date}`} amount={conv1(e.monto, e.moneda)} onDel={() => delGasto(e.id)} />)}
+            <Row label="Impuestos" amount={taxesTot} cat="imp" />
+            {open.imp && taxes.map((t) => <Sub key={t.id} label={`${t.nombre}${t.quien_paga ? ' · ' + t.quien_paga : ''} (${t.modo === 'pct' ? t.valor + '%' : 'fijo'})`} amount={t.monto} />)}
+            {open.imp && impGastos.map((e) => <Sub key={e.id} label={`Pago: ${e.concepto || 'impuesto'} · ${e.date}`} amount={conv1(e.monto, e.moneda)} onDel={() => delGasto(e.id)} />)}
+            <Row label="Caja (neta)" amount={cajaNeta} strong />
+          </tbody>
+        </table>
+        {!fx && <p className="fp-muted">Sin TC del mes: no se pueden mezclar monedas.</p>}
+      </div>
+
+      {/* Cargar gasto */}
+      <div className="fp-card">
+        <div className="fp-card-head"><strong>Cargar gasto</strong></div>
+        <div className="fp-grid">
+          <label>Fecha<input type="date" value={g.date} onChange={(e) => setG({ ...g, date: e.target.value })} /></label>
+          <label>Tipo<select value={g.tipo} onChange={(e) => setG({ ...g, tipo: e.target.value })}><option value="opex">OPEX</option>{(data.taxConfigs || []).map((t) => <option key={t.id} value={`tax:${t.id}`}>{t.nombre}</option>)}</select></label>
+          <label>Concepto<input value={g.concepto} onChange={(e) => setG({ ...g, concepto: e.target.value })} /></label>
+          <label>Moneda<select value={g.moneda} onChange={(e) => setG({ ...g, moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
+          <label>Monto<input {...numProps} value={g.monto} onChange={(e) => setG({ ...g, monto: e.target.value })} /></label>
+        </div>
+        <div style={{ textAlign: 'right', marginTop: 8 }}><button className="fp-btn fp-btn--primary" onClick={addGasto}>Cargar gasto</button></div>
+      </div>
+
+      {/* Config impuestos */}
+      <div className="fp-card">
+        <div className="fp-card-head"><strong>Impuestos configurables</strong></div>
+        {(data.taxConfigs || []).map((t) => (
+          <div className="fp-deal-line" key={t.id}>
+            <span>{t.nombre} · {t.modo === 'pct' ? `${t.valor}%` : `${t.moneda} ${fmt(t.valor)} fijo`}{t.quien_paga ? ` · paga ${t.quien_paga}` : ''}</span>
+            <span onClick={() => delTax(t.id)} style={{ cursor: 'pointer', color: '#b91c1c' }}>×</span>
+          </div>
+        ))}
+        <div className="fp-grid" style={{ marginTop: 8 }}>
+          <label>Nombre<input value={tax.nombre} onChange={(e) => setTax({ ...tax, nombre: e.target.value })} /></label>
+          <label>Modo<select value={tax.modo} onChange={(e) => setTax({ ...tax, modo: e.target.value })}><option value="pct">% de ingresos</option><option value="fijo">Monto fijo</option></select></label>
+          <label>{tax.modo === 'pct' ? 'Valor %' : 'Monto'}<input {...numProps} value={tax.valor} onChange={(e) => setTax({ ...tax, valor: e.target.value })} /></label>
+          {tax.modo === 'fijo' && <label>Moneda<select value={tax.moneda} onChange={(e) => setTax({ ...tax, moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>}
+          <label>Quién paga<select value={tax.quien_paga} onChange={(e) => setTax({ ...tax, quien_paga: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+        </div>
+        <div style={{ textAlign: 'right', marginTop: 8 }}><button className="fp-btn" onClick={addTax}>+ Impuesto</button></div>
+      </div>
+    </div>
+  );
+}
+
 export default function FinancePanel() {
   const [tab, setTab] = useState('deals');
   const [clients, setClients] = useState([]);
@@ -481,6 +593,7 @@ export default function FinancePanel() {
         <button className={`fp-tab ${tab === 'deals' ? 'on' : ''}`} onClick={() => setTab('deals')}>Deals Clientes</button>
         <button className={`fp-tab ${tab === 'reparto' ? 'on' : ''}`} onClick={() => setTab('reparto')}>Reparto del mes</button>
         <button className={`fp-tab ${tab === 'movimientos' ? 'on' : ''}`} onClick={() => setTab('movimientos')}>Movimientos</button>
+        <button className={`fp-tab ${tab === 'pnl' ? 'on' : ''}`} onClick={() => setTab('pnl')}>P&amp;L</button>
         {tab !== 'movimientos' && (
           <label className="fp-inline" style={{ marginLeft: 'auto' }}>Mes
             <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
@@ -490,6 +603,7 @@ export default function FinancePanel() {
       {tab === 'deals' && <DealsClientesTab clients={clients} people={people} month={month} setMonth={setMonth} />}
       {tab === 'reparto' && <RepartoTab month={month} clients={clients} />}
       {tab === 'movimientos' && <MovimientosTab people={people} />}
+      {tab === 'pnl' && <PnlTab month={month} people={people} />}
     </div>
   );
 }
