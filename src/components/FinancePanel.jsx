@@ -347,6 +347,122 @@ function DealsClientesTab({ clients, people, month, setMonth }) {
   );
 }
 
+// ─── Movimientos (cuentas + transferencias + saldos acumulados) ────────────────
+function MovimientosTab({ people }) {
+  const [accounts, setAccounts] = useState([]);
+  const [transfers, setTransfers] = useState([]);
+  const [balances, setBalances] = useState(null);
+  const [newAcc, setNewAcc] = useState('');
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), account_id: '', person: '', amount: '', moneda: 'ARS', note: '' });
+  const [msg, setMsg] = useState('');
+  const [cons, setCons] = useState('USD');
+
+  const load = useCallback(() => {
+    apiClient.get('/admin/finance/accounts').then((r) => setAccounts(r.data.accounts || [])).catch(() => {});
+    apiClient.get('/admin/finance/transfers').then((r) => setTransfers(r.data.transfers || [])).catch(() => {});
+    apiClient.get('/admin/finance/balances').then((r) => setBalances(r.data)).catch(() => setBalances({ rows: [], fx: null }));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const addAccount = () => {
+    if (!newAcc.trim()) return;
+    apiClient.post('/admin/finance/accounts', { name: newAcc.trim() }).then(() => { setNewAcc(''); load(); }).catch(() => {});
+  };
+  const delAccount = (id) => { if (window.confirm('¿Borrar la cuenta?')) apiClient.delete(`/admin/finance/accounts/${id}`).then(load).catch(() => {}); };
+  const addTransfer = () => {
+    if (!form.person || !(Number(form.amount) > 0)) { setMsg('Falta persona o monto'); return; }
+    apiClient.post('/admin/finance/transfers', form).then(() => {
+      setForm({ ...form, amount: '', note: '' }); setMsg('✓ Transferencia cargada'); setTimeout(() => setMsg(''), 2000); load();
+    }).catch((e) => setMsg(e?.response?.data?.message || 'Error'));
+  };
+  const delTransfer = (id) => { if (window.confirm('¿Borrar la transferencia?')) apiClient.delete(`/admin/finance/transfers/${id}`).then(load).catch(() => {}); };
+
+  const accName = (id) => accounts.find((a) => a.id === id)?.name || '—';
+  const fx = balances?.fx || 0;
+  const consSaldo = (s) => cons === 'USD' ? (s.USD + (fx ? s.ARS / fx : 0)) : (s.ARS + s.USD * fx);
+
+  return (
+    <div>
+      {/* Cuentas */}
+      <div className="fp-card">
+        <div className="fp-card-head"><strong>Cuentas</strong></div>
+        <div className="fp-cl-break" style={{ gap: 8, marginBottom: 10 }}>
+          {accounts.map((a) => (
+            <span key={a.id} className="fp-tag" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+              {a.name} <span onClick={() => delAccount(a.id)} style={{ cursor: 'pointer', color: '#b91c1c' }}>×</span>
+            </span>
+          ))}
+          {accounts.length === 0 && <span className="fp-muted">Sin cuentas todavía.</span>}
+        </div>
+        <div className="fp-inline">
+          <input placeholder="Nueva cuenta (ej. Mercado Pago Agus)" value={newAcc} onChange={(e) => setNewAcc(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addAccount()} style={{ width: 260 }} />
+          <button className="fp-btn" onClick={addAccount}>+ Cuenta</button>
+        </div>
+      </div>
+
+      {/* Nueva transferencia */}
+      <div className="fp-card">
+        <div className="fp-card-head"><strong>Cargar transferencia</strong>{msg && <span className="fp-msg" style={{ marginLeft: 'auto' }}>{msg}</span>}</div>
+        <div className="fp-grid">
+          <label>Fecha<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
+          <label>Cuenta<select value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}><option value="">—</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
+          <label>Le entró a<select value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+          <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
+          <label>Monto<input {...numProps} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></label>
+          <label>Nota<input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
+        </div>
+        <div style={{ textAlign: 'right', marginTop: 8 }}><button className="fp-btn fp-btn--primary" onClick={addTransfer}>Cargar</button></div>
+      </div>
+
+      {/* Saldos acumulados */}
+      <div className="fp-card">
+        <div className="fp-card-head"><strong>Saldos por cobrar (acumulado)</strong>
+          <span style={{ marginLeft: 'auto' }} className="fp-inline">Consolidar a
+            <button className={`fp-btn ${cons === 'USD' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('USD')}>USD</button>
+            <button className={`fp-btn ${cons === 'ARS' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('ARS')}>ARS</button>
+          </span>
+        </div>
+        {!balances ? <div className="fp-muted">Cargando…</div> : (
+          <table className="fp-table">
+            <thead><tr><th>Persona</th><th>Le corresponde (USD/ARS)</th><th>Recibido (USD/ARS)</th><th>Saldo (USD/ARS)</th><th>Saldo consolidado ({cons})</th></tr></thead>
+            <tbody>
+              {balances.rows.map((r, i) => (
+                <tr key={i}>
+                  <td>{r.person}</td>
+                  <td>{fmt(r.owed.USD)} / {fmt(r.owed.ARS)}</td>
+                  <td>{fmt(r.received.USD)} / {fmt(r.received.ARS)}</td>
+                  <td>{fmt(r.saldo.USD)} / {fmt(r.saldo.ARS)}</td>
+                  <td className="fp-cons">{fmt(consSaldo(r.saldo))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="fp-muted" style={{ marginTop: 6 }}>Saldo = lo que le corresponde del reparto (histórico) − lo que ya recibió. Positivo = le deben; negativo = tiene plata de más.</p>
+      </div>
+
+      {/* Últimas transferencias */}
+      <div className="fp-card">
+        <div className="fp-card-head"><strong>Transferencias cargadas</strong></div>
+        {transfers.length === 0 ? <div className="fp-muted">Ninguna todavía.</div> : (
+          <table className="fp-table">
+            <thead><tr><th>Fecha</th><th>Persona</th><th>Cuenta</th><th>Monto</th><th></th></tr></thead>
+            <tbody>
+              {transfers.map((t) => (
+                <tr key={t.id}>
+                  <td>{t.date}</td><td>{t.person}</td><td>{accName(t.account_id)}{t.note ? <span className="fp-muted"> · {t.note}</span> : ''}</td>
+                  <td>{t.moneda} {fmt(t.amount)}</td>
+                  <td><span onClick={() => delTransfer(t.id)} style={{ cursor: 'pointer', color: '#b91c1c' }}>×</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function FinancePanel() {
   const [tab, setTab] = useState('deals');
   const [clients, setClients] = useState([]);
@@ -364,12 +480,16 @@ export default function FinancePanel() {
       <div className="fp-tabs">
         <button className={`fp-tab ${tab === 'deals' ? 'on' : ''}`} onClick={() => setTab('deals')}>Deals Clientes</button>
         <button className={`fp-tab ${tab === 'reparto' ? 'on' : ''}`} onClick={() => setTab('reparto')}>Reparto del mes</button>
-        <label className="fp-inline" style={{ marginLeft: 'auto' }}>Mes
-          <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
-        </label>
+        <button className={`fp-tab ${tab === 'movimientos' ? 'on' : ''}`} onClick={() => setTab('movimientos')}>Movimientos</button>
+        {tab !== 'movimientos' && (
+          <label className="fp-inline" style={{ marginLeft: 'auto' }}>Mes
+            <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
+          </label>
+        )}
       </div>
       {tab === 'deals' && <DealsClientesTab clients={clients} people={people} month={month} setMonth={setMonth} />}
       {tab === 'reparto' && <RepartoTab month={month} clients={clients} />}
+      {tab === 'movimientos' && <MovimientosTab people={people} />}
     </div>
   );
 }
