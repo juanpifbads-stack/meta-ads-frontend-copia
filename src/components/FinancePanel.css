@@ -42,6 +42,19 @@
 .fp-subtable td { text-align: right; padding: 5px 6px; border-bottom: 0.5px solid #eeece4; }
 .fp-subtable td:first-child { text-align: left; }
 
+/* Deals Clientes — fichas finas */
+.fp-deal-card { border: 0.5px solid #e3e1d8; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; background: #fff; }
+.fp-deal-head { display: flex; align-items: center; justify-content: space-between; }
+.fp-deal-head strong { font-size: 15px; }
+.fp-gear { border: none; background: transparent; cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 6px; }
+.fp-gear:hover { background: #f0efe9; }
+.fp-deal-line { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #45443f; padding: 3px 0; }
+.fp-deal-empty { font-size: 12px; padding: 2px 0; }
+.fp-tag--pre { background: #eef0ff; color: #2c4cff; }
+.fp-tag--post { background: #eaf6ee; color: #178048; }
+.fp-deal-editbar { align-items: center; gap: 12px; }
+.fp-deal-title { font-size: 19px; }
+
 .fp-cl-line { border-top: 0.5px solid #f0efe9; padding: 10px 0; }
 .fp-cl-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 6px; }
 .fp-cl-break { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #5f5e5a; }

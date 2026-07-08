@@ -32,11 +32,9 @@ function normalizePost(l) {
 // Solo dígitos, punto y coma (sin spinner, sin forzar 0). El backend coacciona a número.
 const numProps = { type: 'text', inputMode: 'decimal' };
 
-// ─── Configuración ───────────────────────────────────────────────────────────
-function ConfigTab({ clients, people, month }) {
-  const [slug, setSlug] = useState('');
+// ─── Editor de un deal (se abre desde la ficha del cliente) ────────────────────
+function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
   const [lines, setLines] = useState([]);
-  useEffect(() => { if (!slug) { const f = clients.find((c) => c.active !== false); if (f) setSlug(f.slug); } }, [clients, slug]);
   const [fx, setFx] = useState('');
   const [msg, setMsg] = useState('');
 
@@ -116,14 +114,14 @@ function ConfigTab({ clients, people, month }) {
 
   return (
     <div>
-      <div className="fp-bar">
-        <label className="fp-inline">Cliente
-          <select value={slug} onChange={(e) => setSlug(e.target.value)}>
-            {clients.filter((c) => c.active !== false).map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-          </select>
+      <div className="fp-bar fp-deal-editbar">
+        <button className="fp-btn" onClick={onBack}>← Volver</button>
+        <strong className="fp-deal-title">{clientName}</strong>
+        <label className="fp-inline" style={{ marginLeft: 'auto' }}>Mes
+          <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
         </label>
-        <span className="fp-muted" style={{ marginLeft: 'auto' }}>Editando el mes <strong>{month}</strong> · guardar registra el fee desde el 1° de ese mes (los meses anteriores no cambian).</span>
       </div>
+      <p className="fp-muted" style={{ margin: '0 0 10px' }}>Guardar registra el fee desde el 1° de <strong>{month}</strong> (los meses anteriores no cambian).</p>
       {msg && <div className="fp-msg">{msg}</div>}
 
       {lines.map((l, i) => (
@@ -295,32 +293,62 @@ function RepartoTab({ month, clients }) {
   );
 }
 
-// ─── Por cliente ──────────────────────────────────────────────────────────────
-function ByClientTab({ month, clients }) {
-  const [data, setData] = useState(null);
-  const name = (slug) => (clients.find((c) => c.slug === slug) || {}).name || slug;
-  useEffect(() => { apiClient.get(`/admin/finance/by-client?month=${month}`).then((r) => setData(r.data.clients || [])).catch(() => setData([])); }, [month]);
-  if (!data) return <div className="fp-muted">Cargando…</div>;
-  if (!data.length) return <div className="fp-muted">No hay líneas de servicio cargadas todavía.</div>;
+// ─── Deals Clientes (lista de clientes + editor del deal) ──────────────────────
+function DealsClientesTab({ clients, people, month, setMonth }) {
+  const [editing, setEditing] = useState(null);   // slug en edición
+  const [byClient, setByClient] = useState(null); // slug -> lines (del mes)
+  const [q, setQ] = useState('');
+
+  // Traemos los deals del mes para mostrar servicio + fee en cada ficha.
+  useEffect(() => {
+    if (editing) return;
+    apiClient.get(`/admin/finance/by-client?month=${month}`).then((r) => {
+      const map = {}; (r.data.clients || []).forEach((c) => { map[c.client] = c.lines || []; });
+      setByClient(map);
+    }).catch(() => setByClient({}));
+  }, [month, editing]);
+
+  if (editing) {
+    const c = clients.find((x) => x.slug === editing);
+    return <ConfigTab slug={editing} clientName={c?.name || editing} people={people} month={month} setMonth={setMonth} onBack={() => setEditing(null)} />;
+  }
+
+  const list = clients.filter((c) => c.active !== false)
+    .filter((c) => (c.name || '').toLowerCase().includes(q.trim().toLowerCase()))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' }));
+
   return (
     <div>
-      {data.map((c) => (
-        <div className="fp-card" key={c.client}>
-          <div className="fp-card-head"><strong>{name(c.client)}</strong></div>
-          {c.lines.map((l, i) => (
-            <div key={i} className="fp-cl-line">
-              <div className="fp-cl-head"><span>{servLabel(l.servicio)} · {l.moneda} {fmt(l.total)}</span><span className="fp-tag">{l.tipo}{l.variable ? ` · var ${fmt(l.variable)}` : ''}</span></div>
-              <div className="fp-cl-break">{l.breakdown.map((b, bi) => <span key={bi}>{b.label}: <strong>{fmt(b.amount)}</strong></span>)}</div>
+      <div className="fp-bar">
+        <input placeholder="Buscar cliente…" value={q} onChange={(e) => setQ(e.target.value)}
+          style={{ flex: 1, maxWidth: 340, padding: '8px 12px', border: '1px solid #d8d6cf', borderRadius: 8 }} />
+        <span className="fp-muted" style={{ marginLeft: 'auto' }}>{list.length} clientes</span>
+      </div>
+      {byClient === null ? <div className="fp-muted">Cargando…</div> : list.map((c) => {
+        const lines = byClient[c.slug] || [];
+        return (
+          <div className="fp-deal-card" key={c.slug}>
+            <div className="fp-deal-head">
+              <strong>{c.name}</strong>
+              <button className="fp-gear" title="Editar deal" onClick={() => setEditing(c.slug)}>⚙️</button>
             </div>
-          ))}
-        </div>
-      ))}
+            {lines.length === 0
+              ? <div className="fp-muted fp-deal-empty">Sin deals configurados</div>
+              : lines.map((l, i) => (
+                  <div className="fp-deal-line" key={i}>
+                    <span>{servLabel(l.servicio)} · <strong>{l.moneda} {fmt(l.fee)}</strong></span>
+                    <span className={`fp-tag fp-tag--${l.tipo}`}>{l.tipo === 'pre' ? 'Pre-agencia' : 'Post-agencia'}</span>
+                  </div>
+                ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 export default function FinancePanel() {
-  const [tab, setTab] = useState('config');
+  const [tab, setTab] = useState('deals');
   const [clients, setClients] = useState([]);
   const [people, setPeople] = useState([]);
   const [month, setMonth] = useState(currentYM());
@@ -334,16 +362,14 @@ export default function FinancePanel() {
     <div className="ad-section">
       <h3 className="ad-section-title">Finanzas de la agencia</h3>
       <div className="fp-tabs">
-        <button className={`fp-tab ${tab === 'config' ? 'on' : ''}`} onClick={() => setTab('config')}>Configuración</button>
+        <button className={`fp-tab ${tab === 'deals' ? 'on' : ''}`} onClick={() => setTab('deals')}>Deals Clientes</button>
         <button className={`fp-tab ${tab === 'reparto' ? 'on' : ''}`} onClick={() => setTab('reparto')}>Reparto del mes</button>
-        <button className={`fp-tab ${tab === 'porCliente' ? 'on' : ''}`} onClick={() => setTab('porCliente')}>Por cliente</button>
         <label className="fp-inline" style={{ marginLeft: 'auto' }}>Mes
           <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
         </label>
       </div>
-      {tab === 'config' && <ConfigTab clients={clients} people={people} month={month} />}
+      {tab === 'deals' && <DealsClientesTab clients={clients} people={people} month={month} setMonth={setMonth} />}
       {tab === 'reparto' && <RepartoTab month={month} clients={clients} />}
-      {tab === 'porCliente' && <ByClientTab month={month} clients={clients} />}
     </div>
   );
 }
