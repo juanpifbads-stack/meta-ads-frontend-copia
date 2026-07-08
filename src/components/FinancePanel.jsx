@@ -14,10 +14,19 @@ function defaultLine(servicio) {
   return {
     servicio, tipo: 'post', moneda: 'ARS', fee: '', socio_pct: 50, opex_pct: 30, opex_operador: '',
     socio_modo: 'pct', socio_monto: '', opex_modo: 'pct', opex_monto: '',
+    opex_reparto: [{ persona: '', modo: 'pct', pct: 30, monto: '' }],
     setup_fee: '', setup_month: '', costos: [],
     reparto: [{ persona: '', modo: 'pct', pct: 100, monto: 0 }], variable: { modo: 'none', base: '', rate: '', fuente: 'manual' },
     cobro: { tipo: 'inicio_mes' },
   };
+}
+
+// Las líneas viejas (post) traen un solo operador en columnas sueltas. Las normalizamos a
+// `opex_reparto` (lista) para que la UI muestre siempre la lista de operadores del OPEX.
+function normalizePost(l) {
+  if (l.tipo === 'pre') return l;
+  if (Array.isArray(l.opex_reparto) && l.opex_reparto.length) return l;
+  return { ...l, opex_reparto: [{ persona: l.opex_operador || '', modo: l.opex_modo || 'pct', pct: l.opex_pct ?? 30, monto: l.opex_monto ?? '' }] };
 }
 
 // Solo dígitos, punto y coma (sin spinner, sin forzar 0). El backend coacciona a número.
@@ -34,7 +43,7 @@ function ConfigTab({ clients, people, month }) {
   // Cargamos la config VIGENTE DEL MES elegido (así ves el fee que corresponde a ese mes).
   const loadLines = useCallback((s) => {
     if (!s) return;
-    apiClient.get(`/admin/finance/services?client=${s}&month=${month}`).then((r) => setLines(r.data.lines || [])).catch(() => setLines([]));
+    apiClient.get(`/admin/finance/services?client=${s}&month=${month}`).then((r) => setLines((r.data.lines || []).map(normalizePost))).catch(() => setLines([]));
   }, [month]);
   useEffect(() => { loadLines(slug); }, [slug, month, loadLines]);
   useEffect(() => {
@@ -75,7 +84,8 @@ function ConfigTab({ clients, people, month }) {
     }
     // post-agencia
     const socioTot = (l.socio_modo === 'fijo') ? (Number(l.socio_monto) || 0) : fee * (Number(l.socio_pct) || 0) / 100;
-    const opex = (l.opex_modo === 'fijo') ? (Number(l.opex_monto) || 0) : fee * (Number(l.opex_pct) || 0) / 100;
+    const opexRows = (l.opex_reparto && l.opex_reparto.length) ? l.opex_reparto : [{ modo: l.opex_modo, pct: l.opex_pct, monto: l.opex_monto }];
+    const opex = opexRows.reduce((s, e) => s + ((e.modo === 'fijo') ? (Number(e.monto) || 0) : fee * (Number(e.pct) || 0) / 100), 0);
     if (socioTot + opex > fee + 0.5) return `Sueldo socios + OPEX ($${fmt(socioTot + opex)}) no puede superar el fee mensual ($${fmt(fee)}). La caja quedaría negativa.`;
     return null;
   };
@@ -84,8 +94,18 @@ function ConfigTab({ clients, people, month }) {
     const l = lines[i];
     const err = validateLine(l);
     if (err) { setMsg(err); return; }
+    // Post: mantenemos las columnas legacy (opex_operador/modo/pct/monto) en sync con el
+    // primer operador, así no quedan desactualizadas para quien las lea sin la lista.
+    const payload = { client_slug: slug, ...l, effective_month: month };
+    if (l.tipo !== 'pre') {
+      const first = (l.opex_reparto && l.opex_reparto[0]) || {};
+      payload.opex_operador = first.persona || '';
+      payload.opex_modo = first.modo || 'pct';
+      payload.opex_pct = first.pct ?? 30;
+      payload.opex_monto = first.monto ?? 0;
+    }
     // effective_month ata la versión al 1° del mes elegido → cada mes conserva su fee.
-    apiClient.post('/admin/finance/services', { client_slug: slug, ...l, effective_month: month })
+    apiClient.post('/admin/finance/services', payload)
       .then(() => { setMsg(`✓ ${servLabel(l.servicio)} guardado para ${month}`); setTimeout(() => setMsg(''), 2500); loadLines(slug); })
       .catch((e) => setMsg(e?.response?.data?.message || 'Error al guardar'));
   };
@@ -121,7 +141,7 @@ function ConfigTab({ clients, people, month }) {
             <button className="fp-btn fp-btn--danger" style={{ marginLeft: 'auto' }} onClick={() => delLine(l)}>Quitar</button>
           </div>
           <div className="fp-grid">
-            <label>Tipo<select value={l.tipo} onChange={(e) => setLine(i, { tipo: e.target.value })}><option value="post">Post-agencia</option><option value="pre">Pre-agencia</option></select></label>
+            <label>Tipo<select value={l.tipo} onChange={(e) => { const tipo = e.target.value; const patch = { tipo }; if (tipo !== 'pre' && !(l.opex_reparto && l.opex_reparto.length)) patch.opex_reparto = [{ persona: l.opex_operador || '', modo: l.opex_modo || 'pct', pct: l.opex_pct ?? 30, monto: l.opex_monto ?? '' }]; setLine(i, patch); }}><option value="post">Post-agencia</option><option value="pre">Pre-agencia</option></select></label>
             <label>Moneda<select value={l.moneda} onChange={(e) => setLine(i, { moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
             <label>{l.servicio === 'automatizacion' ? 'Mantenimiento (mensual)' : 'Fee mensual'}<input {...numProps} value={l.fee ?? ''} onChange={(e) => setLine(i, { fee: e.target.value })} /></label>
           </div>
@@ -147,17 +167,28 @@ function ConfigTab({ clients, people, month }) {
           )}
 
           {l.tipo === 'post' ? (
-            <div className="fp-grid">
-              <label>Sueldo socios<select value={l.socio_modo || 'pct'} onChange={(e) => setLine(i, { socio_modo: e.target.value })}><option value="pct">% del total</option><option value="fijo">Monto fijo</option></select></label>
-              {(l.socio_modo || 'pct') === 'fijo'
-                ? <label>Sueldo socios fijo ({l.moneda})<input {...numProps} value={l.socio_monto ?? ''} onChange={(e) => setLine(i, { socio_monto: e.target.value })} /></label>
-                : <label>Sueldo socios %<input {...numProps} value={l.socio_pct ?? ''} onChange={(e) => setLine(i, { socio_pct: e.target.value })} /></label>}
-              <label>OPEX operador<select value={l.opex_modo || 'pct'} onChange={(e) => setLine(i, { opex_modo: e.target.value })}><option value="pct">% del total</option><option value="fijo">Monto fijo</option></select></label>
-              {(l.opex_modo || 'pct') === 'fijo'
-                ? <label>Monto fijo ({l.moneda})<input {...numProps} value={l.opex_monto ?? ''} onChange={(e) => setLine(i, { opex_monto: e.target.value })} /></label>
-                : <label>OPEX %<select value={l.opex_pct} onChange={(e) => setLine(i, { opex_pct: parseFloat(e.target.value) })}><option value="30">30 %</option><option value="40">40 %</option></select></label>}
-              <label>Operador (OPEX)<select value={l.opex_operador || ''} onChange={(e) => setLine(i, { opex_operador: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
-            </div>
+            <>
+              <div className="fp-grid">
+                <label>Sueldo socios<select value={l.socio_modo || 'pct'} onChange={(e) => setLine(i, { socio_modo: e.target.value })}><option value="pct">% del total</option><option value="fijo">Monto fijo</option></select></label>
+                {(l.socio_modo || 'pct') === 'fijo'
+                  ? <label>Sueldo socios fijo ({l.moneda})<input {...numProps} value={l.socio_monto ?? ''} onChange={(e) => setLine(i, { socio_monto: e.target.value })} /></label>
+                  : <label>Sueldo socios %<input {...numProps} value={l.socio_pct ?? ''} onChange={(e) => setLine(i, { socio_pct: e.target.value })} /></label>}
+              </div>
+              <div className="fp-pre">
+                <div className="fp-sub">Operadores (OPEX) — cada uno cobra su monto fijo o su % del total; el resto queda en la caja</div>
+                {(l.opex_reparto || []).map((r, ri) => (
+                  <div className="fp-pre-row" key={ri}>
+                    <select value={r.persona || ''} onChange={(e) => setLine(i, { opex_reparto: l.opex_reparto.map((x, xi) => xi === ri ? { ...x, persona: e.target.value } : x) })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select>
+                    <select value={r.modo || 'pct'} onChange={(e) => setLine(i, { opex_reparto: l.opex_reparto.map((x, xi) => xi === ri ? { ...x, modo: e.target.value } : x) })}><option value="pct">%</option><option value="fijo">Fijo</option></select>
+                    {(r.modo || 'pct') === 'fijo'
+                      ? <><input {...numProps} value={r.monto ?? ''} style={{ width: 90 }} onChange={(e) => setLine(i, { opex_reparto: l.opex_reparto.map((x, xi) => xi === ri ? { ...x, monto: e.target.value } : x) })} /><span className="fp-pct">{l.moneda}</span></>
+                      : <><input {...numProps} value={r.pct ?? ''} style={{ width: 70 }} onChange={(e) => setLine(i, { opex_reparto: l.opex_reparto.map((x, xi) => xi === ri ? { ...x, pct: e.target.value } : x) })} /><span className="fp-pct">%</span></>}
+                    {(l.opex_reparto || []).length > 1 && <button className="fp-btn fp-btn--danger" onClick={() => setLine(i, { opex_reparto: l.opex_reparto.filter((_, xi) => xi !== ri) })}>×</button>}
+                  </div>
+                ))}
+                <button className="fp-btn" onClick={() => setLine(i, { opex_reparto: [...(l.opex_reparto || []), { persona: '', modo: 'pct', pct: 0, monto: '' }] })}>+ Operador</button>
+              </div>
+            </>
           ) : (
             <div className="fp-pre">
               <div className="fp-sub">Operadores (los % reparten lo que queda después de los fijos)</div>
