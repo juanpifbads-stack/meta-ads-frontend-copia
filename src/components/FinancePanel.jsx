@@ -196,15 +196,20 @@ function ConfigTab({ clients, people, month }) {
 }
 
 // ─── Reparto del mes ──────────────────────────────────────────────────────────
-function RepartoTab({ month }) {
+const FUENTE_LBL = { 'pre': 'Pre-agencia', 'pre (fijo)': 'Pre-agencia (fijo)', 'sueldo socio': 'Sueldo socio', 'opex': 'OPEX' };
+function RepartoTab({ month, clients }) {
   const [data, setData] = useState(null);
   const [cons, setCons] = useState('USD');
-  useEffect(() => { apiClient.get(`/admin/finance/reparto?month=${month}`).then((r) => setData(r.data)).catch(() => setData(null)); }, [month]);
+  const [open, setOpen] = useState(null); // persona expandida
+  const cname = (slug) => (clients || []).find((c) => c.slug === slug)?.name || slug;
+  useEffect(() => { apiClient.get(`/admin/finance/reparto?month=${month}`).then((r) => setData(r.data)).catch(() => setData(null)); setOpen(null); }, [month]);
   if (!data) return <div className="fp-muted">Cargando…</div>;
   const fx = data.fx || 0;
   const consolidate = (p) => cons === 'USD' ? (p.USD.total + (fx ? p.ARS.total / fx : 0)) : (p.ARS.total + p.USD.total * fx);
 
-  const rows = [...data.people, { person: 'Caja de la agencia', USD: data.caja.USD, ARS: data.caja.ARS, caja: true }];
+  // Caja fuera de esta vista (vive en el P&L). Solo personas.
+  const rows = data.people;
+  const totalCons = rows.reduce((s, p) => s + consolidate(p), 0) || 1;
   return (
     <div>
       <div className="fp-bar">
@@ -215,19 +220,46 @@ function RepartoTab({ month }) {
         </span>
       </div>
       <table className="fp-table">
-        <thead><tr><th>Persona</th><th>Gana USD</th><th>Gana ARS</th><th>Consolidado ({cons})</th></tr></thead>
+        <thead><tr><th>Persona</th><th>%</th><th>Gana USD</th><th>Gana ARS</th><th>Consolidado ({cons})</th></tr></thead>
         <tbody>
-          {rows.map((p, i) => (
-            <tr key={i} className={p.caja ? 'fp-caja' : ''}>
-              <td>{p.person}</td>
-              <td>{p.USD.total ? fmt(p.USD.total) : '—'}</td>
-              <td>{p.ARS.total ? fmt(p.ARS.total) : '—'}</td>
-              <td className="fp-cons">{fmt(consolidate(p))}</td>
-            </tr>
-          ))}
+          {rows.map((p, i) => {
+            const pct = (consolidate(p) / totalCons) * 100;
+            const isOpen = open === p.person;
+            const src = (data.sources || {})[p.person] || [];
+            return (
+              <React.Fragment key={i}>
+                <tr onClick={() => setOpen(isOpen ? null : p.person)} style={{ cursor: 'pointer' }} title="Ver de dónde viene la plata">
+                  <td>{isOpen ? '▾' : '▸'} {p.person}</td>
+                  <td className="fp-muted">{pct.toFixed(0)}%</td>
+                  <td>{p.USD.total ? fmt(p.USD.total) : '—'}</td>
+                  <td>{p.ARS.total ? fmt(p.ARS.total) : '—'}</td>
+                  <td className="fp-cons">{fmt(consolidate(p))}</td>
+                </tr>
+                {isOpen && (
+                  <tr className="fp-src-row"><td colSpan={5}>
+                    {src.length === 0 ? <span className="fp-muted">Sin detalle este mes.</span> : (
+                      <table className="fp-subtable">
+                        <thead><tr><th>Marca</th><th>Servicio</th><th>Fuente</th><th>Monto</th></tr></thead>
+                        <tbody>
+                          {src.slice().sort((a, b) => b.amount - a.amount).map((s, si) => (
+                            <tr key={si}>
+                              <td>{cname(s.client)}{s.descripcion ? <span className="fp-muted"> · {s.descripcion}</span> : ''}</td>
+                              <td>{servLabel(s.servicio)} <span className="fp-tag">{s.tipo}</span></td>
+                              <td>{FUENTE_LBL[s.fuente] || s.fuente}</td>
+                              <td><strong>{s.moneda} {fmt(s.amount)}</strong></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </td></tr>
+                )}
+              </React.Fragment>
+            );
+          })}
         </tbody>
       </table>
-      {!fx && <p className="fp-muted">Cargá el tipo de cambio en la pestaña Configuración para que el consolidado mezcle monedas.</p>}
+      {!fx && <p className="fp-muted">Sin TC del mes: el consolidado no puede mezclar monedas.</p>}
     </div>
   );
 }
@@ -279,7 +311,7 @@ export default function FinancePanel() {
         </label>
       </div>
       {tab === 'config' && <ConfigTab clients={clients} people={people} month={month} />}
-      {tab === 'reparto' && <RepartoTab month={month} />}
+      {tab === 'reparto' && <RepartoTab month={month} clients={clients} />}
       {tab === 'porCliente' && <ByClientTab month={month} clients={clients} />}
     </div>
   );

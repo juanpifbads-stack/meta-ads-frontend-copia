@@ -34,6 +34,13 @@
 .fp-cons { font-weight: 500; color: var(--color-brand-blue, #2c4cff); }
 .fp-caja { background: #f3f2ec; }
 .fp-caja td { font-weight: 500; }
+/* Drill-down por persona en Reparto */
+.fp-src-row > td { background: #faf9f5; padding: 4px 10px 12px !important; }
+.fp-subtable { width: 100%; border-collapse: collapse; font-size: 12px; }
+.fp-subtable th { text-align: right; font-weight: 400; color: #8a8d96; padding: 5px 6px; }
+.fp-subtable th:first-child { text-align: left; }
+.fp-subtable td { text-align: right; padding: 5px 6px; border-bottom: 0.5px solid #eeece4; }
+.fp-subtable td:first-child { text-align: left; }
 
 .fp-cl-line { border-top: 0.5px solid #f0efe9; padding: 10px 0; }
 .fp-cl-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 6px; }
