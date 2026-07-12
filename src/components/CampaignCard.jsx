@@ -96,7 +96,7 @@ export default function CampaignCard({ campaign, accountId, onAction }) {
           >
             CBO — Campaign Budget
           </div>
-          <div className="card-title">{campaign.campaign_name || campaign.name}</div>
+          <div className="card-title card-title--campaign">{campaign.campaign_name || campaign.name}</div>
           {campaign.objective && (
             <div className="card-subtitle">{campaign.objective}</div>
           )}

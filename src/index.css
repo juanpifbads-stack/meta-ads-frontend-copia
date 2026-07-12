@@ -208,6 +208,10 @@ textarea {
   color: var(--color-text-primary);
   line-height: 1.3;
 }
+/* Nombre de campaña en el optimizador — un poco más grande (los adsets siguen igual). */
+.card-title--campaign {
+  font-size: 24px;
+}
 
 .card-subtitle {
   font-family: var(--font-mono);
