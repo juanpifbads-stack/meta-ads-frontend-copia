@@ -9,22 +9,23 @@ const today = () => new Date().toISOString().slice(0, 10);
 // Portal de clientes de servicios (D'Floor). El cliente carga sus obras y cobros.
 export default function ServicePortal({ client }) {
   const { slug, accessKey, name } = client;
+  const [tab, setTab] = useState('obras');
   const [sales, setSales] = useState(null);
   const [config, setConfig] = useState({ vendedores: [], canales: [] });
+  const [analytics, setAnalytics] = useState(null);
   const [adding, setAdding] = useState(false);
 
   const load = useCallback(() => {
     apiClient.get(`/service/${slug}/sales`, { params: { key: accessKey } }).then((r) => setSales(r.data.sales || [])).catch(() => setSales([]));
+    apiClient.get(`/service/${slug}/analytics`, { params: { key: accessKey } }).then((r) => setAnalytics(r.data)).catch(() => setAnalytics(null));
   }, [slug, accessKey]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     apiClient.get(`/service/${slug}/config`, { params: { key: accessKey } }).then((r) => setConfig(r.data.config || {})).catch(() => {});
   }, [slug, accessKey]);
 
-  // Sugerencias de vendedor/canal: config + los que ya aparecen en obras cargadas.
   const vendedores = useMemo(() => uniq([...(config.vendedores || []), ...((sales || []).map((s) => s.vendedor))]), [config, sales]);
   const canales = useMemo(() => uniq([...(config.canales || []), ...((sales || []).map((s) => s.canal))]), [config, sales]);
-
   const totalImporte = (sales || []).reduce((a, s) => a + (Number(s.importe) || 0), 0);
   const totalSaldo = (sales || []).reduce((a, s) => a + (Number(s.saldo) || 0), 0);
 
@@ -36,25 +37,215 @@ export default function ServicePortal({ client }) {
         <span className="sp-client">{name}</span>
       </div>
 
-      <div className="sp-kpis">
-        <Kpi label="Obras cargadas" value={(sales || []).length} raw />
-        <Kpi label="Vendido total" value={fmt(totalImporte)} />
-        <Kpi label="Por cobrar" value={fmt(totalSaldo)} />
+      <div className="sp-tabs">
+        {[['obras', 'Obras'], ['dashboard', 'Dashboard'], ['pnl', 'Rentabilidad']].map(([k, l]) => (
+          <button key={k} className={`sp-tab ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>
+        ))}
       </div>
 
-      <div className="sp-section-head">
-        <h2>Obras</h2>
-        {!adding && <button className="sp-btn sp-btn--primary" onClick={() => setAdding(true)}>+ Cargar obra</button>}
-      </div>
+      {tab === 'obras' && (
+        <>
+          <div className="sp-kpis">
+            <Kpi label="Obras cargadas" value={(sales || []).length} raw />
+            <Kpi label="Vendido total" value={fmt(totalImporte)} />
+            <Kpi label="Por cobrar" value={fmt(totalSaldo)} />
+          </div>
+          <div className="sp-section-head">
+            <h2>Obras</h2>
+            {!adding && <button className="sp-btn sp-btn--primary" onClick={() => setAdding(true)}>+ Cargar obra</button>}
+          </div>
+          {adding && <SaleForm slug={slug} accessKey={accessKey} vendedores={vendedores} canales={canales}
+            onDone={() => { setAdding(false); load(); }} onCancel={() => setAdding(false)} />}
+          {sales === null ? <div className="sp-muted">Cargando…</div>
+            : sales.length === 0 ? <div className="sp-muted">Todavía no cargaste ninguna obra. Tocá “+ Cargar obra”.</div>
+              : <div className="sp-list">{sales.map((s) => <SaleCard key={s.id} slug={slug} accessKey={accessKey} sale={s} reload={load} />)}</div>}
+        </>
+      )}
 
-      {adding && <SaleForm slug={slug} accessKey={accessKey} vendedores={vendedores} canales={canales}
-        onDone={() => { setAdding(false); load(); }} onCancel={() => setAdding(false)} />}
-
-      {sales === null ? <div className="sp-muted">Cargando…</div>
-        : sales.length === 0 ? <div className="sp-muted">Todavía no cargaste ninguna obra. Tocá “+ Cargar obra”.</div>
-          : <div className="sp-list">{sales.map((s) => <SaleCard key={s.id} slug={slug} accessKey={accessKey} sale={s} reload={load} />)}</div>}
+      {tab === 'dashboard' && <DashboardTab a={analytics} />}
+      {tab === 'pnl' && <PnlTab a={analytics} slug={slug} accessKey={accessKey} reload={load} />}
     </div>
   );
+}
+
+// ── Gráfico de columnas SVG (una o dos series por mes) ──
+function ColumnChart({ rows, series, height = 150 }) {
+  if (!rows || !rows.length) return <div className="sp-muted">Sin datos.</div>;
+  const bw = 22, inner = 3, gap = 20, pad = 6;
+  const groupW = series.length * (bw + inner) + gap;
+  const W = rows.length * groupW + pad * 2;
+  const max = Math.max(1, ...rows.flatMap((r) => series.map((s) => Math.abs(r[s.key] || 0))));
+  return (
+    <div className="sp-chart-scroll">
+      <svg viewBox={`0 0 ${W} ${height + 26}`} width={Math.max(W, 280)} height={height + 26}>
+        {rows.map((r, i) => {
+          const x0 = pad + i * groupW;
+          return (
+            <g key={i}>
+              {series.map((s, si) => {
+                const v = r[s.key] || 0;
+                const h = Math.abs(v) / max * height;
+                const x = x0 + si * (bw + inner);
+                const neg = v < 0;
+                return <rect key={si} x={x} y={neg ? height : height - h} width={bw} height={h} fill={neg ? '#e05656' : s.color} rx="3" />;
+              })}
+              <text x={x0 + (series.length * (bw + inner)) / 2 - inner / 2} y={height + 16} fontSize="10" textAnchor="middle" fill="#8a8d96">{r.label}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function Legend({ items }) {
+  return <div className="sp-legend">{items.map((i) => <span key={i.name}><i style={{ background: i.color }} />{i.name}</span>)}</div>;
+}
+
+// ── Ranking horizontal (canal / vendedor) ──
+function Ranking({ items }) {
+  if (!items || !items.length) return <div className="sp-muted">Sin datos.</div>;
+  const max = Math.max(1, ...items.map((i) => i.monto));
+  return (
+    <div className="sp-rank">
+      {items.map((i) => (
+        <div className="sp-rank-row" key={i.nombre}>
+          <div className="sp-rank-top"><span>{i.nombre}</span><span>{fmt(i.monto)} · {(i.pct * 100).toFixed(0)}% · {i.n}</span></div>
+          <div className="sp-rank-bar"><div style={{ width: `${(i.monto / max) * 100}%` }} /></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DashboardTab({ a }) {
+  if (!a) return <div className="sp-muted">Cargando…</div>;
+  const r = a.resumen;
+  return (
+    <div>
+      <div className="sp-kpis sp-kpis--4">
+        <Kpi label="Vendido total" value={fmt(r.ventasTotales)} />
+        <Kpi label="Colocado" value={fmt(r.colocadoTotal)} />
+        <Kpi label="Obras" value={r.cantidad} raw />
+        <Kpi label="Ticket promedio" value={fmt(r.ticketProm)} />
+      </div>
+      <Card title="Ventas y colocaciones por mes">
+        <Legend items={[{ name: 'Vendido', color: '#1b1fe8' }, { name: 'Colocado', color: '#5bc48a' }]} />
+        <ColumnChart rows={a.porMes} series={[{ key: 'ventas', color: '#1b1fe8' }, { key: 'colocado', color: '#5bc48a' }]} />
+      </Card>
+      <div className="sp-2col">
+        <Card title="Por canal / anuncio"><Ranking items={a.porCanal} /></Card>
+        <Card title="Por vendedor"><Ranking items={a.porVendedor} /></Card>
+      </div>
+    </div>
+  );
+}
+
+function PnlTab({ a, slug, accessKey, reload }) {
+  const [editParams, setEditParams] = useState(false);
+  if (!a) return <div className="sp-muted">Cargando…</div>;
+  const rows = [
+    ['Ventas firmadas', 'firmado'], ['Cobrado en el mes', 'cobrado'], ['(−) Costo variable', 'costoVariable'],
+    ['(=) Margen bruto', 'margenBruto'], ['(−) Comisión vendedor', 'comVendedor'], ['(−) Comisión agencia', 'comAgencia'],
+    ['(=) Margen tras comisiones', 'margenTrasCom'], ['(−) Costos fijos', 'costosFijos'], ['(=) Resultado neto', 'resultadoNeto'],
+  ];
+  return (
+    <div>
+      <div className="sp-kpis sp-kpis--4">
+        <Kpi label="Facturado acum." value={fmt(a.totales.cobrado)} />
+        <Kpi label="Resultado neto acum." value={fmt(a.totales.resultadoNeto)} />
+        <Kpi label="Facturación de equilibrio" value={fmt(a.equilibrio.facturacion)} />
+        <Kpi label="Obras para equilibrio" value={a.equilibrio.obras.toFixed(1)} raw />
+      </div>
+
+      <Card title="Resultado neto por mes">
+        <ColumnChart rows={a.pnl} series={[{ key: 'resultadoNeto', color: '#5bc48a' }]} />
+      </Card>
+
+      <Card title="Estado de resultados mensual">
+        <div className="sp-table-scroll">
+          <table className="sp-table">
+            <thead><tr><th>Concepto</th>{a.pnl.map((m) => <th key={m.month}>{m.label}</th>)}</tr></thead>
+            <tbody>
+              {rows.map(([label, key]) => (
+                <tr key={key} className={key.startsWith('resultadoNeto') ? 'sp-tr-strong' : ''}>
+                  <td>{label}</td>
+                  {a.pnl.map((m) => <td key={m.month} className={m[key] < 0 ? 'sp-neg' : ''}>{m[key] ? fmt(m[key]) : '—'}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <div className="sp-section-head">
+        <h2>Parámetros del negocio</h2>
+        <button className="sp-btn" onClick={() => setEditParams(!editParams)}>{editParams ? 'Cerrar' : 'Editar'}</button>
+      </div>
+      {editParams
+        ? <ParamsEditor slug={slug} accessKey={accessKey} sup={a.supuestos} onSaved={() => { setEditParams(false); reload(); }} />
+        : <ParamsSummary sup={a.supuestos} />}
+    </div>
+  );
+}
+
+function ParamsSummary({ sup }) {
+  return (
+    <div className="sp-form">
+      <div className="sp-cl-break">
+        <span>Rentabilidad por obra: <strong>{(sup.pctRentabilidad * 100).toFixed(0)}%</strong></span>
+        <span>Comisión vendedor: <strong>{(sup.comisionVendedorPct * 100).toFixed(0)}%</strong></span>
+        <span>Costos fijos: <strong>{fmt(sup.costosFijosTotal)}</strong></span>
+      </div>
+    </div>
+  );
+}
+
+function ParamsEditor({ slug, accessKey, sup, onSaved }) {
+  const [pct, setPct] = useState(String((sup.pctRentabilidad * 100) || 0));
+  const [comVend, setComVend] = useState(String((sup.comisionVendedorPct * 100) || 0));
+  const [fijos, setFijos] = useState(sup.costosFijos && sup.costosFijos.length ? sup.costosFijos : [{ nombre: '', monto: '' }]);
+  const [tramos, setTramos] = useState(sup.comisionTramos || []);
+  const save = () => {
+    const supuestos = {
+      pctRentabilidad: (Number(pct) || 0) / 100,
+      comisionVendedorPct: (Number(comVend) || 0) / 100,
+      costosFijos: fijos.filter((f) => f.nombre && Number(f.monto) > 0).map((f) => ({ nombre: f.nombre, monto: Number(f.monto) })),
+      comisionTramos: tramos.map((t) => ({ hasta: t.hasta === '' || t.hasta == null ? null : Number(t.hasta), pct: Number(t.pct) || 0 })),
+    };
+    apiClient.put(`/service/${slug}/config`, { key: accessKey, config: { supuestos } }).then(onSaved).catch(() => {});
+  };
+  return (
+    <div className="sp-form">
+      <div className="sp-form-grid">
+        <label>Rentabilidad por obra (%)<input inputMode="decimal" value={pct} onChange={(e) => setPct(e.target.value)} /></label>
+        <label>Comisión vendedor (%)<input inputMode="decimal" value={comVend} onChange={(e) => setComVend(e.target.value)} /></label>
+      </div>
+      <div className="sp-pays-title" style={{ marginTop: 12 }}>Costos fijos mensuales</div>
+      {fijos.map((f, i) => (
+        <div className="sp-pay-add" key={i}>
+          <input placeholder="Concepto" value={f.nombre} onChange={(e) => setFijos(fijos.map((x, xi) => xi === i ? { ...x, nombre: e.target.value } : x))} />
+          <input inputMode="decimal" placeholder="Monto" value={f.monto} onChange={(e) => setFijos(fijos.map((x, xi) => xi === i ? { ...x, monto: e.target.value } : x))} />
+          <span className="sp-x" onClick={() => setFijos(fijos.filter((_, xi) => xi !== i))}>×</span>
+        </div>
+      ))}
+      <button className="sp-btn" onClick={() => setFijos([...fijos, { nombre: '', monto: '' }])}>+ Costo fijo</button>
+      <div className="sp-pays-title" style={{ marginTop: 12 }}>Comisión agencia — tramos marginales (facturado mensual)</div>
+      {tramos.map((t, i) => (
+        <div className="sp-pay-add" key={i}>
+          <input inputMode="decimal" placeholder="Hasta $ (vacío = ∞)" value={t.hasta ?? ''} onChange={(e) => setTramos(tramos.map((x, xi) => xi === i ? { ...x, hasta: e.target.value } : x))} />
+          <input inputMode="decimal" placeholder="% (ej 0.03)" value={t.pct} onChange={(e) => setTramos(tramos.map((x, xi) => xi === i ? { ...x, pct: e.target.value } : x))} />
+          <span className="sp-x" onClick={() => setTramos(tramos.filter((_, xi) => xi !== i))}>×</span>
+        </div>
+      ))}
+      <button className="sp-btn" onClick={() => setTramos([...tramos, { hasta: '', pct: 0 }])}>+ Tramo</button>
+      <div className="sp-form-actions"><button className="sp-btn sp-btn--primary" onClick={save}>Guardar parámetros</button></div>
+    </div>
+  );
+}
+
+function Card({ title, children }) {
+  return <div className="sp-block"><div className="sp-block-title">{title}</div>{children}</div>;
 }
 
 function uniq(arr) { return [...new Set(arr.filter((x) => x && String(x).trim()))]; }

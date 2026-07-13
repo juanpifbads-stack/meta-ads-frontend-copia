@@ -42,3 +42,34 @@
 .sp-pay-add input { padding: 7px 10px; border: 1px solid #d8d6cf; border-radius: 8px; font-size: 13px; }
 .sp-card-actions { display: flex; gap: 8px; margin-top: 12px; }
 .sp-muted { color: #8a8d96; font-size: 13px; padding: 8px 0; }
+
+/* Tabs */
+.sp-tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 0.5px solid #e3e1d8; }
+.sp-tab { border: none; background: transparent; padding: 8px 4px; margin-bottom: -1px; cursor: pointer; font-size: 14px; color: #8a8d96; border-bottom: 2px solid transparent; }
+.sp-tab.on { color: #15161a; border-bottom-color: #1b1fe8; font-weight: 600; }
+.sp-kpis--4 { grid-template-columns: repeat(4, 1fr); }
+
+/* Bloques / gráficos */
+.sp-block { background: #fff; border: 0.5px solid #e3e1d8; border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+.sp-block-title { font-family: var(--font-mono, monospace); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #8a8d96; margin-bottom: 12px; }
+.sp-chart-scroll { overflow-x: auto; }
+.sp-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.sp-legend { display: flex; gap: 16px; font-size: 12px; color: #5f5e5a; margin-bottom: 8px; }
+.sp-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sp-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+.sp-rank-row { margin-bottom: 10px; }
+.sp-rank-top { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+.sp-rank-top span:last-child { color: #8a8d96; }
+.sp-rank-bar { height: 8px; background: #f0efe9; border-radius: 5px; overflow: hidden; }
+.sp-rank-bar > div { height: 100%; background: #1b1fe8; }
+
+.sp-table-scroll { overflow-x: auto; }
+.sp-table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+.sp-table th { text-align: right; font-weight: 400; color: #8a8d96; padding: 6px 8px; border-bottom: 0.5px solid #e3e1d8; }
+.sp-table th:first-child, .sp-table td:first-child { text-align: left; position: sticky; left: 0; background: #fff; }
+.sp-table td { text-align: right; padding: 6px 8px; border-bottom: 0.5px solid #f0efe9; }
+.sp-tr-strong td { font-weight: 700; border-top: 1px solid #15161a; }
+.sp-neg { color: #b91c1c; }
+
+@media (max-width: 640px) { .sp-kpis, .sp-kpis--4, .sp-2col { grid-template-columns: 1fr 1fr; } }
