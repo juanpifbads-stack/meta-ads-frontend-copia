@@ -1,0 +1,44 @@
+.sp-page { max-width: 900px; margin: 0 auto; padding: 28px 20px 80px; font-family: var(--font-sans, system-ui, sans-serif); color: #15161a; }
+.sp-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 24px; }
+.sp-brand { font-family: var(--font-mono, monospace); font-weight: 700; font-size: 22px; color: #1b1fe8; }
+.sp-brand-x { color: #b0b2ba; font-size: 18px; }
+.sp-client { font-size: 22px; font-weight: 700; }
+
+.sp-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px; }
+.sp-kpi { background: #fff; border: 0.5px solid #e3e1d8; border-radius: 12px; padding: 16px 18px; }
+.sp-kpi-label { font-family: var(--font-mono, monospace); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #8a8d96; }
+.sp-kpi-value { font-size: 24px; font-weight: 700; margin-top: 6px; }
+
+.sp-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.sp-section-head h2 { font-size: 18px; margin: 0; }
+
+.sp-btn { padding: 8px 14px; border-radius: 8px; border: 1px solid #d8d6cf; background: transparent; cursor: pointer; font-size: 13px; }
+.sp-btn--primary { border: none; background: #1b1fe8; color: #fff; font-weight: 500; }
+.sp-btn--danger { border-color: #f0c9c9; color: #b91c1c; }
+
+.sp-form { background: #fff; border: 0.5px solid #e3e1d8; border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; }
+.sp-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.sp-form-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #5f5e5a; }
+.sp-form-grid input { padding: 8px 10px; border: 1px solid #d8d6cf; border-radius: 8px; font-size: 14px; }
+.sp-form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+
+.sp-list { display: flex; flex-direction: column; gap: 8px; }
+.sp-card { background: #fff; border: 0.5px solid #e3e1d8; border-radius: 12px; overflow: hidden; }
+.sp-card-top { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; }
+.sp-card-name { font-weight: 600; font-size: 15px; }
+.sp-card-sub { font-size: 12px; color: #8a8d96; margin-top: 2px; }
+.sp-card-right { text-align: right; }
+.sp-card-imp { font-weight: 700; }
+.sp-chip { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+.sp-chip--ok { background: #eaf6ee; color: #178048; }
+.sp-chip--pend { background: #fef3c7; color: #92620b; }
+
+.sp-card-body { border-top: 0.5px solid #f0efe9; padding: 12px 16px; }
+.sp-pays-title { font-family: var(--font-mono, monospace); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #8a8d96; margin-bottom: 8px; }
+.sp-pay-row { display: flex; align-items: center; gap: 12px; font-size: 13px; padding: 4px 0; }
+.sp-pay-row strong { margin-left: auto; }
+.sp-x { cursor: pointer; color: #b91c1c; }
+.sp-pay-add { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.sp-pay-add input { padding: 7px 10px; border: 1px solid #d8d6cf; border-radius: 8px; font-size: 13px; }
+.sp-card-actions { display: flex; gap: 8px; margin-top: 12px; }
+.sp-muted { color: #8a8d96; font-size: 13px; padding: 8px 0; }

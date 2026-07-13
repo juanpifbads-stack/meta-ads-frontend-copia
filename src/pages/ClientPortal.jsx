@@ -6,6 +6,7 @@ import PaymentsTimeline from '../components/PaymentsTimeline.jsx';
 import StrategicProducts from '../components/StrategicProducts.jsx';
 import PortalTasks, { AddCalendarEvent } from '../components/PortalTasks.jsx';
 import { Welcome, OnboardingDeliverables, OnboardingCalendar } from './Onboarding.jsx';
+import ServicePortal from './ServicePortal.jsx';
 import { sumByCurrency, fmtTotals } from '../utils/budget.js';
 import './ClientPortal.css';
 
@@ -196,6 +197,9 @@ export default function ClientPortal() {
   if (info === undefined) return <PortalMessage>Cargando…</PortalMessage>;
   if (!info || !info.exists || !info.active) return <PortalMessage>Este portal no está disponible.</PortalMessage>;
   if (!authKey) return <KeyGate slug={slug} eyebrow="Portal de cliente" title={info.name} kind="portal" onPass={pass} />;
+
+  // Clientes de SERVICIOS (D'Floor): portal aparte, no toca el de ecommerce.
+  if (info.type === 'servicios') return <ServicePortal client={{ slug, name: info.name, accessKey: authKey }} />;
 
   return <ClientDashboard client={{ slug, name: info.name, accessKey: authKey }} />;
 }
