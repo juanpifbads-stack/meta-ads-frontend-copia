@@ -555,6 +555,13 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
 
           {section === 'portal' && (
             <>
+              {cfg.type === 'servicios' && (
+                <div style={{ marginBottom: 18 }}>
+                  <div className="ad-sublabel" style={{ marginTop: 0 }}>Calendario de visitas (Google · iCal)</div>
+                  <Field label="URL secreta en formato iCal" value={cfg.service?.calendarIcs || ''} onChange={(v) => setCfg({ ...cfg, service: { ...(cfg.service || {}), calendarIcs: v } })} ph="https://calendar.google.com/…/basic.ics" />
+                  <p className="ad-muted" style={{ margin: '4px 0 0' }}>El embudo del cliente autocompleta las visitas agendadas y canceladas desde este calendario (por el nombre del evento).</p>
+                </div>
+              )}
               <div className="ad-sublabel">Secciones opcionales</div>
               <div className="ad-caps">
                 {OPTIONAL_SECTIONS.map((s) => {

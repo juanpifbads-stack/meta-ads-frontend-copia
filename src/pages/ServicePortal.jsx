@@ -88,7 +88,6 @@ function FunnelTab({ slug, accessKey, money }) {
   const [month, setMonth] = useState(curYM());
   const [data, setData] = useState(null);
   const [manual, setManual] = useState({ visitas_agendadas: '', visitas_canceladas: '', recompras: '' });
-  const [cal, setCal] = useState({ url: '', editing: false });
 
   const load = useCallback(() => {
     setData(null);
@@ -99,15 +98,9 @@ function FunnelTab({ slug, accessKey, money }) {
     }).catch(() => setData(null));
   }, [slug, accessKey, month]);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => {
-    apiClient.get(`/service/${slug}/config`, { params: { key: accessKey } }).then((r) => setCal((c) => ({ ...c, url: r.data.config.calendarIcs || '' }))).catch(() => {});
-  }, [slug, accessKey]);
 
   const saveManual = () => {
     apiClient.put(`/service/${slug}/funnel`, { key: accessKey, month, ...manual }).then(load).catch(() => {});
-  };
-  const saveCal = () => {
-    apiClient.put(`/service/${slug}/config`, { key: accessKey, config: { calendarIcs: cal.url.trim() } }).then(() => { setCal((c) => ({ ...c, editing: false })); load(); }).catch(() => {});
   };
   const connected = data && data.calendar && data.calendar.connected && data.calendar.ok;
 
@@ -130,21 +123,9 @@ function FunnelTab({ slug, accessKey, money }) {
             {data.meta.source === 'none' && <div className="sp-muted">Sin cuenta de Meta asignada a este cliente.</div>}
           </Card>
 
-          <Card title="Calendario de visitas (Google · iCal)">
-            {connected && <div className="sp-muted" style={{ color: '#178048' }}>✓ Conectado — las visitas agendadas y canceladas se leen solas del calendario.</div>}
-            {data.calendar && data.calendar.connected && !data.calendar.ok && <div className="sp-muted" style={{ color: '#b91c1c' }}>No se pudo leer el calendario ({data.calendar.error}). Revisá la URL.</div>}
-            {cal.editing ? (
-              <div className="sp-pay-add">
-                <input placeholder="URL secreta en formato iCal (…/basic.ics)" value={cal.url} onChange={(e) => setCal({ ...cal, url: e.target.value })} style={{ flex: 1, minWidth: 260 }} />
-                <button className="sp-btn sp-btn--primary" onClick={saveCal}>Guardar</button>
-                <button className="sp-btn" onClick={() => setCal({ ...cal, editing: false })}>Cancelar</button>
-              </div>
-            ) : (
-              <button className="sp-btn" onClick={() => setCal({ ...cal, editing: true })}>{cal.url ? 'Cambiar URL del calendario' : '+ Conectar calendario'}</button>
-            )}
-          </Card>
-
           <Card title="Carga manual (lo que Meta y el calendario no dan)">
+            {connected && <div className="sp-muted" style={{ color: '#178048', marginBottom: 8 }}>✓ Visitas leídas del calendario conectado.</div>}
+            {data.calendar && data.calendar.connected && !data.calendar.ok && <div className="sp-muted" style={{ color: '#b91c1c', marginBottom: 8 }}>No se pudo leer el calendario ({data.calendar.error}).</div>}
             <div className="sp-form-grid">
               <label>Visitas agendadas{connected ? ' (del calendario)' : ''}<input inputMode="decimal" value={manual.visitas_agendadas} disabled={connected} onChange={(e) => setManual({ ...manual, visitas_agendadas: e.target.value })} /></label>
               <label>Visitas canceladas / no-show{connected ? ' (del calendario)' : ''}<input inputMode="decimal" value={manual.visitas_canceladas} disabled={connected} onChange={(e) => setManual({ ...manual, visitas_canceladas: e.target.value })} /></label>
