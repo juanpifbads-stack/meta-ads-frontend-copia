@@ -101,3 +101,9 @@
 .sp-funnel2-legend { display: flex; gap: 14px; margin-top: 12px; font-size: 12px; color: #5f5e5a; flex-wrap: wrap; }
 .sp-funnel2-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .sp-funnel2-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+/* Cargar pago — barra de saldo */
+.sp-prog { height: 12px; background: #f0efe9; border-radius: 6px; overflow: hidden; display: flex; margin-top: 6px; }
+.sp-prog-done { background: #178048; height: 100%; }
+.sp-prog-new { background: #7fd0a3; height: 100%; }
+.sp-step-badge { font-family: var(--font-mono, monospace); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #8a8d96; margin-bottom: 12px; }

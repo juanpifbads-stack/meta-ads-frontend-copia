@@ -9,11 +9,10 @@ const today = () => new Date().toISOString().slice(0, 10);
 // Portal de clientes de servicios (D'Floor). El cliente carga sus obras y cobros.
 export default function ServicePortal({ client }) {
   const { slug, accessKey, name } = client;
-  const [tab, setTab] = useState('obras');
+  const [tab, setTab] = useState('dashboard');
   const [sales, setSales] = useState(null);
   const [config, setConfig] = useState({ vendedores: [], canales: [] });
   const [analytics, setAnalytics] = useState(null);
-  const [adding, setAdding] = useState(false);
 
   const load = useCallback(() => {
     apiClient.get(`/service/${slug}/sales`, { params: { key: accessKey } }).then((r) => setSales(r.data.sales || [])).catch(() => setSales([]));
@@ -26,8 +25,6 @@ export default function ServicePortal({ client }) {
 
   const vendedores = useMemo(() => uniq([...(config.vendedores || []), ...((sales || []).map((s) => s.vendedor))]), [config, sales]);
   const canales = useMemo(() => uniq([...(config.canales || []), ...((sales || []).map((s) => s.canal))]), [config, sales]);
-  const totalImporte = (sales || []).reduce((a, s) => a + (Number(s.importe) || 0), 0);
-  const totalSaldo = (sales || []).reduce((a, s) => a + (Number(s.saldo) || 0), 0);
 
   // Conversor de moneda: todo se guarda/calcula en ARS; el toggle lo muestra en la moneda elegida.
   const [cons, setCons] = useState('ARS');
@@ -50,86 +47,146 @@ export default function ServicePortal({ client }) {
       </div>
 
       <div className="sp-tabs">
-        {[['obras', 'Obras'], ['dashboard', 'Dashboard'], ['pnl', 'Rentabilidad'], ['embudo', 'Adquisición']].map(([k, l]) => (
+        {[['dashboard', 'Dashboard'], ['analitica', 'Analítica'], ['pnl', 'Rentabilidad'], ['ventas', 'Ventas']].map(([k, l]) => (
           <button key={k} className={`sp-tab ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
 
-      {tab === 'obras' && (
+      {tab === 'dashboard' && <HomeTab a={analytics} slug={slug} accessKey={accessKey} money={money} />}
+      {tab === 'analitica' && <AnaliticaTab a={analytics} money={money} />}
+      {tab === 'pnl' && <PnlTab a={analytics} slug={slug} accessKey={accessKey} reload={load} money={money} />}
+      {tab === 'ventas' && <VentasTab slug={slug} accessKey={accessKey} sales={sales} reload={load} money={money} vendedores={vendedores} canales={canales} />}
+    </div>
+  );
+}
+
+// ── Dashboard (home): métricas de negocio + adquisición del mes ──
+function HomeTab({ a, slug, accessKey, money }) {
+  const months = useMemo(() => (a?.porMes || []).map((m) => m.month), [a]);
+  const [sel, setSel] = useState('');
+  useEffect(() => { if (!sel && months.length) setSel(months[months.length - 1]); }, [months, sel]);
+  const [funnel, setFunnel] = useState(null);
+  useEffect(() => {
+    if (!sel || sel === 'todos') { setFunnel(null); return; }
+    apiClient.get(`/service/${slug}/funnel`, { params: { key: accessKey, month: sel } }).then((r) => setFunnel(r.data)).catch(() => setFunnel(null));
+  }, [slug, accessKey, sel]);
+
+  if (!a) return <div className="sp-muted">Cargando…</div>;
+  const isAll = sel === 'todos';
+  const pm = a.porMes.find((m) => m.month === sel);
+  const pn = a.pnl.find((m) => m.month === sel);
+  const facturado = isAll ? a.totales.cobrado : (pn ? pn.cobrado : 0);
+  const vendido = isAll ? a.resumen.ventasTotales : (pm ? pm.ventas : 0);
+  const nVentas = isAll ? a.resumen.cantidad : (pm ? pm.nVentas : 0);
+  const colocado = isAll ? a.porMes.reduce((s, m) => s + m.colocado, 0) : (pm ? pm.colocado : 0);
+  const nColoc = isAll ? a.porMes.reduce((s, m) => s + m.nColocaciones, 0) : (pm ? pm.nColocaciones : 0);
+
+  return (
+    <div>
+      <div className="sp-section-head">
+        <h2>Métricas del negocio</h2>
+        <select value={sel} onChange={(e) => setSel(e.target.value)} style={{ padding: '7px 10px', border: '1px solid #d8d6cf', borderRadius: 8 }}>
+          {a.porMes.map((m) => <option key={m.month} value={m.month}>{m.label}</option>)}
+          <option value="todos">Todos los meses</option>
+        </select>
+      </div>
+      <div className="sp-kpis">
+        <Kpi label="Facturación (cobrado)" value={money(facturado)} />
+        <Kpi label="Ventas firmadas" value={`${nVentas} · ${money(vendido)}`} raw />
+        <Kpi label="Colocaciones" value={`${nColoc} · ${money(colocado)}`} raw />
+      </div>
+
+      {!isAll && funnel && (
         <>
-          <div className="sp-kpis">
-            <Kpi label="Obras cargadas" value={(sales || []).length} raw />
-            <Kpi label="Vendido total" value={money(totalImporte)} />
-            <Kpi label="Por cobrar" value={money(totalSaldo)} />
+          <div className="sp-kpis sp-kpis--4">
+            <Kpi label="Inversión (pauta)" value={money(funnel.entradas.spend)} />
+            <Kpi label="Consultas" value={funnel.entradas.consultas} raw />
+            <Kpi label="CPR (costo x consulta)" value={money(funnel.entradas.cpr)} />
+            <Kpi label="CAC (costo x venta)" value={money(funnel.costos.cac)} />
           </div>
-          <div className="sp-section-head">
-            <h2>Obras</h2>
-            {!adding && <button className="sp-btn sp-btn--primary" onClick={() => setAdding(true)}>+ Cargar obra</button>}
+          <div className="sp-kpis sp-kpis--4 sp-kpis--sm">
+            <Kpi label="Costo por visita" value={money(funnel.costos.porVisita)} />
+            <Kpi label="ROAS económico" value={`${funnel.roas.economico.toFixed(1)}x`} raw />
+            <Kpi label="ROAS s/ margen" value={`${funnel.roas.margen.toFixed(1)}x`} raw />
+            <Kpi label="Cierre" value={pctf(funnel.tasas.cierre)} raw />
           </div>
-          {adding && <SaleForm slug={slug} accessKey={accessKey} vendedores={vendedores} canales={canales}
-            onDone={() => { setAdding(false); load(); }} onCancel={() => setAdding(false)} />}
-          {sales === null ? <div className="sp-muted">Cargando…</div>
-            : sales.length === 0 ? <div className="sp-muted">Todavía no cargaste ninguna obra. Tocá “+ Cargar obra”.</div>
-              : <div className="sp-list">{sales.map((s) => <SaleCard key={s.id} slug={slug} accessKey={accessKey} sale={s} reload={load} money={money} />)}</div>}
+          <Card title="Embudo de adquisición">
+            <FunnelChart e={funnel.entradas} tasas={funnel.tasas} />
+            <div className="sp-funnel2-legend"><span><i style={{ background: '#5bc48a' }} />sano</span><span><i style={{ background: '#e8b93b' }} />a mejorar</span><span><i style={{ background: '#e05656' }} />bajo</span><span className="sp-muted">· solo visitas que ya pasaron</span></div>
+          </Card>
         </>
       )}
+      {isAll && <div className="sp-muted">Elegí un mes para ver la adquisición (pauta, consultas, embudo).</div>}
+    </div>
+  );
+}
 
-      {tab === 'dashboard' && <DashboardTab a={analytics} money={money} />}
-      {tab === 'pnl' && <PnlTab a={analytics} slug={slug} accessKey={accessKey} reload={load} money={money} />}
-      {tab === 'embudo' && <FunnelTab slug={slug} accessKey={accessKey} money={money} />}
+// ── Ventas: cargar venta / cargar pago + listado desplegable ──
+function VentasTab({ slug, accessKey, sales, reload, money, vendedores, canales }) {
+  const [mode, setMode] = useState(null); // 'venta' | 'pago'
+  const [showList, setShowList] = useState(true);
+  const totalImporte = (sales || []).reduce((a, s) => a + (Number(s.importe) || 0), 0);
+  const totalSaldo = (sales || []).reduce((a, s) => a + (Number(s.saldo) || 0), 0);
+  return (
+    <div>
+      <div className="sp-kpis">
+        <Kpi label="Obras cargadas" value={(sales || []).length} raw />
+        <Kpi label="Vendido total" value={money(totalImporte)} />
+        <Kpi label="Por cobrar" value={money(totalSaldo)} />
+      </div>
+      <div className="sp-section-head">
+        <h2>Ventas</h2>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="sp-btn sp-btn--primary" onClick={() => setMode(mode === 'venta' ? null : 'venta')}>+ Cargar venta</button>
+          <button className="sp-btn" onClick={() => setMode(mode === 'pago' ? null : 'pago')}>+ Cargar pago</button>
+        </div>
+      </div>
+      {mode === 'venta' && <SaleForm slug={slug} accessKey={accessKey} vendedores={vendedores} canales={canales} onDone={() => { setMode(null); reload(); }} onCancel={() => setMode(null)} />}
+      {mode === 'pago' && <PaymentForm slug={slug} accessKey={accessKey} sales={sales || []} money={money} onDone={() => { setMode(null); reload(); }} onCancel={() => setMode(null)} />}
+
+      <button className="sp-btn" style={{ margin: '4px 0 10px' }} onClick={() => setShowList(!showList)}>{showList ? '▾' : '▸'} Ver ventas ({(sales || []).length})</button>
+      {showList && (sales === null ? <div className="sp-muted">Cargando…</div>
+        : sales.length === 0 ? <div className="sp-muted">Todavía no cargaste ninguna venta.</div>
+          : <div className="sp-list">{sales.map((s) => <SaleCard key={s.id} slug={slug} accessKey={accessKey} sale={s} reload={reload} money={money} />)}</div>)}
+    </div>
+  );
+}
+
+// ── Cargar pago: elegís la venta, ves el saldo avanzar ──
+function PaymentForm({ slug, accessKey, sales, money, onDone, onCancel }) {
+  const pendientes = sales.filter((s) => s.saldo > 0.5);
+  const [saleId, setSaleId] = useState('');
+  const [fecha, setFecha] = useState(today());
+  const [monto, setMonto] = useState('');
+  const sale = sales.find((s) => s.id === saleId);
+  const pct = sale && sale.importe ? Math.min(100, ((sale.cobrado + (Number(monto) || 0)) / sale.importe) * 100) : 0;
+  const add = () => {
+    if (!saleId || !(Number(monto) > 0)) return;
+    apiClient.post(`/service/${slug}/sales/${saleId}/payments`, { key: accessKey, fecha, monto }).then(onDone).catch(() => {});
+  };
+  return (
+    <div className="sp-form">
+      <div className="sp-form-grid">
+        <label>Venta<select value={saleId} onChange={(e) => setSaleId(e.target.value)}><option value="">— Elegí una obra —</option>{pendientes.map((s) => <option key={s.id} value={s.id}>{s.cliente_nombre} · saldo {money(s.saldo)}</option>)}</select></label>
+        <label>Fecha del pago<input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></label>
+        <label>Monto<input inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="$" /></label>
+      </div>
+      {sale && (
+        <div style={{ marginTop: 12 }}>
+          <div className="sp-rank-top"><span>Cobrado {money(sale.cobrado)} de {money(sale.importe)}</span><strong>Falta {money(Math.max(0, sale.importe - sale.cobrado - (Number(monto) || 0)))}</strong></div>
+          <div className="sp-prog"><div className="sp-prog-done" style={{ width: `${(sale.cobrado / sale.importe) * 100}%` }} /><div className="sp-prog-new" style={{ width: `${Math.max(0, pct - (sale.cobrado / sale.importe) * 100)}%` }} /></div>
+        </div>
+      )}
+      <div className="sp-form-actions">
+        <button className="sp-btn" onClick={onCancel}>Cancelar</button>
+        <button className="sp-btn sp-btn--primary" onClick={add} disabled={!saleId || !(Number(monto) > 0)}>Cargar pago</button>
+      </div>
     </div>
   );
 }
 
 const curYM = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; };
 const pctf = (x) => `${((x || 0) * 100).toFixed(0)}%`;
-
-function FunnelTab({ slug, accessKey, money }) {
-  const [month, setMonth] = useState(curYM());
-  const [data, setData] = useState(null);
-
-  const load = useCallback(() => {
-    setData(null);
-    apiClient.get(`/service/${slug}/funnel`, { params: { key: accessKey, month } }).then((r) => setData(r.data)).catch(() => setData(null));
-  }, [slug, accessKey, month]);
-  useEffect(() => { load(); }, [load]);
-
-  return (
-    <div>
-      <div className="sp-section-head">
-        <h2>Adquisición</h2>
-        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={{ padding: '7px 10px', border: '1px solid #d8d6cf', borderRadius: 8 }} />
-      </div>
-      {!data ? <div className="sp-muted">Cargando…</div> : (
-        <>
-          {data.meta.source === 'none' && <div className="sp-muted">Sin cuenta de Meta asignada a este cliente.</div>}
-          {data.calendar && data.calendar.connected && !data.calendar.ok && <div className="sp-muted" style={{ color: '#b91c1c' }}>No se pudo leer el calendario ({data.calendar.error}).</div>}
-
-          {/* Métricas principales */}
-          <div className="sp-kpis sp-kpis--4">
-            <Kpi label="Inversión (pauta)" value={money(data.entradas.spend)} />
-            <Kpi label="Consultas" value={data.entradas.consultas} raw />
-            <Kpi label="CPR (costo x consulta)" value={money(data.entradas.cpr)} />
-            <Kpi label="Ventas del mes" value={data.entradas.ventas} raw />
-          </div>
-
-          {/* Costos + ROAS (secundarias, más chicas) */}
-          <div className="sp-kpis sp-kpis--4 sp-kpis--sm">
-            <Kpi label="Costo por visita" value={money(data.costos.porVisita)} />
-            <Kpi label="CAC (costo x venta)" value={money(data.costos.cac)} />
-            <Kpi label="ROAS económico" value={`${data.roas.economico.toFixed(1)}x`} raw />
-            <Kpi label="ROAS s/ margen" value={`${data.roas.margen.toFixed(1)}x`} raw />
-          </div>
-
-          <Card title="Embudo de adquisición">
-            <FunnelChart e={data.entradas} tasas={data.tasas} />
-            <div className="sp-funnel2-legend"><span><i style={{ background: '#5bc48a' }} />sano</span><span><i style={{ background: '#e8b93b' }} />a mejorar</span><span><i style={{ background: '#e05656' }} />bajo</span><span className="sp-muted">· solo visitas que ya pasaron</span></div>
-          </Card>
-        </>
-      )}
-    </div>
-  );
-}
 
 function Row2({ l, v, hint }) {
   return <div className="sp-rank-top" style={{ padding: '6px 0', borderBottom: '0.5px solid #f0efe9' }}><span>{l}{hint ? <span className="sp-muted" style={{ marginLeft: 6 }}>· {hint}</span> : ''}</span><strong>{v}</strong></div>;
@@ -210,17 +267,17 @@ function Ranking({ items, money }) {
   );
 }
 
-function DashboardTab({ a, money }) {
+function AnaliticaTab({ a, money }) {
   if (!a) return <div className="sp-muted">Cargando…</div>;
   const r = a.resumen;
   const ins = a.insights || {};
   return (
     <div>
-      <div className="sp-kpis sp-kpis--4">
-        <Kpi label="Vendido total" value={money(r.ventasTotales)} />
-        <Kpi label="Colocado" value={money(r.colocadoTotal)} />
-        <Kpi label="Obras" value={r.cantidad} raw />
+      <div className="sp-kpis sp-kpis--4 sp-kpis--sm">
         <Kpi label="Ticket promedio" value={money(r.ticketProm)} />
+        <Kpi label="Ticket mediano" value={money(r.ticketMediano)} />
+        <Kpi label="Ticket mínimo" value={money(r.ticketMin)} />
+        <Kpi label="Ticket máximo" value={money(r.ticketMax)} />
       </div>
       <Card title="Ventas y colocaciones por mes">
         <Legend items={[{ name: 'Vendido', color: '#1b1fe8' }, { name: 'Colocado', color: '#5bc48a' }]} />
@@ -232,8 +289,7 @@ function DashboardTab({ a, money }) {
       </div>
 
       <Card title="Dispersión de tickets">
-        <Row2 l="Mediano" v={money(r.ticketMediano)} /><Row2 l="Mínimo" v={money(r.ticketMin)} /><Row2 l="Máximo" v={money(r.ticketMax)} />
-        <div style={{ marginTop: 10 }}><Ranking items={(a.tickets || []).map((t) => ({ nombre: t.label, n: t.n, monto: t.monto, pct: t.pct }))} money={money} /></div>
+        <Ranking items={(a.tickets || []).map((t) => ({ nombre: t.label, n: t.n, monto: t.monto, pct: t.pct }))} money={money} />
       </Card>
 
       {ins.conDatos > 0 && (
@@ -268,11 +324,12 @@ function PnlTab({ a, slug, accessKey, reload, money }) {
   return (
     <div>
       <div className="sp-kpis sp-kpis--4">
-        <Kpi label="Facturado acum." value={money(a.totales.cobrado)} />
-        <Kpi label="Resultado neto acum." value={money(a.totales.resultadoNeto)} />
-        <Kpi label="Facturación de equilibrio" value={money(a.equilibrio.facturacion)} />
-        <Kpi label="Obras para equilibrio" value={a.equilibrio.obras.toFixed(1)} raw />
+        <Kpi label="Total facturado (cobrado)" value={money(a.totales.cobrado)} />
+        <Kpi label="Ganancia neta (total)" value={money(a.totales.resultadoNeto)} />
+        <Kpi label="Facturación de equilibrio (mensual)" value={money(a.equilibrio.facturacion)} />
+        <Kpi label="Obras para cubrir fijos" value={a.equilibrio.obras.toFixed(1)} raw />
       </div>
+      <p className="sp-muted" style={{ margin: '2px 0 12px' }}>Total facturado = todo lo cobrado. Ganancia neta = suma de resultados de cada mes. Facturación de equilibrio = cuánto facturar por mes para cubrir los costos fijos con el margen de la marca.</p>
 
       <Card title="Resultado neto por mes">
         <ColumnChart rows={a.pnl} series={[{ key: 'resultadoNeto', color: '#5bc48a' }]} />
@@ -372,47 +429,76 @@ function Kpi({ label, value, raw }) {
 
 function SaleForm({ slug, accessKey, vendedores, canales, onDone, onCancel, initial }) {
   const base = { fecha_venta: today(), cliente_nombre: '', importe: '', vendedor: '', canal: '', fecha_visita: '', fecha_colocacion: '', m2: '', genero: '', barrio: '', edad: '', tipo: '', color: '' };
-  // Al editar, aplanamos el jsonb extra en los campos del form.
   const [f, setF] = useState(initial ? { ...base, ...initial, ...(initial.extra || {}) } : base);
-  const [showDatos, setShowDatos] = useState(false);
+  const [step, setStep] = useState(1);       // 1 = venta, 2 = datos del cliente (solo alta)
+  const [saleId, setSaleId] = useState(initial?.id || null);
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
-  const save = () => {
-    if (!f.cliente_nombre.trim() || !(Number(f.importe) > 0)) return;
-    setSaving(true);
-    const extra = {};
-    for (const k of ['genero', 'barrio', 'edad', 'tipo', 'color']) if (f[k] !== '' && f[k] != null) extra[k] = f[k];
-    const payload = { key: accessKey, fecha_venta: f.fecha_venta, cliente_nombre: f.cliente_nombre, importe: f.importe, vendedor: f.vendedor, canal: f.canal, m2: f.m2, fecha_visita: f.fecha_visita, fecha_colocacion: f.fecha_colocacion, extra };
-    const req = initial?.id
-      ? apiClient.patch(`/service/${slug}/sales/${initial.id}`, payload)
-      : apiClient.post(`/service/${slug}/sales`, payload);
-    req.then(onDone).catch(() => setSaving(false));
+  const baseFields = () => ({ fecha_venta: f.fecha_venta, cliente_nombre: f.cliente_nombre, importe: f.importe, vendedor: f.vendedor, canal: f.canal, m2: f.m2, fecha_visita: f.fecha_visita, fecha_colocacion: f.fecha_colocacion });
+  const extraOf = () => { const e = {}; for (const k of ['genero', 'barrio', 'edad', 'tipo', 'color']) if (f[k] !== '' && f[k] != null) e[k] = f[k]; return e; };
+
+  const step1Ok = f.cliente_nombre.trim() && Number(f.importe) > 0;
+  const goStep2 = () => { // alta: crea la venta y pasa a datos del cliente
+    if (!step1Ok) return; setSaving(true);
+    apiClient.post(`/service/${slug}/sales`, { key: accessKey, ...baseFields(), extra: {} })
+      .then((r) => { setSaleId(r.data.sale.id); setStep(2); setSaving(false); }).catch(() => setSaving(false));
   };
+  const saveDatos = () => apiClient.patch(`/service/${slug}/sales/${saleId}`, { key: accessKey, ...baseFields(), extra: extraOf() }).then(onDone).catch(onDone);
+  const saveEdit = () => { if (!step1Ok) return; setSaving(true); apiClient.patch(`/service/${slug}/sales/${initial.id}`, { key: accessKey, ...baseFields(), extra: extraOf() }).then(onDone).catch(() => setSaving(false)); };
+
+  const ventaFields = (
+    <div className="sp-form-grid">
+      <label>Fecha de venta<input type="date" value={f.fecha_venta || ''} onChange={(e) => set('fecha_venta', e.target.value)} /></label>
+      <label>Cliente<input value={f.cliente_nombre} onChange={(e) => set('cliente_nombre', e.target.value)} placeholder="Nombre" /></label>
+      <label>Importe<input inputMode="decimal" value={f.importe} onChange={(e) => set('importe', e.target.value)} placeholder="$" /></label>
+      <label>Vendedor<input list="sp-vendedores" value={f.vendedor} onChange={(e) => set('vendedor', e.target.value)} /><datalist id="sp-vendedores">{vendedores.map((v) => <option key={v} value={v} />)}</datalist></label>
+      <label>Canal / anuncio (opcional)<input list="sp-canales" value={f.canal} onChange={(e) => set('canal', e.target.value)} /><datalist id="sp-canales">{canales.map((v) => <option key={v} value={v} />)}</datalist></label>
+      <label>m² (opcional)<input inputMode="decimal" value={f.m2} onChange={(e) => set('m2', e.target.value)} /></label>
+      <label>Fecha de visita<input type="date" value={f.fecha_visita || ''} onChange={(e) => set('fecha_visita', e.target.value)} /></label>
+      <label>Fecha de colocación<input type="date" value={f.fecha_colocacion || ''} onChange={(e) => set('fecha_colocacion', e.target.value)} /></label>
+    </div>
+  );
+  const datosFields = (
+    <div className="sp-form-grid">
+      <label>Género<select value={f.genero} onChange={(e) => set('genero', e.target.value)}><option value="">—</option><option>Mujer</option><option>Hombre</option><option>Otro/NS</option></select></label>
+      <label>Edad<input inputMode="decimal" value={f.edad} onChange={(e) => set('edad', e.target.value)} /></label>
+      <label>Barrio<input value={f.barrio} onChange={(e) => set('barrio', e.target.value)} /></label>
+      <label>Tipo de propiedad<select value={f.tipo} onChange={(e) => set('tipo', e.target.value)}><option value="">—</option><option>Casa</option><option>Departamento</option><option>PH</option><option>Local/Comercial</option></select></label>
+      <label>Color elegido<input value={f.color} onChange={(e) => set('color', e.target.value)} /></label>
+    </div>
+  );
+
+  // Editar: todo en una pantalla.
+  if (initial?.id) {
+    return (
+      <div className="sp-form">
+        {ventaFields}
+        <div className="sp-block-title" style={{ margin: '14px 0 6px' }}>Datos del cliente</div>
+        {datosFields}
+        <div className="sp-form-actions">
+          <button className="sp-btn" onClick={onCancel}>Cancelar</button>
+          <button className="sp-btn sp-btn--primary" onClick={saveEdit} disabled={saving || !step1Ok}>Guardar</button>
+        </div>
+      </div>
+    );
+  }
+  // Alta: 2 pasos.
   return (
     <div className="sp-form">
-      <div className="sp-form-grid">
-        <label>Fecha de venta<input type="date" value={f.fecha_venta || ''} onChange={(e) => set('fecha_venta', e.target.value)} /></label>
-        <label>Cliente<input value={f.cliente_nombre} onChange={(e) => set('cliente_nombre', e.target.value)} placeholder="Nombre" /></label>
-        <label>Importe<input inputMode="decimal" value={f.importe} onChange={(e) => set('importe', e.target.value)} placeholder="$" /></label>
-        <label>Vendedor<input list="sp-vendedores" value={f.vendedor} onChange={(e) => set('vendedor', e.target.value)} /><datalist id="sp-vendedores">{vendedores.map((v) => <option key={v} value={v} />)}</datalist></label>
-        <label>Canal / anuncio (opcional)<input list="sp-canales" value={f.canal} onChange={(e) => set('canal', e.target.value)} /><datalist id="sp-canales">{canales.map((v) => <option key={v} value={v} />)}</datalist></label>
-        <label>m² (opcional)<input inputMode="decimal" value={f.m2} onChange={(e) => set('m2', e.target.value)} /></label>
-        <label>Fecha de visita<input type="date" value={f.fecha_visita || ''} onChange={(e) => set('fecha_visita', e.target.value)} /></label>
-        <label>Fecha de colocación<input type="date" value={f.fecha_colocacion || ''} onChange={(e) => set('fecha_colocacion', e.target.value)} /></label>
-      </div>
-      <button className="sp-btn" style={{ marginTop: 10 }} onClick={() => setShowDatos(!showDatos)}>{showDatos ? '− Datos del cliente' : '+ Datos del cliente (opcional)'}</button>
-      {showDatos && (
-        <div className="sp-form-grid" style={{ marginTop: 10 }}>
-          <label>Género<select value={f.genero} onChange={(e) => set('genero', e.target.value)}><option value="">—</option><option>Mujer</option><option>Hombre</option><option>Otro/NS</option></select></label>
-          <label>Edad<input inputMode="decimal" value={f.edad} onChange={(e) => set('edad', e.target.value)} /></label>
-          <label>Barrio<input value={f.barrio} onChange={(e) => set('barrio', e.target.value)} /></label>
-          <label>Tipo de propiedad<select value={f.tipo} onChange={(e) => set('tipo', e.target.value)}><option value="">—</option><option>Casa</option><option>Departamento</option><option>PH</option><option>Local/Comercial</option></select></label>
-          <label>Color elegido<input value={f.color} onChange={(e) => set('color', e.target.value)} /></label>
-        </div>
-      )}
+      <div className="sp-step-badge">Paso {step} de 2 · {step === 1 ? 'Datos de la venta' : 'Datos del cliente (opcional)'}</div>
+      {step === 1 ? ventaFields : datosFields}
       <div className="sp-form-actions">
-        <button className="sp-btn" onClick={onCancel}>Cancelar</button>
-        <button className="sp-btn sp-btn--primary" onClick={save} disabled={saving}>{initial?.id ? 'Guardar' : 'Cargar obra'}</button>
+        {step === 1 ? (
+          <>
+            <button className="sp-btn" onClick={onCancel}>Cancelar</button>
+            <button className="sp-btn sp-btn--primary" onClick={goStep2} disabled={saving || !step1Ok}>Siguiente →</button>
+          </>
+        ) : (
+          <>
+            <button className="sp-btn" onClick={onDone}>Omitir</button>
+            <button className="sp-btn sp-btn--primary" onClick={saveDatos}>Guardar datos</button>
+          </>
+        )}
       </div>
     </div>
   );
