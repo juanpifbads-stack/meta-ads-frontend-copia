@@ -82,7 +82,7 @@ function SaleForm({ slug, accessKey, vendedores, canales, onDone, onCancel, init
         <label>Cliente<input value={f.cliente_nombre} onChange={(e) => set('cliente_nombre', e.target.value)} placeholder="Nombre" /></label>
         <label>Importe<input inputMode="decimal" value={f.importe} onChange={(e) => set('importe', e.target.value)} placeholder="$" /></label>
         <label>Vendedor<input list="sp-vendedores" value={f.vendedor} onChange={(e) => set('vendedor', e.target.value)} /><datalist id="sp-vendedores">{vendedores.map((v) => <option key={v} value={v} />)}</datalist></label>
-        <label>Canal / anuncio<input list="sp-canales" value={f.canal} onChange={(e) => set('canal', e.target.value)} /><datalist id="sp-canales">{canales.map((v) => <option key={v} value={v} />)}</datalist></label>
+        <label>Canal / anuncio (opcional)<input list="sp-canales" value={f.canal} onChange={(e) => set('canal', e.target.value)} /><datalist id="sp-canales">{canales.map((v) => <option key={v} value={v} />)}</datalist></label>
         <label>m² (opcional)<input inputMode="decimal" value={f.m2} onChange={(e) => set('m2', e.target.value)} /></label>
         <label>Fecha de visita<input type="date" value={f.fecha_visita || ''} onChange={(e) => set('fecha_visita', e.target.value)} /></label>
         <label>Fecha de colocación<input type="date" value={f.fecha_colocacion || ''} onChange={(e) => set('fecha_colocacion', e.target.value)} /></label>
