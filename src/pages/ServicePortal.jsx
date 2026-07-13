@@ -29,12 +29,24 @@ export default function ServicePortal({ client }) {
   const totalImporte = (sales || []).reduce((a, s) => a + (Number(s.importe) || 0), 0);
   const totalSaldo = (sales || []).reduce((a, s) => a + (Number(s.saldo) || 0), 0);
 
+  // Conversor de moneda: todo se guarda/calcula en ARS; el toggle lo muestra en la moneda elegida.
+  const [cons, setCons] = useState('ARS');
+  const dolar = (analytics && analytics.dolar) || 0;
+  const money = useCallback((ars) => {
+    const v = cons === 'USD' ? (dolar ? (Number(ars) || 0) / dolar : 0) : (Number(ars) || 0);
+    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: cons === 'USD' ? 'USD' : 'ARS', maximumFractionDigits: 0 }).format(v);
+  }, [cons, dolar]);
+
   return (
     <div className="sp-page">
       <div className="sp-head">
         <span className="sp-brand">alquimia.</span>
         <span className="sp-brand-x">×</span>
         <span className="sp-client">{name}</span>
+        <div className="sp-curr">
+          {['ARS', 'USD'].map((c) => <button key={c} className={cons === c ? 'on' : ''} onClick={() => setCons(c)}>{c}</button>)}
+          {cons === 'USD' && dolar > 0 && <span className="sp-curr-note">dólar oficial ${dolar}</span>}
+        </div>
       </div>
 
       <div className="sp-tabs">
@@ -47,8 +59,8 @@ export default function ServicePortal({ client }) {
         <>
           <div className="sp-kpis">
             <Kpi label="Obras cargadas" value={(sales || []).length} raw />
-            <Kpi label="Vendido total" value={fmt(totalImporte)} />
-            <Kpi label="Por cobrar" value={fmt(totalSaldo)} />
+            <Kpi label="Vendido total" value={money(totalImporte)} />
+            <Kpi label="Por cobrar" value={money(totalSaldo)} />
           </div>
           <div className="sp-section-head">
             <h2>Obras</h2>
@@ -58,13 +70,13 @@ export default function ServicePortal({ client }) {
             onDone={() => { setAdding(false); load(); }} onCancel={() => setAdding(false)} />}
           {sales === null ? <div className="sp-muted">Cargando…</div>
             : sales.length === 0 ? <div className="sp-muted">Todavía no cargaste ninguna obra. Tocá “+ Cargar obra”.</div>
-              : <div className="sp-list">{sales.map((s) => <SaleCard key={s.id} slug={slug} accessKey={accessKey} sale={s} reload={load} />)}</div>}
+              : <div className="sp-list">{sales.map((s) => <SaleCard key={s.id} slug={slug} accessKey={accessKey} sale={s} reload={load} money={money} />)}</div>}
         </>
       )}
 
-      {tab === 'dashboard' && <DashboardTab a={analytics} />}
-      {tab === 'pnl' && <PnlTab a={analytics} slug={slug} accessKey={accessKey} reload={load} />}
-      {tab === 'embudo' && <FunnelTab slug={slug} accessKey={accessKey} />}
+      {tab === 'dashboard' && <DashboardTab a={analytics} money={money} />}
+      {tab === 'pnl' && <PnlTab a={analytics} slug={slug} accessKey={accessKey} reload={load} money={money} />}
+      {tab === 'embudo' && <FunnelTab slug={slug} accessKey={accessKey} money={money} />}
     </div>
   );
 }
@@ -72,7 +84,7 @@ export default function ServicePortal({ client }) {
 const curYM = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; };
 const pctf = (x) => `${((x || 0) * 100).toFixed(0)}%`;
 
-function FunnelTab({ slug, accessKey }) {
+function FunnelTab({ slug, accessKey, money }) {
   const [month, setMonth] = useState(curYM());
   const [data, setData] = useState(null);
   const [manual, setManual] = useState({ visitas_agendadas: '', visitas_canceladas: '', recompras: '' });
@@ -101,9 +113,9 @@ function FunnelTab({ slug, accessKey }) {
         <>
           <Card title="Datos de Meta (automático)">
             <div className="sp-kpis sp-kpis--4">
-              <Kpi label="Inversión (pauta)" value={fmt(data.entradas.spend)} />
+              <Kpi label="Inversión (pauta)" value={money(data.entradas.spend)} />
               <Kpi label="Consultas" value={data.entradas.consultas} raw />
-              <Kpi label="CPR (costo x consulta)" value={fmt(data.entradas.cpr)} />
+              <Kpi label="CPR (costo x consulta)" value={money(data.entradas.cpr)} />
               <Kpi label="Ventas del mes" value={data.entradas.ventas} raw />
             </div>
             {data.meta.source === 'error' && <div className="sp-muted">No se pudo traer Meta ({data.meta.error}). Cargá manual si hace falta.</div>}
@@ -125,9 +137,9 @@ function FunnelTab({ slug, accessKey }) {
 
           <div className="sp-2col">
             <Card title="Costo por etapa">
-              <Row2 l="Costo por consulta" v={fmt(data.costos.porConsulta)} />
-              <Row2 l="Costo por visita efectiva" v={fmt(data.costos.porVisita)} />
-              <Row2 l="Costo por venta (CAC)" v={fmt(data.costos.cac)} />
+              <Row2 l="Costo por consulta" v={money(data.costos.porConsulta)} />
+              <Row2 l="Costo por visita efectiva" v={money(data.costos.porVisita)} />
+              <Row2 l="Costo por venta (CAC)" v={money(data.costos.cac)} />
             </Card>
             <Card title="ROAS">
               <Row2 l="Económico (vendido ÷ pauta)" v={`${data.roas.economico.toFixed(1)}x`} />
@@ -212,46 +224,71 @@ function Legend({ items }) {
   return <div className="sp-legend">{items.map((i) => <span key={i.name}><i style={{ background: i.color }} />{i.name}</span>)}</div>;
 }
 
-// ── Ranking horizontal (canal / vendedor) ──
-function Ranking({ items }) {
+// ── Ranking horizontal (canal / vendedor / demografía) ──
+function Ranking({ items, money }) {
   if (!items || !items.length) return <div className="sp-muted">Sin datos.</div>;
-  const max = Math.max(1, ...items.map((i) => i.monto));
+  const val = (i) => (i.monto != null ? i.monto : i.n);
+  const max = Math.max(1, ...items.map(val));
   return (
     <div className="sp-rank">
       {items.map((i) => (
         <div className="sp-rank-row" key={i.nombre}>
-          <div className="sp-rank-top"><span>{i.nombre}</span><span>{fmt(i.monto)} · {(i.pct * 100).toFixed(0)}% · {i.n}</span></div>
-          <div className="sp-rank-bar"><div style={{ width: `${(i.monto / max) * 100}%` }} /></div>
+          <div className="sp-rank-top"><span>{i.nombre}</span><span>{i.monto != null && money ? `${money(i.monto)} · ` : ''}{(i.pct * 100).toFixed(0)}% · {i.n}</span></div>
+          <div className="sp-rank-bar"><div style={{ width: `${(val(i) / max) * 100}%` }} /></div>
         </div>
       ))}
     </div>
   );
 }
 
-function DashboardTab({ a }) {
+function DashboardTab({ a, money }) {
   if (!a) return <div className="sp-muted">Cargando…</div>;
   const r = a.resumen;
+  const ins = a.insights || {};
   return (
     <div>
       <div className="sp-kpis sp-kpis--4">
-        <Kpi label="Vendido total" value={fmt(r.ventasTotales)} />
-        <Kpi label="Colocado" value={fmt(r.colocadoTotal)} />
+        <Kpi label="Vendido total" value={money(r.ventasTotales)} />
+        <Kpi label="Colocado" value={money(r.colocadoTotal)} />
         <Kpi label="Obras" value={r.cantidad} raw />
-        <Kpi label="Ticket promedio" value={fmt(r.ticketProm)} />
+        <Kpi label="Ticket promedio" value={money(r.ticketProm)} />
       </div>
       <Card title="Ventas y colocaciones por mes">
         <Legend items={[{ name: 'Vendido', color: '#1b1fe8' }, { name: 'Colocado', color: '#5bc48a' }]} />
         <ColumnChart rows={a.porMes} series={[{ key: 'ventas', color: '#1b1fe8' }, { key: 'colocado', color: '#5bc48a' }]} />
       </Card>
       <div className="sp-2col">
-        <Card title="Por canal / anuncio"><Ranking items={a.porCanal} /></Card>
-        <Card title="Por vendedor"><Ranking items={a.porVendedor} /></Card>
+        <Card title="Por canal / anuncio"><Ranking items={a.porCanal} money={money} /></Card>
+        <Card title="Por vendedor"><Ranking items={a.porVendedor} money={money} /></Card>
       </div>
+
+      <Card title="Dispersión de tickets">
+        <Row2 l="Mediano" v={money(r.ticketMediano)} /><Row2 l="Mínimo" v={money(r.ticketMin)} /><Row2 l="Máximo" v={money(r.ticketMax)} />
+        <div style={{ marginTop: 10 }}><Ranking items={(a.tickets || []).map((t) => ({ nombre: t.label, n: t.n, monto: t.monto, pct: t.pct }))} money={money} /></div>
+      </Card>
+
+      {ins.conDatos > 0 && (
+        <>
+          <div className="sp-2col">
+            <Card title="Género"><Ranking items={ins.genero} /></Card>
+            <Card title="Tipo de propiedad"><Ranking items={ins.tipo} /></Card>
+          </div>
+          <div className="sp-2col">
+            <Card title="Barrios (top)"><Ranking items={(ins.barrio || []).slice(0, 8)} /></Card>
+            <Card title="Colores más elegidos"><Ranking items={(ins.color || []).slice(0, 8)} /></Card>
+          </div>
+          <Card title="Promedios">
+            <Row2 l="m² promedio" v={(ins.m2Promedio || 0).toFixed(0)} />
+            <Row2 l="m² total colocado" v={(ins.m2Total || 0).toFixed(0)} />
+            <Row2 l="Edad promedio" v={ins.edadPromedio ? ins.edadPromedio.toFixed(0) : '—'} />
+          </Card>
+        </>
+      )}
     </div>
   );
 }
 
-function PnlTab({ a, slug, accessKey, reload }) {
+function PnlTab({ a, slug, accessKey, reload, money }) {
   const [editParams, setEditParams] = useState(false);
   if (!a) return <div className="sp-muted">Cargando…</div>;
   const rows = [
@@ -262,9 +299,9 @@ function PnlTab({ a, slug, accessKey, reload }) {
   return (
     <div>
       <div className="sp-kpis sp-kpis--4">
-        <Kpi label="Facturado acum." value={fmt(a.totales.cobrado)} />
-        <Kpi label="Resultado neto acum." value={fmt(a.totales.resultadoNeto)} />
-        <Kpi label="Facturación de equilibrio" value={fmt(a.equilibrio.facturacion)} />
+        <Kpi label="Facturado acum." value={money(a.totales.cobrado)} />
+        <Kpi label="Resultado neto acum." value={money(a.totales.resultadoNeto)} />
+        <Kpi label="Facturación de equilibrio" value={money(a.equilibrio.facturacion)} />
         <Kpi label="Obras para equilibrio" value={a.equilibrio.obras.toFixed(1)} raw />
       </div>
 
@@ -280,7 +317,7 @@ function PnlTab({ a, slug, accessKey, reload }) {
               {rows.map(([label, key]) => (
                 <tr key={key} className={key.startsWith('resultadoNeto') ? 'sp-tr-strong' : ''}>
                   <td>{label}</td>
-                  {a.pnl.map((m) => <td key={m.month} className={m[key] < 0 ? 'sp-neg' : ''}>{m[key] ? fmt(m[key]) : '—'}</td>)}
+                  {a.pnl.map((m) => <td key={m.month} className={m[key] < 0 ? 'sp-neg' : ''}>{m[key] ? money(m[key]) : '—'}</td>)}
                 </tr>
               ))}
             </tbody>
@@ -365,15 +402,21 @@ function Kpi({ label, value, raw }) {
 }
 
 function SaleForm({ slug, accessKey, vendedores, canales, onDone, onCancel, initial }) {
-  const [f, setF] = useState(initial || { fecha_venta: today(), cliente_nombre: '', importe: '', vendedor: '', canal: '', fecha_visita: '', fecha_colocacion: '', m2: '' });
+  const base = { fecha_venta: today(), cliente_nombre: '', importe: '', vendedor: '', canal: '', fecha_visita: '', fecha_colocacion: '', m2: '', genero: '', barrio: '', edad: '', tipo: '', color: '' };
+  // Al editar, aplanamos el jsonb extra en los campos del form.
+  const [f, setF] = useState(initial ? { ...base, ...initial, ...(initial.extra || {}) } : base);
+  const [showDatos, setShowDatos] = useState(false);
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
   const save = () => {
     if (!f.cliente_nombre.trim() || !(Number(f.importe) > 0)) return;
     setSaving(true);
+    const extra = {};
+    for (const k of ['genero', 'barrio', 'edad', 'tipo', 'color']) if (f[k] !== '' && f[k] != null) extra[k] = f[k];
+    const payload = { key: accessKey, fecha_venta: f.fecha_venta, cliente_nombre: f.cliente_nombre, importe: f.importe, vendedor: f.vendedor, canal: f.canal, m2: f.m2, fecha_visita: f.fecha_visita, fecha_colocacion: f.fecha_colocacion, extra };
     const req = initial?.id
-      ? apiClient.patch(`/service/${slug}/sales/${initial.id}`, { key: accessKey, ...f })
-      : apiClient.post(`/service/${slug}/sales`, { key: accessKey, ...f });
+      ? apiClient.patch(`/service/${slug}/sales/${initial.id}`, payload)
+      : apiClient.post(`/service/${slug}/sales`, payload);
     req.then(onDone).catch(() => setSaving(false));
   };
   return (
@@ -388,6 +431,16 @@ function SaleForm({ slug, accessKey, vendedores, canales, onDone, onCancel, init
         <label>Fecha de visita<input type="date" value={f.fecha_visita || ''} onChange={(e) => set('fecha_visita', e.target.value)} /></label>
         <label>Fecha de colocación<input type="date" value={f.fecha_colocacion || ''} onChange={(e) => set('fecha_colocacion', e.target.value)} /></label>
       </div>
+      <button className="sp-btn" style={{ marginTop: 10 }} onClick={() => setShowDatos(!showDatos)}>{showDatos ? '− Datos del cliente' : '+ Datos del cliente (opcional)'}</button>
+      {showDatos && (
+        <div className="sp-form-grid" style={{ marginTop: 10 }}>
+          <label>Género<select value={f.genero} onChange={(e) => set('genero', e.target.value)}><option value="">—</option><option>Mujer</option><option>Hombre</option><option>Otro/NS</option></select></label>
+          <label>Edad<input inputMode="decimal" value={f.edad} onChange={(e) => set('edad', e.target.value)} /></label>
+          <label>Barrio<input value={f.barrio} onChange={(e) => set('barrio', e.target.value)} /></label>
+          <label>Tipo de propiedad<select value={f.tipo} onChange={(e) => set('tipo', e.target.value)}><option value="">—</option><option>Casa</option><option>Departamento</option><option>PH</option><option>Local/Comercial</option></select></label>
+          <label>Color elegido<input value={f.color} onChange={(e) => set('color', e.target.value)} /></label>
+        </div>
+      )}
       <div className="sp-form-actions">
         <button className="sp-btn" onClick={onCancel}>Cancelar</button>
         <button className="sp-btn sp-btn--primary" onClick={save} disabled={saving}>{initial?.id ? 'Guardar' : 'Cargar obra'}</button>
@@ -396,7 +449,8 @@ function SaleForm({ slug, accessKey, vendedores, canales, onDone, onCancel, init
   );
 }
 
-function SaleCard({ slug, accessKey, sale, reload }) {
+function SaleCard({ slug, accessKey, sale, reload, money }) {
+  const m = money || fmt;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [pay, setPay] = useState({ fecha: today(), monto: '' });
@@ -419,8 +473,8 @@ function SaleCard({ slug, accessKey, sale, reload }) {
           <div className="sp-card-sub">{fmtDate(sale.fecha_venta)}{sale.vendedor ? ` · ${sale.vendedor}` : ''}{sale.canal ? ` · ${sale.canal}` : ''}{sale.m2 ? ` · ${sale.m2} m²` : ''}</div>
         </div>
         <div className="sp-card-right">
-          <div className="sp-card-imp">{fmt(sale.importe)}</div>
-          <div className={`sp-chip ${pagado ? 'sp-chip--ok' : 'sp-chip--pend'}`}>{pagado ? 'Cobrado' : `Saldo ${fmt(sale.saldo)}`}</div>
+          <div className="sp-card-imp">{m(sale.importe)}</div>
+          <div className={`sp-chip ${pagado ? 'sp-chip--ok' : 'sp-chip--pend'}`}>{pagado ? 'Cobrado' : `Saldo ${m(sale.saldo)}`}</div>
         </div>
       </div>
       {open && (
@@ -428,7 +482,7 @@ function SaleCard({ slug, accessKey, sale, reload }) {
           <div className="sp-pays-title">Cobros</div>
           {(sale.payments || []).length === 0 ? <div className="sp-muted">Sin cobros cargados.</div>
             : sale.payments.map((p) => (
-              <div className="sp-pay-row" key={p.id}><span>{fmtDate(p.fecha)}</span><strong>{fmt(p.monto)}</strong><span className="sp-x" onClick={() => delPay(p.id)}>×</span></div>
+              <div className="sp-pay-row" key={p.id}><span>{fmtDate(p.fecha)}</span><strong>{m(p.monto)}</strong><span className="sp-x" onClick={() => delPay(p.id)}>×</span></div>
             ))}
           <div className="sp-pay-add">
             <input type="date" value={pay.fecha} onChange={(e) => setPay({ ...pay, fecha: e.target.value })} />

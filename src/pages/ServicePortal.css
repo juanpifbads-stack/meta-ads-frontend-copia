@@ -80,3 +80,9 @@
 .sp-funnel-label { width: 130px; font-size: 12px; color: #5f5e5a; text-align: right; flex-shrink: 0; }
 .sp-funnel-bar { flex: 1; background: #f0efe9; border-radius: 6px; overflow: hidden; height: 26px; }
 .sp-funnel-bar > div { height: 100%; display: flex; align-items: center; padding: 0 8px; color: #fff; font-size: 12px; font-weight: 600; min-width: 22px; border-radius: 6px; }
+
+/* Conversor de moneda */
+.sp-curr { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.sp-curr button { border: 1px solid #d8d6cf; background: #fff; padding: 4px 10px; border-radius: 7px; cursor: pointer; font-size: 12px; }
+.sp-curr button.on { background: #1b1fe8; color: #fff; border-color: #1b1fe8; }
+.sp-curr-note { font-size: 11px; color: #8a8d96; margin-left: 6px; }
