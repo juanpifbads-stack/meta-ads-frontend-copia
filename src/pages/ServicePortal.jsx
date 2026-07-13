@@ -146,7 +146,7 @@ function PnlTab({ a, slug, accessKey, reload }) {
   if (!a) return <div className="sp-muted">Cargando…</div>;
   const rows = [
     ['Ventas firmadas', 'firmado'], ['Cobrado en el mes', 'cobrado'], ['(−) Costo variable', 'costoVariable'],
-    ['(=) Margen bruto', 'margenBruto'], ['(−) Comisión vendedor', 'comVendedor'], ['(−) Variable', 'comAgencia'],
+    ['(=) Margen bruto', 'margenBruto'], ['(−) Comisión vendedor', 'comVendedor'], ['(−) Comisión agencia', 'comAgencia'],
     ['(=) Margen tras comisiones', 'margenTrasCom'], ['(−) Costos fijos', 'costosFijos'], ['(=) Resultado neto', 'resultadoNeto'],
   ];
   return (
@@ -230,7 +230,7 @@ function ParamsEditor({ slug, accessKey, sup, onSaved }) {
         </div>
       ))}
       <button className="sp-btn" onClick={() => setFijos([...fijos, { nombre: '', monto: '' }])}>+ Costo fijo</button>
-      <div className="sp-pays-title" style={{ marginTop: 12 }}>Variable — tramos marginales sobre el facturado del mes (ej. arranca a partir de $20M)</div>
+      <div className="sp-pays-title" style={{ marginTop: 12 }}>Comisión agencia — % sobre el TOTAL facturado del mes según el tramo (ej. hasta $20M · 0% = se activa recién arriba de $20M)</div>
       {tramos.map((t, i) => (
         <div className="sp-pay-add" key={i}>
           <input inputMode="decimal" placeholder="Hasta $ (vacío = ∞)" value={t.hasta ?? ''} onChange={(e) => setTramos(tramos.map((x, xi) => xi === i ? { ...x, hasta: e.target.value } : x))} />
