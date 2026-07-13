@@ -86,3 +86,18 @@
 .sp-curr button { border: 1px solid #d8d6cf; background: #fff; padding: 4px 10px; border-radius: 7px; cursor: pointer; font-size: 12px; }
 .sp-curr button.on { background: #1b1fe8; color: #fff; border-color: #1b1fe8; }
 .sp-curr-note { font-size: 11px; color: #8a8d96; margin-left: 6px; }
+
+/* Métricas secundarias (más chicas que las principales) */
+.sp-kpis--sm .sp-kpi { padding: 12px 14px; }
+.sp-kpis--sm .sp-kpi-value { font-size: 18px; }
+
+/* Embudo estándar con semáforo */
+.sp-funnel2 { display: flex; flex-direction: column; gap: 10px; align-items: center; padding: 4px 0; }
+.sp-funnel2-row { width: 100%; display: flex; flex-direction: column; align-items: center; }
+.sp-funnel2-seg { color: #fff; border-radius: 8px; padding: 12px 16px; display: flex; align-items: baseline; justify-content: center; gap: 10px; min-height: 30px; }
+.sp-funnel2-n { font-size: 22px; font-weight: 700; }
+.sp-funnel2-name { font-size: 13px; font-weight: 500; opacity: .95; }
+.sp-funnel2-sub { font-size: 11px; color: #8a8d96; margin-top: 3px; }
+.sp-funnel2-legend { display: flex; gap: 14px; margin-top: 12px; font-size: 12px; color: #5f5e5a; flex-wrap: wrap; }
+.sp-funnel2-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.sp-funnel2-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }

@@ -50,7 +50,7 @@ export default function ServicePortal({ client }) {
       </div>
 
       <div className="sp-tabs">
-        {[['obras', 'Obras'], ['dashboard', 'Dashboard'], ['pnl', 'Rentabilidad'], ['embudo', 'Embudo']].map(([k, l]) => (
+        {[['obras', 'Obras'], ['dashboard', 'Dashboard'], ['pnl', 'Rentabilidad'], ['embudo', 'Adquisición']].map(([k, l]) => (
           <button key={k} className={`sp-tab ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -87,81 +87,43 @@ const pctf = (x) => `${((x || 0) * 100).toFixed(0)}%`;
 function FunnelTab({ slug, accessKey, money }) {
   const [month, setMonth] = useState(curYM());
   const [data, setData] = useState(null);
-  const [manual, setManual] = useState({ visitas_agendadas: '', visitas_canceladas: '', recompras: '' });
 
   const load = useCallback(() => {
     setData(null);
-    apiClient.get(`/service/${slug}/funnel`, { params: { key: accessKey, month } }).then((r) => {
-      setData(r.data);
-      const e = r.data.entradas;
-      setManual({ visitas_agendadas: e.agendadas || '', visitas_canceladas: e.canceladas || '', recompras: e.recompras || '' });
-    }).catch(() => setData(null));
+    apiClient.get(`/service/${slug}/funnel`, { params: { key: accessKey, month } }).then((r) => setData(r.data)).catch(() => setData(null));
   }, [slug, accessKey, month]);
   useEffect(() => { load(); }, [load]);
-
-  const saveManual = () => {
-    apiClient.put(`/service/${slug}/funnel`, { key: accessKey, month, ...manual }).then(load).catch(() => {});
-  };
-  const connected = data && data.calendar && data.calendar.connected && data.calendar.ok;
 
   return (
     <div>
       <div className="sp-section-head">
-        <h2>Embudo — {month}</h2>
+        <h2>Adquisición</h2>
         <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={{ padding: '7px 10px', border: '1px solid #d8d6cf', borderRadius: 8 }} />
       </div>
       {!data ? <div className="sp-muted">Cargando…</div> : (
         <>
-          <Card title="Datos de Meta (automático)">
-            <div className="sp-kpis sp-kpis--4">
-              <Kpi label="Inversión (pauta)" value={money(data.entradas.spend)} />
-              <Kpi label="Consultas" value={data.entradas.consultas} raw />
-              <Kpi label="CPR (costo x consulta)" value={money(data.entradas.cpr)} />
-              <Kpi label="Ventas del mes" value={data.entradas.ventas} raw />
-            </div>
-            {data.meta.source === 'error' && <div className="sp-muted">No se pudo traer Meta ({data.meta.error}). Cargá manual si hace falta.</div>}
-            {data.meta.source === 'none' && <div className="sp-muted">Sin cuenta de Meta asignada a este cliente.</div>}
-          </Card>
+          {data.meta.source === 'none' && <div className="sp-muted">Sin cuenta de Meta asignada a este cliente.</div>}
+          {data.calendar && data.calendar.connected && !data.calendar.ok && <div className="sp-muted" style={{ color: '#b91c1c' }}>No se pudo leer el calendario ({data.calendar.error}).</div>}
 
-          <Card title="Carga manual (lo que Meta y el calendario no dan)">
-            {connected && <div className="sp-muted" style={{ color: '#178048', marginBottom: 8 }}>✓ Visitas leídas del calendario conectado.</div>}
-            {data.calendar && data.calendar.connected && !data.calendar.ok && <div className="sp-muted" style={{ color: '#b91c1c', marginBottom: 8 }}>No se pudo leer el calendario ({data.calendar.error}).</div>}
-            <div className="sp-form-grid">
-              <label>Visitas agendadas{connected ? ' (del calendario)' : ''}<input inputMode="decimal" value={manual.visitas_agendadas} disabled={connected} onChange={(e) => setManual({ ...manual, visitas_agendadas: e.target.value })} /></label>
-              <label>Visitas canceladas / no-show{connected ? ' (del calendario)' : ''}<input inputMode="decimal" value={manual.visitas_canceladas} disabled={connected} onChange={(e) => setManual({ ...manual, visitas_canceladas: e.target.value })} /></label>
-              <label>Recompras (cliente repite)<input inputMode="decimal" value={manual.recompras} onChange={(e) => setManual({ ...manual, recompras: e.target.value })} /></label>
-            </div>
-            <div className="sp-form-actions"><button className="sp-btn sp-btn--primary" onClick={saveManual}>Guardar</button></div>
-          </Card>
-
-          <Card title="El embudo">
-            <FunnelBars e={data.entradas} />
-          </Card>
-
-          <div className="sp-2col">
-            <Card title="Costo por etapa">
-              <Row2 l="Costo por consulta" v={money(data.costos.porConsulta)} />
-              <Row2 l="Costo por visita efectiva" v={money(data.costos.porVisita)} />
-              <Row2 l="Costo por venta (CAC)" v={money(data.costos.cac)} />
-            </Card>
-            <Card title="ROAS">
-              <Row2 l="Económico (vendido ÷ pauta)" v={`${data.roas.economico.toFixed(1)}x`} />
-              <Row2 l="Financiero (cobrado ÷ pauta)" v={`${data.roas.financiero.toFixed(1)}x`} />
-              <Row2 l="Sobre margen bruto" v={`${data.roas.margen.toFixed(1)}x`} />
-            </Card>
+          {/* Métricas principales */}
+          <div className="sp-kpis sp-kpis--4">
+            <Kpi label="Inversión (pauta)" value={money(data.entradas.spend)} />
+            <Kpi label="Consultas" value={data.entradas.consultas} raw />
+            <Kpi label="CPR (costo x consulta)" value={money(data.entradas.cpr)} />
+            <Kpi label="Ventas del mes" value={data.entradas.ventas} raw />
           </div>
 
-          <Card title="Tasas de conversión">
-            <Row2 l="Consulta → visita agendada" v={pctf(data.tasas.consultaVisitaAgendada)} hint="10-20% sano" />
-            <Row2 l="Consulta → visita efectiva" v={pctf(data.tasas.consultaVisitaEfectiva)} hint=">10%" />
-            <Row2 l="Tasa de cancelación / no-show" v={pctf(data.tasas.cancelacion)} hint="<15%" />
-            <Row2 l="Visita efectiva → venta (cierre)" v={pctf(data.tasas.cierre)} hint="15-25% sano" />
-            <Row2 l="Cierre solo leads nuevos" v={pctf(data.tasas.cierreNuevos)} />
-            <Row2 l="Consulta → venta (global)" v={pctf(data.tasas.consultaVenta)} hint="2-4%" />
-          </Card>
+          {/* Costos + ROAS (secundarias, más chicas) */}
+          <div className="sp-kpis sp-kpis--4 sp-kpis--sm">
+            <Kpi label="Costo por visita" value={money(data.costos.porVisita)} />
+            <Kpi label="CAC (costo x venta)" value={money(data.costos.cac)} />
+            <Kpi label="ROAS económico" value={`${data.roas.economico.toFixed(1)}x`} raw />
+            <Kpi label="ROAS s/ margen" value={`${data.roas.margen.toFixed(1)}x`} raw />
+          </div>
 
-          <Card title="Veredicto">
-            {data.veredicto.map((v, i) => <div key={i} style={{ fontSize: 14, marginBottom: 6 }}>{v}</div>)}
+          <Card title="Embudo de adquisición">
+            <FunnelChart e={data.entradas} tasas={data.tasas} />
+            <div className="sp-funnel2-legend"><span><i style={{ background: '#5bc48a' }} />sano</span><span><i style={{ background: '#e8b93b' }} />a mejorar</span><span><i style={{ background: '#e05656' }} />bajo</span><span className="sp-muted">· solo visitas que ya pasaron</span></div>
           </Card>
         </>
       )}
@@ -173,20 +135,24 @@ function Row2({ l, v, hint }) {
   return <div className="sp-rank-top" style={{ padding: '6px 0', borderBottom: '0.5px solid #f0efe9' }}><span>{l}{hint ? <span className="sp-muted" style={{ marginLeft: 6 }}>· {hint}</span> : ''}</span><strong>{v}</strong></div>;
 }
 
-function FunnelBars({ e }) {
+// Embudo estándar (forma fija, no proporcional a los números) con semáforo por tasa.
+function FunnelChart({ e, tasas }) {
+  const light = (r, good, ok) => (r >= good ? '#5bc48a' : r >= ok ? '#e8b93b' : '#e05656');
   const stages = [
-    { name: 'Consultas', v: e.consultas, color: '#1b1fe8' },
-    { name: 'Visitas agendadas', v: e.agendadas, color: '#4b6bff' },
-    { name: 'Visitas efectivas', v: e.efectivas, color: '#5bc48a' },
-    { name: 'Ventas', v: e.ventas, color: '#178048' },
+    { name: 'Consultas', v: e.consultas, w: 100, color: '#1b1fe8', sub: 'origen' },
+    { name: 'Visitas agendadas', v: e.agendadas, w: 78, color: light(tasas.consultaVisitaAgendada, 0.10, 0.05), sub: `${pctf(tasas.consultaVisitaAgendada)} de consultas` },
+    { name: 'Visitas efectivas', v: e.efectivas, w: 56, color: light(tasas.consultaVisitaEfectiva, 0.10, 0.05), sub: `${pctf(tasas.consultaVisitaEfectiva)} de consultas` },
+    { name: 'Ventas', v: e.ventas, w: 36, color: light(tasas.cierre, 0.15, 0.10), sub: `cierre ${pctf(tasas.cierre)}` },
   ];
-  const max = Math.max(1, ...stages.map((s) => s.v));
   return (
-    <div className="sp-funnel">
+    <div className="sp-funnel2">
       {stages.map((s) => (
-        <div className="sp-funnel-row" key={s.name}>
-          <div className="sp-funnel-label">{s.name}</div>
-          <div className="sp-funnel-bar"><div style={{ width: `${(s.v / max) * 100}%`, background: s.color }}>{s.v}</div></div>
+        <div className="sp-funnel2-row" key={s.name}>
+          <div className="sp-funnel2-seg" style={{ width: `${s.w}%`, background: s.color }}>
+            <span className="sp-funnel2-n">{s.v}</span>
+            <span className="sp-funnel2-name">{s.name}</span>
+          </div>
+          <div className="sp-funnel2-sub">{s.sub}</div>
         </div>
       ))}
     </div>
