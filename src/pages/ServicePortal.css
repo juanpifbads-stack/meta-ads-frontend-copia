@@ -73,3 +73,10 @@
 .sp-neg { color: #b91c1c; }
 
 @media (max-width: 640px) { .sp-kpis, .sp-kpis--4, .sp-2col { grid-template-columns: 1fr 1fr; } }
+
+/* Embudo */
+.sp-funnel { display: flex; flex-direction: column; gap: 8px; }
+.sp-funnel-row { display: flex; align-items: center; gap: 12px; }
+.sp-funnel-label { width: 130px; font-size: 12px; color: #5f5e5a; text-align: right; flex-shrink: 0; }
+.sp-funnel-bar { flex: 1; background: #f0efe9; border-radius: 6px; overflow: hidden; height: 26px; }
+.sp-funnel-bar > div { height: 100%; display: flex; align-items: center; padding: 0 8px; color: #fff; font-size: 12px; font-weight: 600; min-width: 22px; border-radius: 6px; }

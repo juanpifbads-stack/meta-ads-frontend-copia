@@ -38,7 +38,7 @@ export default function ServicePortal({ client }) {
       </div>
 
       <div className="sp-tabs">
-        {[['obras', 'Obras'], ['dashboard', 'Dashboard'], ['pnl', 'Rentabilidad']].map(([k, l]) => (
+        {[['obras', 'Obras'], ['dashboard', 'Dashboard'], ['pnl', 'Rentabilidad'], ['embudo', 'Embudo']].map(([k, l]) => (
           <button key={k} className={`sp-tab ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -64,6 +64,116 @@ export default function ServicePortal({ client }) {
 
       {tab === 'dashboard' && <DashboardTab a={analytics} />}
       {tab === 'pnl' && <PnlTab a={analytics} slug={slug} accessKey={accessKey} reload={load} />}
+      {tab === 'embudo' && <FunnelTab slug={slug} accessKey={accessKey} />}
+    </div>
+  );
+}
+
+const curYM = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; };
+const pctf = (x) => `${((x || 0) * 100).toFixed(0)}%`;
+
+function FunnelTab({ slug, accessKey }) {
+  const [month, setMonth] = useState(curYM());
+  const [data, setData] = useState(null);
+  const [manual, setManual] = useState({ visitas_agendadas: '', visitas_canceladas: '', recompras: '' });
+
+  const load = useCallback(() => {
+    setData(null);
+    apiClient.get(`/service/${slug}/funnel`, { params: { key: accessKey, month } }).then((r) => {
+      setData(r.data);
+      const e = r.data.entradas;
+      setManual({ visitas_agendadas: e.agendadas || '', visitas_canceladas: e.canceladas || '', recompras: e.recompras || '' });
+    }).catch(() => setData(null));
+  }, [slug, accessKey, month]);
+  useEffect(() => { load(); }, [load]);
+
+  const saveManual = () => {
+    apiClient.put(`/service/${slug}/funnel`, { key: accessKey, month, ...manual }).then(load).catch(() => {});
+  };
+
+  return (
+    <div>
+      <div className="sp-section-head">
+        <h2>Embudo — {month}</h2>
+        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={{ padding: '7px 10px', border: '1px solid #d8d6cf', borderRadius: 8 }} />
+      </div>
+      {!data ? <div className="sp-muted">Cargando…</div> : (
+        <>
+          <Card title="Datos de Meta (automático)">
+            <div className="sp-kpis sp-kpis--4">
+              <Kpi label="Inversión (pauta)" value={fmt(data.entradas.spend)} />
+              <Kpi label="Consultas" value={data.entradas.consultas} raw />
+              <Kpi label="CPR (costo x consulta)" value={fmt(data.entradas.cpr)} />
+              <Kpi label="Ventas del mes" value={data.entradas.ventas} raw />
+            </div>
+            {data.meta.source === 'error' && <div className="sp-muted">No se pudo traer Meta ({data.meta.error}). Cargá manual si hace falta.</div>}
+            {data.meta.source === 'none' && <div className="sp-muted">Sin cuenta de Meta asignada a este cliente.</div>}
+          </Card>
+
+          <Card title="Carga manual (lo que Meta no da)">
+            <div className="sp-form-grid">
+              <label>Visitas agendadas<input inputMode="decimal" value={manual.visitas_agendadas} onChange={(e) => setManual({ ...manual, visitas_agendadas: e.target.value })} /></label>
+              <label>Visitas canceladas / no-show<input inputMode="decimal" value={manual.visitas_canceladas} onChange={(e) => setManual({ ...manual, visitas_canceladas: e.target.value })} /></label>
+              <label>Recompras (cliente repite)<input inputMode="decimal" value={manual.recompras} onChange={(e) => setManual({ ...manual, recompras: e.target.value })} /></label>
+            </div>
+            <div className="sp-form-actions"><button className="sp-btn sp-btn--primary" onClick={saveManual}>Guardar</button></div>
+          </Card>
+
+          <Card title="El embudo">
+            <FunnelBars e={data.entradas} />
+          </Card>
+
+          <div className="sp-2col">
+            <Card title="Costo por etapa">
+              <Row2 l="Costo por consulta" v={fmt(data.costos.porConsulta)} />
+              <Row2 l="Costo por visita efectiva" v={fmt(data.costos.porVisita)} />
+              <Row2 l="Costo por venta (CAC)" v={fmt(data.costos.cac)} />
+            </Card>
+            <Card title="ROAS">
+              <Row2 l="Económico (vendido ÷ pauta)" v={`${data.roas.economico.toFixed(1)}x`} />
+              <Row2 l="Financiero (cobrado ÷ pauta)" v={`${data.roas.financiero.toFixed(1)}x`} />
+              <Row2 l="Sobre margen bruto" v={`${data.roas.margen.toFixed(1)}x`} />
+            </Card>
+          </div>
+
+          <Card title="Tasas de conversión">
+            <Row2 l="Consulta → visita agendada" v={pctf(data.tasas.consultaVisitaAgendada)} hint="10-20% sano" />
+            <Row2 l="Consulta → visita efectiva" v={pctf(data.tasas.consultaVisitaEfectiva)} hint=">10%" />
+            <Row2 l="Tasa de cancelación / no-show" v={pctf(data.tasas.cancelacion)} hint="<15%" />
+            <Row2 l="Visita efectiva → venta (cierre)" v={pctf(data.tasas.cierre)} hint="15-25% sano" />
+            <Row2 l="Cierre solo leads nuevos" v={pctf(data.tasas.cierreNuevos)} />
+            <Row2 l="Consulta → venta (global)" v={pctf(data.tasas.consultaVenta)} hint="2-4%" />
+          </Card>
+
+          <Card title="Veredicto">
+            {data.veredicto.map((v, i) => <div key={i} style={{ fontSize: 14, marginBottom: 6 }}>{v}</div>)}
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Row2({ l, v, hint }) {
+  return <div className="sp-rank-top" style={{ padding: '6px 0', borderBottom: '0.5px solid #f0efe9' }}><span>{l}{hint ? <span className="sp-muted" style={{ marginLeft: 6 }}>· {hint}</span> : ''}</span><strong>{v}</strong></div>;
+}
+
+function FunnelBars({ e }) {
+  const stages = [
+    { name: 'Consultas', v: e.consultas, color: '#1b1fe8' },
+    { name: 'Visitas agendadas', v: e.agendadas, color: '#4b6bff' },
+    { name: 'Visitas efectivas', v: e.efectivas, color: '#5bc48a' },
+    { name: 'Ventas', v: e.ventas, color: '#178048' },
+  ];
+  const max = Math.max(1, ...stages.map((s) => s.v));
+  return (
+    <div className="sp-funnel">
+      {stages.map((s) => (
+        <div className="sp-funnel-row" key={s.name}>
+          <div className="sp-funnel-label">{s.name}</div>
+          <div className="sp-funnel-bar"><div style={{ width: `${(s.v / max) * 100}%`, background: s.color }}>{s.v}</div></div>
+        </div>
+      ))}
     </div>
   );
 }
