@@ -151,15 +151,21 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
                 <label>Mes del cobro de implementación<input type="month" value={l.setup_month || ''} onChange={(e) => setLine(i, { setup_month: e.target.value })} /></label>
               </div>
               <div className="fp-pre">
-                <div className="fp-sub">Costos mensuales (se restan antes de repartir)</div>
+                <div className="fp-sub">Costos mensuales — se restan del mantenimiento antes de repartir y se le reintegran a quien los paga</div>
                 {(l.costos || []).map((c, ci) => (
                   <div className="fp-pre-row" key={ci}>
-                    <input placeholder="Nombre del costo" value={c.nombre || ''} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, nombre: e.target.value } : x) })} style={{ flex: 1 }} />
-                    <input {...numProps} placeholder="Monto" value={c.monto ?? ''} style={{ width: 110 }} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, monto: e.target.value } : x) })} /><span className="fp-pct">{l.moneda}</span>
+                    <input placeholder="Nombre del costo (ej. WATI, N8N)" value={c.nombre || ''} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, nombre: e.target.value } : x) })} style={{ flex: 1 }} />
+                    <input {...numProps} placeholder="Monto" value={c.monto ?? ''} style={{ width: 90 }} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, monto: e.target.value } : x) })} /><span className="fp-pct">{l.moneda}</span>
+                    <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>paga<select value={c.quien || ''} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, quien: e.target.value } : x) })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
                     <button className="fp-btn fp-btn--danger" onClick={() => setLine(i, { costos: l.costos.filter((_, xi) => xi !== ci) })}>×</button>
                   </div>
                 ))}
-                <button className="fp-btn" onClick={() => setLine(i, { costos: [...(l.costos || []), { nombre: '', monto: '' }] })}>+ Costo</button>
+                <button className="fp-btn" onClick={() => setLine(i, { costos: [...(l.costos || []), { nombre: '', monto: '', quien: '' }] })}>+ Costo</button>
+                {(() => {
+                  const ct = (l.costos || []).reduce((s, c) => s + (Number(c.monto) || 0), 0);
+                  const rest = Math.max(0, (Number(l.fee) || 0) - ct);
+                  return <div className="fp-muted" style={{ marginTop: 6, fontSize: 12 }}>Mantenimiento {fmt(Number(l.fee) || 0)} − costos {fmt(ct)} = <strong>restante {fmt(rest)}</strong> {l.moneda} → se reparte 50% socios / OPEX / caja. Los costos se le devuelven a quien los paga.</div>;
+                })()}
               </div>
             </>
           )}
