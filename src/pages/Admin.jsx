@@ -809,10 +809,11 @@ function ChurnBlock({ slug, name }) {
   const [open, setOpen] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [ultimoMes, setUltimoMes] = useState(new Date().toISOString().slice(0, 7));
   const [done, setDone] = useState(false);
   const dar = () => {
-    if (!window.confirm(`¿Dar de baja a ${name}? Queda inactivo (no se borra) y se registra la baja.`)) return;
-    apiClient.post(`/admin/${slug}/churn`, { motivo, fecha }).then(() => setDone(true)).catch(() => {});
+    if (!window.confirm(`¿Dar de baja a ${name}? Queda inactivo (no se borra), se registra la baja y el fee deja de contar después de ${ultimoMes}.`)) return;
+    apiClient.post(`/admin/${slug}/churn`, { motivo, fecha, ultimoMes }).then(() => setDone(true)).catch(() => {});
   };
   if (done) return <div className="ad-sublabel" style={{ color: '#b91c1c', marginTop: 18 }}>✓ {name} dado de baja. Recargá la página para actualizar el listado.</div>;
   return (
@@ -823,9 +824,11 @@ function ChurnBlock({ slug, name }) {
           <>
             <div className="ad-sublabel" style={{ marginTop: 0 }}>Dar de baja a {name}</div>
             <div className="ad-row">
-              <div className="ad-field"><label>Fecha</label><input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></div>
+              <div className="ad-field"><label>Fecha de baja</label><input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></div>
+              <div className="ad-field"><label>Último mes que cobra el fee</label><input type="month" value={ultimoMes} onChange={(e) => setUltimoMes(e.target.value)} /></div>
               <Field label="Motivo" value={motivo} onChange={setMotivo} ph="Ej: dejó de pautar, se fue a otra agencia…" />
             </div>
+            <p className="ad-muted" style={{ margin: '2px 0 0', fontSize: 12 }}>El fee del cliente deja de contar en el reparto y el P&L <strong>después</strong> de ese mes. Ej: si el último mes cobrado es junio, julio en adelante ya no cuenta.</p>
             <div className="ad-row" style={{ marginTop: 8 }}>
               <button className="ad-btn ad-btn--ghost" onClick={() => setOpen(false)}>Cancelar</button>
               <button className="ad-btn" style={{ background: '#b91c1c', color: '#fff' }} onClick={dar}>Confirmar baja</button>
