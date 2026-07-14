@@ -127,6 +127,7 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
   const [msg, setMsg] = useState('');
 
   const [showNew, setShowNew] = useState(!!autoNew);
+  const [showChurn, setShowChurn] = useState(false);
   // Apartado de configuración: 'cliente' (config del cliente) | 'portal' (lo que ve: secciones + estrategia)
   const [cfgSection, setCfgSection] = useState('cliente');
 
@@ -209,8 +210,11 @@ export default function Admin({ onBack, lockedSlug, autoNew }) {
             </select>
           </div>
           <button className="ad-btn ad-btn--ghost" onClick={() => setShowNew(true)}>+ Nuevo cliente</button>
+          <button className="ad-btn ad-btn--ghost" onClick={() => setShowChurn((v) => !v)}>{showChurn ? 'Cerrar bajas' : 'Bajas'}</button>
         </div>
       )}
+
+      {showChurn && <ChurnLog />}
 
       {showNew && <NewClientForm onClose={onBack} onCreated={(s) => { setShowNew(false); loadClients(s); }} />}
 
@@ -525,6 +529,8 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
                     </>
                   )}
               </div>
+
+              {!isPaid && <ChurnBlock slug={slug} name={cfg.name || slug} />}
             </>
           )}
 
@@ -793,6 +799,60 @@ function MacroEditor({ slug, macros, reload }) {
         {!draft && macros.length > 0 && (
           <button className="ad-add" onClick={() => setDraft({ start_ym: currentYM(), end_ym: currentYM(), objective: '', description: '' })}>+ Otra macro</button>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Dar de baja a un cliente (queda inactivo, no se borra) + motivo.
+function ChurnBlock({ slug, name }) {
+  const [open, setOpen] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [done, setDone] = useState(false);
+  const dar = () => {
+    if (!window.confirm(`¿Dar de baja a ${name}? Queda inactivo (no se borra) y se registra la baja.`)) return;
+    apiClient.post(`/admin/${slug}/churn`, { motivo, fecha }).then(() => setDone(true)).catch(() => {});
+  };
+  if (done) return <div className="ad-sublabel" style={{ color: '#b91c1c', marginTop: 18 }}>✓ {name} dado de baja. Recargá la página para actualizar el listado.</div>;
+  return (
+    <div style={{ marginTop: 20, borderTop: '0.5px solid #e3e1d8', paddingTop: 14 }}>
+      {!open
+        ? <button className="ad-btn ad-btn--ghost" style={{ color: '#b91c1c', borderColor: '#f0c9c9' }} onClick={() => setOpen(true)}>Dar de baja al cliente</button>
+        : (
+          <>
+            <div className="ad-sublabel" style={{ marginTop: 0 }}>Dar de baja a {name}</div>
+            <div className="ad-row">
+              <div className="ad-field"><label>Fecha</label><input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></div>
+              <Field label="Motivo" value={motivo} onChange={setMotivo} ph="Ej: dejó de pautar, se fue a otra agencia…" />
+            </div>
+            <div className="ad-row" style={{ marginTop: 8 }}>
+              <button className="ad-btn ad-btn--ghost" onClick={() => setOpen(false)}>Cancelar</button>
+              <button className="ad-btn" style={{ background: '#b91c1c', color: '#fff' }} onClick={dar}>Confirmar baja</button>
+            </div>
+          </>
+        )}
+    </div>
+  );
+}
+
+// Registro de bajas (fecha · cliente · motivo).
+function ChurnLog() {
+  const [rows, setRows] = useState(null);
+  useEffect(() => { apiClient.get('/admin/churn').then((r) => setRows(r.data.churn || [])).catch(() => setRows([])); }, []);
+  return (
+    <div className="ad-macro">
+      <div className="ad-macro-head" style={{ cursor: 'default' }}>Registro de bajas</div>
+      <div className="ad-macro-body">
+        {rows === null ? <p className="ad-muted">Cargando…</p>
+          : rows.length === 0 ? <p className="ad-muted">Todavía no hay bajas registradas.</p>
+            : rows.map((r) => (
+              <div key={r.id} className="ad-row-box" style={{ display: 'flex', gap: 14, alignItems: 'baseline' }}>
+                <strong style={{ minWidth: 90 }}>{r.fecha}</strong>
+                <span style={{ minWidth: 140, fontWeight: 600 }}>{r.client_name || r.client_slug}</span>
+                <span className="ad-muted">{r.motivo || '—'}</span>
+              </div>
+            ))}
       </div>
     </div>
   );
