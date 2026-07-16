@@ -509,6 +509,12 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
                 <Field label="Clave de acceso" value={cfg.accessKey || ''} onChange={(v) => setCfg({ ...cfg, accessKey: v })} />
                 {!isPaid && <Field label="Clave de pagos" value={cfg.paymentsKey || ''} onChange={(v) => setCfg({ ...cfg, paymentsKey: v })} />}
               </div>
+              {!isPaid && (
+                <label className="ad-cap" style={{ marginTop: 4 }}>
+                  <input type="checkbox" checked={!!cfg.pagaVencido} onChange={() => setCfg({ ...cfg, pagaVencido: !cfg.pagaVencido })} />
+                  <span>Paga a mes vencido (en Cobros no cuenta como atrasado)</span>
+                </label>
+              )}
 
               {/* Servicios/monto y componente variable: se manejan en el panel de Finanzas
                   (fee por servicio + variable). Se sacaron de acá para no duplicar. */}

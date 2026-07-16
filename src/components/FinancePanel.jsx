@@ -505,7 +505,7 @@ function MovimientosTab({ people, clients, month }) {
                 return (
                   <React.Fragment key={i}>
                     <tr style={{ cursor: multi ? 'pointer' : 'default' }} onClick={() => multi && setOpenClient(isOpen ? null : r.client)} title={multi ? 'Ver desglose por servicio' : ''}>
-                      <td>{multi ? (isOpen ? '▾ ' : '▸ ') : ''}{cname(r.client)}{multi ? <span className="fp-muted"> · {r.services.length} servicios</span> : ''}</td>
+                      <td>{multi ? (isOpen ? '▾ ' : '▸ ') : ''}{cname(r.client)}{r.pagaVencido && <span className="fp-tag" style={{ marginLeft: 6, background: '#fef3c7', color: '#92620b' }}>mes vencido</span>}{multi ? <span className="fp-muted"> · {r.services.length} servicios</span> : ''}</td>
                       <td>{moneyLine(r.owed)}</td>
                       <td>{moneyLine(r.paid)}</td>
                       <td>{moneyLine(r.pending)}</td>
