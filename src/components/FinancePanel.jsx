@@ -9,6 +9,15 @@ const SERVICIOS = [
 const servLabel = (k) => (SERVICIOS.find((s) => s.k === k) || {}).l || k;
 const currentYM = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; };
 const fmt = (x) => Math.round(x || 0).toLocaleString('es-AR');
+// Formato es-AR mientras se tipea: miles con punto, decimales con coma. "1234567,5" → "1.234.567,5"
+function formatMiles(str) {
+  const s = String(str == null ? '' : str).replace(/[^\d,]/g, ''); // deja solo dígitos y coma
+  const [ent, ...rest] = s.split(',');
+  const entFmt = (ent || '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return rest.length ? `${entFmt},${rest.join('')}` : entFmt;
+}
+// A número plano para el backend: "1.234.567,5" → "1234567.5"
+const parseMiles = (str) => String(str == null ? '' : str).replace(/\./g, '').replace(',', '.');
 
 function defaultLine(servicio) {
   return {
@@ -360,7 +369,10 @@ function MovimientosTab({ people, clients, month }) {
   const [balances, setBalances] = useState(null);
   const [collections, setCollections] = useState(null);
   const [newAcc, setNewAcc] = useState('');
-  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), tipo: 'cliente', account_id: '', person: '', from_person: '', client_slug: '', amount: '', moneda: 'ARS', note: '' });
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), tipo: 'cliente', account_id: '', person: '', from_person: '', client_slug: '', servicio: '', amount: '', moneda: 'ARS', note: '' });
+  const [editingId, setEditingId] = useState(null);      // transferencia en edición
+  const [clientQuery, setClientQuery] = useState('');    // texto del buscador de cliente
+  const [openClient, setOpenClient] = useState(null);    // cliente con desglose por servicio abierto
   const [msg, setMsg] = useState('');
   const [cons, setCons] = useState('USD');
   const cname = (slug) => (clients || []).find((c) => c.slug === slug)?.name || slug;
@@ -382,15 +394,26 @@ function MovimientosTab({ people, clients, month }) {
     apiClient.post('/admin/finance/accounts', { name: newAcc.trim() }).then(() => { setNewAcc(''); loadStatic(); }).catch(() => {});
   };
   const delAccount = (id) => { if (window.confirm('¿Borrar la cuenta?')) apiClient.delete(`/admin/finance/accounts/${id}`).then(loadStatic).catch(() => {}); };
-  const addTransfer = () => {
-    if (!form.person || !(Number(form.amount) > 0)) { setMsg('Falta destinatario o monto'); return; }
+  const resetForm = () => { setForm({ date: new Date().toISOString().slice(0, 10), tipo: 'cliente', account_id: '', person: '', from_person: '', client_slug: '', servicio: '', amount: '', moneda: 'ARS', note: '' }); setClientQuery(''); setEditingId(null); };
+  const saveTransfer = () => {
+    const amount = parseMiles(form.amount);
+    if (!form.person || !(Number(amount) > 0)) { setMsg('Falta destinatario o monto'); return; }
     if (form.tipo === 'cliente' && !form.client_slug) { setMsg('Elegí de qué cliente es el cobro'); return; }
     if (form.tipo === 'interno' && !form.from_person) { setMsg('Elegí quién mandó la transferencia'); return; }
-    apiClient.post('/admin/finance/transfers', form).then(() => {
-      setForm({ ...form, amount: '', note: '', client_slug: '', from_person: '' }); setMsg('✓ Transferencia cargada'); setTimeout(() => setMsg(''), 2000); reload();
-    }).catch((e) => setMsg(e?.response?.data?.message || 'Error'));
+    const payload = { ...form, amount };
+    const req = editingId
+      ? apiClient.put(`/admin/finance/transfers/${editingId}`, payload)
+      : apiClient.post('/admin/finance/transfers', payload);
+    req.then(() => { resetForm(); setMsg(editingId ? '✓ Transferencia actualizada' : '✓ Transferencia cargada'); setTimeout(() => setMsg(''), 2000); reload(); })
+      .catch((e) => setMsg(e?.response?.data?.message || 'Error'));
   };
-  const delTransfer = (id) => { if (window.confirm('¿Borrar la transferencia?')) apiClient.delete(`/admin/finance/transfers/${id}`).then(reload).catch(() => {}); };
+  const editTransfer = (t) => {
+    setForm({ date: t.date, tipo: t.tipo || 'cliente', account_id: t.account_id || '', person: t.person || '', from_person: t.from_person || '', client_slug: t.client_slug || '', servicio: t.servicio || '', amount: formatMiles(String(t.amount)), moneda: t.moneda || 'ARS', note: t.note || '' });
+    setClientQuery(t.client_slug ? cname(t.client_slug) : '');
+    setEditingId(t.id); setMsg('');
+  };
+  const toggleSettled = (client, on) => apiClient.post('/admin/finance/collections/settle', { client_slug: client, month, on }).then(loadMonth).catch(() => {});
+  const delTransfer = (id) => { if (window.confirm('¿Borrar la transferencia?')) apiClient.delete(`/admin/finance/transfers/${id}`).then(() => { if (editingId === id) resetForm(); reload(); }).catch(() => {}); };
 
   const accName = (id) => accounts.find((a) => a.id === id)?.name || '—';
   const fx = balances?.fx || 0;
@@ -417,42 +440,74 @@ function MovimientosTab({ people, clients, month }) {
 
       {/* Nueva transferencia */}
       <div className="fp-card">
-        <div className="fp-card-head"><strong>Cargar transferencia</strong>{msg && <span className="fp-msg" style={{ marginLeft: 'auto' }}>{msg}</span>}</div>
+        <div className="fp-card-head"><strong>{editingId ? 'Editar transferencia' : 'Cargar transferencia'}</strong>{msg && <span className="fp-msg" style={{ marginLeft: 'auto' }}>{msg}</span>}</div>
         <div className="fp-grid">
           <label>Fecha<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
           <label>Tipo<select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}><option value="cliente">Cobro de cliente</option><option value="interno">Transferencia interna</option></select></label>
           {form.tipo === 'cliente'
-            ? <label>Cliente (paga)<select value={form.client_slug} onChange={(e) => setForm({ ...form, client_slug: e.target.value })}><option value="">—</option>{(clients || []).filter((c) => c.active !== false).map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}</select></label>
+            ? <label>Cliente (paga)<input list="fp-clients-dl" value={clientQuery} placeholder="Buscá el cliente…" onChange={(e) => { const v = e.target.value; setClientQuery(v); const c = (clients || []).find((x) => x.name === v); const slug = c ? c.slug : ''; const svcs = (collections?.rows || []).find((r) => r.client === slug)?.services || []; setForm({ ...form, client_slug: slug, servicio: svcs.length === 1 ? svcs[0].servicio : '' }); }} /><datalist id="fp-clients-dl">{(clients || []).filter((c) => c.active !== false).map((c) => <option key={c.slug} value={c.name} />)}</datalist></label>
             : <label>De (manda)<select value={form.from_person} onChange={(e) => setForm({ ...form, from_person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>}
+          {form.tipo === 'cliente' && (() => {
+            const svcs = (collections?.rows || []).find((r) => r.client === form.client_slug)?.services || [];
+            return svcs.length > 0 ? (
+              <label>Servicio<select value={form.servicio} onChange={(e) => setForm({ ...form, servicio: e.target.value })}>
+                <option value="">General (todo el cliente)</option>
+                {svcs.map((s) => <option key={s.servicio} value={s.servicio}>{servLabel(s.servicio)}</option>)}
+              </select></label>
+            ) : null;
+          })()}
           <label>Le entró a<select value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
           <label>Cuenta<select value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}><option value="">—</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
           <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
-          <label>Monto<input {...numProps} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></label>
+          <label>Monto<input {...numProps} value={form.amount} onChange={(e) => setForm({ ...form, amount: formatMiles(e.target.value) })} /></label>
           <label>Nota<input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
         </div>
-        <div style={{ textAlign: 'right', marginTop: 8 }}><button className="fp-btn fp-btn--primary" onClick={addTransfer}>Cargar</button></div>
+        <div style={{ textAlign: 'right', marginTop: 8 }}>
+          {editingId && <button className="fp-btn" style={{ marginRight: 8 }} onClick={resetForm}>Cancelar</button>}
+          <button className="fp-btn fp-btn--primary" onClick={saveTransfer}>{editingId ? 'Guardar cambios' : 'Cargar'}</button>
+        </div>
       </div>
 
       {/* Cobros de clientes del mes */}
       <div className="fp-card">
-        <div className="fp-card-head"><strong>Cobros de clientes — {month}</strong></div>
+        <div className="fp-card-head"><strong>Cobros de clientes — {month}</strong><span className="fp-muted" style={{ marginLeft: 'auto' }}>{collections?.tc ? `TC del mes ${fmt(collections.tc)}` : 'sin TC del mes'}</span></div>
         {!collections ? <div className="fp-muted">Cargando…</div> : collections.rows.length === 0 ? <div className="fp-muted">Sin clientes facturados este mes.</div> : (
           <table className="fp-table">
-            <thead><tr><th>Cliente</th><th>Debe (USD/ARS)</th><th>Pagó (USD/ARS)</th><th>Falta (USD/ARS)</th><th>Estado</th></tr></thead>
+            <thead><tr><th>Cliente</th><th>Debe (USD/ARS)</th><th>Pagó (USD/ARS)</th><th>Falta (USD/ARS)</th><th>Estado</th><th></th></tr></thead>
             <tbody>
-              {collections.rows.map((r, i) => (
-                <tr key={i}>
-                  <td>{cname(r.client)}</td>
-                  <td>{fmt(r.owed.USD)} / {fmt(r.owed.ARS)}</td>
-                  <td>{fmt(r.paid.USD)} / {fmt(r.paid.ARS)}</td>
-                  <td>{fmt(r.pending.USD)} / {fmt(r.pending.ARS)}</td>
-                  <td>{r.settled ? <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Pagó</span> : <span style={{ color: '#b91c1c', fontWeight: 700 }}>Falta</span>}</td>
-                </tr>
-              ))}
+              {collections.rows.map((r, i) => {
+                const multi = r.services.length > 1;
+                const isOpen = openClient === r.client;
+                return (
+                  <React.Fragment key={i}>
+                    <tr style={{ cursor: multi ? 'pointer' : 'default' }} onClick={() => multi && setOpenClient(isOpen ? null : r.client)} title={multi ? 'Ver desglose por servicio' : ''}>
+                      <td>{multi ? (isOpen ? '▾ ' : '▸ ') : ''}{cname(r.client)}{multi ? <span className="fp-muted"> · {r.services.length} servicios</span> : ''}</td>
+                      <td>{fmt(r.owed.USD)} / {fmt(r.owed.ARS)}</td>
+                      <td>{fmt(r.paid.USD)} / {fmt(r.paid.ARS)}</td>
+                      <td>{fmt(r.pending.USD)} / {fmt(r.pending.ARS)}</td>
+                      <td>{r.settled ? <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Pagó{r.manual ? ' (saldado)' : ''}</span> : <span style={{ color: '#b91c1c', fontWeight: 700 }}>Falta</span>}</td>
+                      <td style={{ whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
+                        {r.manual
+                          ? <button className="fp-btn" onClick={() => toggleSettled(r.client, false)}>Reabrir</button>
+                          : (!r.settled && <button className="fp-btn" onClick={() => toggleSettled(r.client, true)}>Dar por saldado</button>)}
+                      </td>
+                    </tr>
+                    {isOpen && r.services.map((s, si) => (
+                      <tr key={`${i}-${si}`} className="fp-src-row">
+                        <td style={{ paddingLeft: 24 }}>{servLabel(s.servicio)} <span className="fp-tag">{s.moneda}</span></td>
+                        <td>{s.moneda} {fmt(s.owed)}</td>
+                        <td>{s.moneda} {fmt(s.paid)}</td>
+                        <td>{s.moneda} {fmt(s.pending)}</td>
+                        <td colSpan={2} className="fp-muted">{s.pending <= 0 ? 'saldado' : 'falta'}</td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         )}
-        <p className="fp-muted" style={{ marginTop: 6 }}>Debe = lo facturado del mes (fee + implementación + variable). Se descuenta a medida que cargás cobros de ese cliente (aunque sean en varias transferencias).</p>
+        <p className="fp-muted" style={{ marginTop: 6 }}>Debe = lo facturado del mes (fee + implementación + variable) por servicio. Los pagos en otra moneda se convierten al TC del mes. Si por diferencia de TC queda un resto chico, usá "Dar por saldado".</p>
       </div>
 
       {/* Saldo del mes por persona */}
@@ -490,13 +545,16 @@ function MovimientosTab({ people, clients, month }) {
             <thead><tr><th>Fecha</th><th>Detalle</th><th>Le entró a</th><th>Cuenta</th><th>Monto</th><th></th></tr></thead>
             <tbody>
               {transfers.map((t) => (
-                <tr key={t.id}>
+                <tr key={t.id} style={{ background: editingId === t.id ? '#fff7ed' : undefined }}>
                   <td>{t.date}</td>
-                  <td>{t.tipo === 'interno' ? <>Interna · de <strong>{t.from_person || '—'}</strong></> : <>Cobro · <strong>{cname(t.client_slug)}</strong></>}{t.note ? <span className="fp-muted"> · {t.note}</span> : ''}</td>
+                  <td>{t.tipo === 'interno' ? <>Interna · de <strong>{t.from_person || '—'}</strong></> : <>Cobro · <strong>{cname(t.client_slug)}</strong>{t.servicio ? <span className="fp-muted"> · {servLabel(t.servicio)}</span> : ''}</>}{t.note ? <span className="fp-muted"> · {t.note}</span> : ''}</td>
                   <td>{t.person}</td>
                   <td>{accName(t.account_id)}</td>
                   <td>{t.moneda} {fmt(t.amount)}</td>
-                  <td><span onClick={() => delTransfer(t.id)} style={{ cursor: 'pointer', color: '#b91c1c' }}>×</span></td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <span onClick={() => editTransfer(t)} style={{ cursor: 'pointer', marginRight: 10 }} title="Editar">✎</span>
+                    <span onClick={() => delTransfer(t.id)} style={{ cursor: 'pointer', color: '#b91c1c' }} title="Borrar">×</span>
+                  </td>
                 </tr>
               ))}
             </tbody>
