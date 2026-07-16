@@ -375,6 +375,7 @@ function MovimientosTab({ people, clients, month }) {
   const [openClient, setOpenClient] = useState(null);    // cliente con desglose por servicio abierto
   const [mMonth, setMMonth] = useState(month);           // mes local del tab (además del general)
   const [saldoMode, setSaldoMode] = useState('mes');     // 'mes' | 'acumulado' (para los Saldos)
+  const [fPerson, setFPerson] = useState(''); const [fClient, setFClient] = useState(''); const [fFrom, setFFrom] = useState(''); const [fTo, setFTo] = useState(''); // filtros del listado
   const [msg, setMsg] = useState('');
   const [cons, setCons] = useState('USD');
   const cname = (slug) => (clients || []).find((c) => c.slug === slug)?.name || slug;
@@ -444,7 +445,6 @@ function MovimientosTab({ people, clients, month }) {
           ) : null;
         })()}
         <label>Le entró a<select value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
-        <label>Cuenta<select value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}><option value="">—</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
         <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
         <label>Monto<input {...numProps} value={form.amount} onChange={(e) => setForm({ ...form, amount: formatMiles(e.target.value) })} /></label>
         <label>Nota<input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
@@ -458,22 +458,6 @@ function MovimientosTab({ people, clients, month }) {
 
   return (
     <div>
-      {/* Cuentas */}
-      <div className="fp-card">
-        <div className="fp-card-head"><strong>Cuentas</strong></div>
-        <div className="fp-cl-break" style={{ gap: 8, marginBottom: 10 }}>
-          {accounts.map((a) => (
-            <span key={a.id} className="fp-tag" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-              {a.name} <span onClick={() => delAccount(a.id)} style={{ cursor: 'pointer', color: '#b91c1c' }}>×</span>
-            </span>
-          ))}
-          {accounts.length === 0 && <span className="fp-muted">Sin cuentas todavía.</span>}
-        </div>
-        <div className="fp-inline">
-          <input placeholder="Nueva cuenta (ej. Mercado Pago Agus)" value={newAcc} onChange={(e) => setNewAcc(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addAccount()} style={{ width: 260 }} />
-          <button className="fp-btn" onClick={addAccount}>+ Cuenta</button>
-        </div>
-      </div>
 
       {/* Cargar transferencia (inline, solo para nuevas) */}
       {!editingId && (
@@ -588,29 +572,41 @@ function MovimientosTab({ people, clients, month }) {
         <p className="fp-muted" style={{ marginTop: 6 }}><strong>Falta recibir</strong> = lo que le corresponde y no cobró. <strong>Debe</strong> = plata de más que retiene (de otros) + deals pre-agencia que paga. La <strong>Caja agencia</strong> es la ganancia del mes (va aparte). Cuando esté todo cobrado de los clientes, Falta total = Debe total.</p>
       </div>
 
-      {/* Últimas transferencias */}
+      {/* Últimas transferencias + filtros */}
       <div className="fp-card">
         <div className="fp-card-head"><strong>Transferencias cargadas</strong></div>
-        {transfers.length === 0 ? <div className="fp-muted">Ninguna todavía.</div> : (
-          <table className="fp-table">
-            <thead><tr><th>Fecha</th><th>Detalle</th><th>Le entró a</th><th>Cuenta</th><th>Monto</th><th></th></tr></thead>
-            <tbody>
-              {transfers.map((t) => (
-                <tr key={t.id} style={{ background: editingId === t.id ? '#fff7ed' : undefined }}>
-                  <td>{t.date}</td>
-                  <td>{t.tipo === 'interno' ? <>Interna · de <strong>{t.from_person || '—'}</strong></> : <>Cobro · <strong>{cname(t.client_slug)}</strong>{t.servicio ? <span className="fp-muted"> · {servLabel(t.servicio)}</span> : ''}</>}{t.note ? <span className="fp-muted"> · {t.note}</span> : ''}</td>
-                  <td>{t.person}</td>
-                  <td>{accName(t.account_id)}</td>
-                  <td>{t.moneda} {fmt(t.amount)}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
-                    <span onClick={() => editTransfer(t)} style={{ cursor: 'pointer', marginRight: 10 }} title="Editar">✎</span>
-                    <span onClick={() => delTransfer(t.id)} style={{ cursor: 'pointer', color: '#b91c1c' }} title="Borrar">×</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <div className="fp-inline" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+          <label className="fp-inline">Persona<select value={fPerson} onChange={(e) => setFPerson(e.target.value)}><option value="">Todas</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+          <label className="fp-inline">Cliente<select value={fClient} onChange={(e) => setFClient(e.target.value)}><option value="">Todos</option>{(clients || []).filter((c) => c.active !== false).map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}</select></label>
+          <label className="fp-inline">Desde<input type="date" value={fFrom} onChange={(e) => setFFrom(e.target.value)} /></label>
+          <label className="fp-inline">Hasta<input type="date" value={fTo} onChange={(e) => setFTo(e.target.value)} /></label>
+          {(fPerson || fClient || fFrom || fTo) && <button className="fp-btn" onClick={() => { setFPerson(''); setFClient(''); setFFrom(''); setFTo(''); }}>Limpiar</button>}
+        </div>
+        {(() => {
+          const filtered = transfers.filter((t) =>
+            (!fPerson || t.person === fPerson || t.from_person === fPerson)
+            && (!fClient || t.client_slug === fClient)
+            && (!fFrom || t.date >= fFrom) && (!fTo || t.date <= fTo));
+          return filtered.length === 0 ? <div className="fp-muted">Sin transferencias{transfers.length ? ' con esos filtros' : ' todavía'}.</div> : (
+            <table className="fp-table">
+              <thead><tr><th>Fecha</th><th>Detalle</th><th>Le entró a</th><th>Monto</th><th></th></tr></thead>
+              <tbody>
+                {filtered.map((t) => (
+                  <tr key={t.id} style={{ background: editingId === t.id ? '#fff7ed' : undefined }}>
+                    <td>{t.date}</td>
+                    <td>{t.tipo === 'interno' ? <>Interna · de <strong>{t.from_person || '—'}</strong></> : <>Cobro · <strong>{cname(t.client_slug)}</strong>{t.servicio ? <span className="fp-muted"> · {servLabel(t.servicio)}</span> : ''}</>}{t.note ? <span className="fp-muted"> · {t.note}</span> : ''}</td>
+                    <td>{t.person}</td>
+                    <td>{t.moneda} {fmt(t.amount)}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <span onClick={() => editTransfer(t)} style={{ cursor: 'pointer', marginRight: 10 }} title="Editar">✎</span>
+                      <span onClick={() => delTransfer(t.id)} style={{ cursor: 'pointer', color: '#b91c1c' }} title="Borrar">×</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          );
+        })()}
       </div>
     </div>
   );
