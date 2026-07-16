@@ -46,12 +46,17 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
   const [lines, setLines] = useState([]);
   const [fx, setFx] = useState('');
   const [msg, setMsg] = useState('');
+  const [pagaVencido, setPagaVencido] = useState(false);
 
   // Cargamos la config VIGENTE DEL MES elegido (así ves el fee que corresponde a ese mes).
   const loadLines = useCallback((s) => {
     if (!s) return;
-    apiClient.get(`/admin/finance/services?client=${s}&month=${month}`).then((r) => setLines((r.data.lines || []).map(normalizePost))).catch(() => setLines([]));
+    apiClient.get(`/admin/finance/services?client=${s}&month=${month}`).then((r) => { setLines((r.data.lines || []).map(normalizePost)); setPagaVencido(!!r.data.pagaVencido); }).catch(() => setLines([]));
   }, [month]);
+  const toggleVencido = () => {
+    const next = !pagaVencido; setPagaVencido(next);
+    apiClient.put(`/admin/finance/client-flags/${slug}`, { pagaVencido: next }).catch(() => setPagaVencido(!next));
+  };
   useEffect(() => { loadLines(slug); }, [slug, month, loadLines]);
   useEffect(() => {
     apiClient.get(`/admin/finance/fx?month=${month}`).then((r) => setFx(r.data.fx ? String(r.data.fx.ars_por_usd) : '')).catch(() => {});
@@ -131,6 +136,10 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
         </label>
       </div>
       <p className="fp-muted" style={{ margin: '0 0 10px' }}>Guardar registra el fee desde el 1° de <strong>{month}</strong> (los meses anteriores no cambian).</p>
+      <label className="fp-inline" style={{ margin: '0 0 10px', gap: 6, cursor: 'pointer' }}>
+        <input type="checkbox" checked={pagaVencido} onChange={toggleVencido} />
+        <span>Paga a mes vencido (en Cobros no cuenta como atrasado)</span>
+      </label>
       {msg && <div className="fp-msg">{msg}</div>}
 
       {lines.map((l, i) => (
@@ -369,7 +378,7 @@ function MovimientosTab({ people, clients, month }) {
   const [balances, setBalances] = useState(null);
   const [collections, setCollections] = useState(null);
   const [newAcc, setNewAcc] = useState('');
-  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), tipo: 'cliente', account_id: '', person: '', from_person: '', client_slug: '', servicio: '', amount: '', moneda: 'ARS', note: '' });
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), tipo: 'cliente', account_id: '', person: '', from_person: '', client_slug: '', servicio: '', amount: '', moneda: 'ARS', note: '', covers_from: '', covers_to: '' });
   const [editingId, setEditingId] = useState(null);      // transferencia en edición
   const [clientQuery, setClientQuery] = useState('');    // texto del buscador de cliente
   const [openClient, setOpenClient] = useState(null);    // cliente con desglose por servicio abierto
@@ -399,7 +408,7 @@ function MovimientosTab({ people, clients, month }) {
     apiClient.post('/admin/finance/accounts', { name: newAcc.trim() }).then(() => { setNewAcc(''); loadStatic(); }).catch(() => {});
   };
   const delAccount = (id) => { if (window.confirm('¿Borrar la cuenta?')) apiClient.delete(`/admin/finance/accounts/${id}`).then(loadStatic).catch(() => {}); };
-  const resetForm = () => { setForm({ date: new Date().toISOString().slice(0, 10), tipo: 'cliente', account_id: '', person: '', from_person: '', client_slug: '', servicio: '', amount: '', moneda: 'ARS', note: '' }); setClientQuery(''); setEditingId(null); };
+  const resetForm = () => { setForm({ date: new Date().toISOString().slice(0, 10), tipo: 'cliente', account_id: '', person: '', from_person: '', client_slug: '', servicio: '', amount: '', moneda: 'ARS', note: '', covers_from: '', covers_to: '' }); setClientQuery(''); setEditingId(null); };
   const saveTransfer = () => {
     const amount = parseMiles(form.amount);
     if (!form.person || !(Number(amount) > 0)) { setMsg('Falta destinatario o monto'); return; }
@@ -413,11 +422,12 @@ function MovimientosTab({ people, clients, month }) {
       .catch((e) => setMsg(e?.response?.data?.message || 'Error'));
   };
   const editTransfer = (t) => {
-    setForm({ date: t.date, tipo: t.tipo || 'cliente', account_id: t.account_id || '', person: t.person || '', from_person: t.from_person || '', client_slug: t.client_slug || '', servicio: t.servicio || '', amount: formatMiles(String(t.amount)), moneda: t.moneda || 'ARS', note: t.note || '' });
+    setForm({ date: t.date, tipo: t.tipo || 'cliente', account_id: t.account_id || '', person: t.person || '', from_person: t.from_person || '', client_slug: t.client_slug || '', servicio: t.servicio || '', amount: formatMiles(String(t.amount)), moneda: t.moneda || 'ARS', note: t.note || '', covers_from: t.covers_from || '', covers_to: t.covers_to || '' });
     setClientQuery(t.client_slug ? cname(t.client_slug) : '');
     setEditingId(t.id); setMsg('');
   };
   const toggleSettled = (client, on) => apiClient.post('/admin/finance/collections/settle', { client_slug: client, month: mMonth, on }).then(loadMonth).catch(() => {});
+  const toggleSettledPerson = (person, on) => apiClient.post('/admin/finance/balances/settle', { person, month: saldoMode === 'acumulado' ? 'all' : mMonth, on }).then(loadMonth).catch(() => {});
   const moneyLine = (o) => { const p = []; if (o.USD) p.push(`USD ${fmt(o.USD)}`); if (o.ARS) p.push(`ARS ${fmt(o.ARS)}`); return p.length ? p.join(' · ') : '—'; };
   const delTransfer = (id) => { if (window.confirm('¿Borrar la transferencia?')) apiClient.delete(`/admin/finance/transfers/${id}`).then(() => { if (editingId === id) resetForm(); reload(); }).catch(() => {}); };
 
@@ -444,6 +454,15 @@ function MovimientosTab({ people, clients, month }) {
             </select></label>
           ) : null;
         })()}
+        {form.tipo === 'cliente' && (
+          <label title="Si este pago cubre varios meses (ej: pagó mayo y junio juntos), poné el rango y se prorratea en Cobros. Vacío = cuenta en el mes de la fecha.">Cubre meses (opcional)
+            <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <input type="month" value={form.covers_from} onChange={(e) => setForm({ ...form, covers_from: e.target.value })} />
+              <span className="fp-muted">a</span>
+              <input type="month" value={form.covers_to} onChange={(e) => setForm({ ...form, covers_to: e.target.value })} />
+            </span>
+          </label>
+        )}
         <label>Le entró a<select value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
         <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
         <label>Monto<input {...numProps} value={form.amount} onChange={(e) => setForm({ ...form, amount: formatMiles(e.target.value) })} /></label>
@@ -543,28 +562,32 @@ function MovimientosTab({ people, clients, month }) {
             // en dólares (le corresponde − recibió = falta), sin importar la moneda de cada uno.
             const owedUsd = toUsd(r.owed), recUsd = toUsd(r.received), preUsd = toUsd(r.preDebe || { USD: 0, ARS: 0 });
             const net = owedUsd - recUsd;                 // + = le falta cobrar; − = retiene de más
-            const faltaUsd = Math.max(0, net);
-            const debeUsd = Math.max(0, -net) + preUsd;   // retiene de más + deals pre-agencia que paga
-            return { person: r.person, corr: consSaldo(r.owed), rec: consSaldo(r.received), falta: disp(faltaUsd), debe: disp(debeUsd) };
+            // Si está "dado por saldado", la diferencia se cierra: no queda falta ni debe.
+            const faltaUsd = r.settled ? 0 : Math.max(0, net);
+            const debeUsd = r.settled ? 0 : Math.max(0, -net) + preUsd;   // retiene de más + deals pre-agencia que paga
+            return { person: r.person, corr: consSaldo(r.owed), rec: consSaldo(r.received), falta: disp(faltaUsd), debe: disp(debeUsd), settled: r.settled };
           });
           // Caja de la agencia: fila aparte. Le corresponde y "falta recibir" = la caja (aún en las cuentas).
           const cajaCorr = consSaldo(balances.caja || { USD: 0, ARS: 0 });
           const tot = rows.reduce((a, r) => ({ falta: a.falta + r.falta, debe: a.debe + r.debe }), { falta: cajaCorr, debe: 0 });
           return (
             <table className="fp-table">
-              <thead><tr><th>Persona</th><th>Le corresponde ({cons})</th><th>Recibió ({cons})</th><th>Falta recibir ({cons})</th><th>Debe ({cons})</th></tr></thead>
+              <thead><tr><th>Persona</th><th>Le corresponde ({cons})</th><th>Recibió ({cons})</th><th>Falta recibir ({cons})</th><th>Debe ({cons})</th><th></th></tr></thead>
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={i}>
-                    <td>{r.person}</td>
+                    <td>{r.person}{r.settled && <span className="fp-tag" style={{ marginLeft: 6 }}>saldado</span>}</td>
                     <td>{fmt(r.corr)}</td>
                     <td>{fmt(r.rec)}</td>
                     <td>{r.falta > 0 ? fmt(r.falta) : '—'}</td>
                     <td>{r.debe > 0 ? <strong style={{ color: '#b91c1c' }}>{fmt(r.debe)}</strong> : '—'}</td>
+                    <td style={{ textAlign: 'right' }}>{r.settled
+                      ? <button className="fp-btn" onClick={() => toggleSettledPerson(r.person, false)}>Reabrir</button>
+                      : ((r.falta > 0 || r.debe > 0) && <button className="fp-btn" onClick={() => toggleSettledPerson(r.person, true)}>Dar por saldado</button>)}</td>
                   </tr>
                 ))}
-                <tr className="fp-src-row"><td>Caja agencia</td><td>{fmt(cajaCorr)}</td><td>—</td><td>{cajaCorr > 0 ? fmt(cajaCorr) : '—'}</td><td>—</td></tr>
-                <tr className="fp-pnl-strong"><td>Total</td><td></td><td></td><td>{fmt(tot.falta)}</td><td>{fmt(tot.debe)}</td></tr>
+                <tr className="fp-src-row"><td>Caja agencia</td><td>{fmt(cajaCorr)}</td><td>—</td><td>{cajaCorr > 0 ? fmt(cajaCorr) : '—'}</td><td>—</td><td></td></tr>
+                <tr className="fp-pnl-strong"><td>Total</td><td></td><td></td><td>{fmt(tot.falta)}</td><td>{fmt(tot.debe)}</td><td></td></tr>
               </tbody>
             </table>
           );
