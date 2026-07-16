@@ -571,7 +571,7 @@ function PnlTab({ month, people }) {
   const [cons, setCons] = useState('ARS');
   const [tax, setTax] = useState({ nombre: '', modo: 'pct', valor: '', moneda: 'ARS', quien_paga: '' });
   const [g, setG] = useState({ date: new Date().toISOString().slice(0, 10), tipo: 'opex', concepto: '', monto: '', moneda: 'ARS' });
-  const [open, setOpen] = useState({ socio: true, opex: true, imp: true });
+  const [open, setOpen] = useState({ socio: true, opex: true, imp: true, interno: true });
 
   const load = useCallback(() => { apiClient.get(`/admin/finance/pnl?month=${month}`).then((r) => setData(r.data)).catch(() => setData(null)); }, [month]);
   useEffect(() => { load(); }, [load]);
@@ -598,7 +598,9 @@ function PnlTab({ month, people }) {
   const opexTotal = opexOp + opexGastosTot;
   const taxes = (data.taxConfigs || []).map((t) => ({ ...t, monto: t.modo === 'pct' ? income * (Number(t.valor) || 0) / 100 : conv1(Number(t.valor) || 0, t.moneda) }));
   const taxesTot = taxes.reduce((s, t) => s + t.monto, 0);
-  const cajaNeta = income - socio - opexTotal - taxesTot;
+  const internalDeals = (data.internalDealsPost || []).map((d) => ({ ...d, amount: conv1(d.monto, d.moneda) }));
+  const internalTot = internalDeals.reduce((s, d) => s + d.amount, 0);
+  const cajaNeta = income - socio - opexTotal - taxesTot - internalTot;
   const pct = (x) => income ? (x / income) * 100 : 0;
   const impGastos = (data.expenses || []).filter((e) => e.categoria === 'impuesto');
 
@@ -636,6 +638,8 @@ function PnlTab({ month, people }) {
             <Row label="Impuestos" amount={taxesTot} cat="imp" />
             {open.imp && taxes.map((t) => <Sub key={t.id} label={`${t.nombre}${t.quien_paga ? ' · ' + t.quien_paga : ''} (${t.modo === 'pct' ? t.valor + '%' : 'fijo'})`} amount={t.monto} />)}
             {open.imp && impGastos.map((e) => <Sub key={e.id} label={`Pago: ${e.concepto || 'impuesto'} · ${e.date}`} amount={conv1(e.monto, e.moneda)} onDel={() => delGasto(e.id)} />)}
+            {internalDeals.length > 0 && <Row label="Deals internos (agencia)" amount={internalTot} cat="interno" />}
+            {internalDeals.length > 0 && open.interno && internalDeals.map((d, i) => <Sub key={'id' + i} label={`${d.person}${d.concepto ? ' · ' + d.concepto : ''}`} amount={d.amount} />)}
             <Row label="Caja (neta)" amount={cajaNeta} strong />
           </tbody>
         </table>
@@ -680,28 +684,29 @@ function PnlTab({ month, people }) {
 // ─── Deals Internos (fijo a un operador, sin cliente; se suma a su reparto) ─────
 function DealsInternosTab({ people, month }) {
   const [deals, setDeals] = useState([]);
-  const [form, setForm] = useState({ person: '', concepto: '', monto: '', moneda: 'USD', from_month: month, to_month: '' });
+  const [form, setForm] = useState({ person: '', concepto: '', monto: '', moneda: 'USD', tipo: 'pre', from_month: month, to_month: '' });
   const [msg, setMsg] = useState('');
   const load = () => apiClient.get('/admin/finance/internal-deals').then((r) => setDeals(r.data.deals || [])).catch(() => setDeals([]));
   useEffect(() => { load(); }, []);
   useEffect(() => { setForm((f) => ({ ...f, from_month: f.from_month || month })); }, [month]);
 
   const save = () => {
-    if (!form.person || !(Number(form.monto) > 0)) { setMsg('Elegí persona y cargá un monto.'); return; }
-    apiClient.post('/admin/finance/internal-deals', form)
-      .then(() => { setForm({ person: '', concepto: '', monto: '', moneda: 'USD', from_month: month, to_month: '' }); setMsg('✓ Deal interno guardado'); setTimeout(() => setMsg(''), 1800); load(); })
+    if (!form.person || !(Number(parseMiles(form.monto)) > 0)) { setMsg('Elegí persona y cargá un monto.'); return; }
+    apiClient.post('/admin/finance/internal-deals', { ...form, monto: parseMiles(form.monto) })
+      .then(() => { setForm({ person: '', concepto: '', monto: '', moneda: 'USD', tipo: 'pre', from_month: month, to_month: '' }); setMsg('✓ Deal interno guardado'); setTimeout(() => setMsg(''), 1800); load(); })
       .catch((e) => setMsg(e?.response?.data?.message || 'Error al guardar'));
   };
   const del = (id) => apiClient.delete(`/admin/finance/internal-deals/${id}`).then(load).catch(() => {});
 
   return (
     <div>
-      <p className="fp-muted">Fijos que le pagás a un operador sin relación a ningún cliente. Se <strong>suman a su reparto del mes</strong> (no tocan la caja ni el P&amp;L: son un costo personal, no de la agencia). Recurrentes: aplican desde el mes de inicio hasta el de fin (o para siempre).</p>
+      <p className="fp-muted">Fijos que le pagás a un operador sin relación a ningún cliente. Se <strong>suman a su reparto del mes</strong>. <strong>Pre-agencia</strong> = lo paga Juanpi (costo personal, no toca la caja/P&amp;L). <strong>Post-agencia</strong> = lo paga la agencia (baja la caja y aparece como costo en el P&amp;L). Recurrentes: aplican desde el mes de inicio hasta el de fin (o para siempre).</p>
       <div className="fp-card">
         <div className="fp-grid">
           <label>Persona<select value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+          <label>Tipo<select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}><option value="pre">Pre-agencia (lo paga Juanpi)</option><option value="post">Post-agencia (lo paga la agencia)</option></select></label>
           <label>Concepto<input value={form.concepto} onChange={(e) => setForm({ ...form, concepto: e.target.value })} placeholder="ej. Fijo edición" /></label>
-          <label>Monto<input {...numProps} value={form.monto} onChange={(e) => setForm({ ...form, monto: e.target.value })} /></label>
+          <label>Monto<input {...numProps} value={form.monto} onChange={(e) => setForm({ ...form, monto: formatMiles(e.target.value) })} /></label>
           <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="USD">USD</option><option value="ARS">ARS</option></select></label>
           <label>Desde<input type="month" value={form.from_month} onChange={(e) => setForm({ ...form, from_month: e.target.value })} /></label>
           <label>Hasta (opcional)<input type="month" value={form.to_month} onChange={(e) => setForm({ ...form, to_month: e.target.value })} /></label>
@@ -710,12 +715,13 @@ function DealsInternosTab({ people, month }) {
         <div className="fp-card-foot"><button className="fp-btn fp-btn--primary" onClick={save}>Agregar deal interno</button></div>
       </div>
       <table className="fp-table">
-        <thead><tr><th>Persona</th><th>Concepto</th><th>Monto</th><th>Vigencia</th><th></th></tr></thead>
+        <thead><tr><th>Persona</th><th>Paga</th><th>Concepto</th><th>Monto</th><th>Vigencia</th><th></th></tr></thead>
         <tbody>
-          {deals.length === 0 && <tr><td colSpan={5} className="fp-muted">Sin deals internos cargados.</td></tr>}
+          {deals.length === 0 && <tr><td colSpan={6} className="fp-muted">Sin deals internos cargados.</td></tr>}
           {deals.map((d) => (
             <tr key={d.id}>
               <td>{d.person}</td>
+              <td><span className="fp-tag">{d.tipo === 'post' ? 'Agencia' : 'Juanpi'}</span></td>
               <td>{d.concepto || '—'}</td>
               <td><strong>{d.moneda} {fmt(d.monto)}</strong></td>
               <td className="fp-muted">{d.from_month}{d.to_month ? ` → ${d.to_month}` : ' → sin fin'}</td>
