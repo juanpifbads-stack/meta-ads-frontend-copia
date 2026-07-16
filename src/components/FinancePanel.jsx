@@ -552,15 +552,16 @@ function MovimientosTab({ people, clients, month }) {
           </span>
         </div>
         {!balances ? <div className="fp-muted">Cargando…</div> : (() => {
+          // Mostramos en la moneda elegida un monto que viene consolidado a USD.
+          const disp = (usd) => (cons === 'ARS' ? usd * fx : cons === 'EUR' ? (eur ? usd / eur : 0) : usd);
           const rows = balances.rows.map((r) => {
-            const corr = consSaldo(r.owed), rec = consSaldo(r.received);
-            const pd = r.preDebe || { USD: 0, ARS: 0 };
-            // Falta/Debe se calculan POR MONEDA y después se consolidan (no se netean entre monedas):
-            // así, si a alguien le falta cobrar USD pero retiene ARS de más, se ven las dos cosas.
-            const faltaObj = { USD: Math.max(0, r.owed.USD - r.received.USD), ARS: Math.max(0, r.owed.ARS - r.received.ARS) };
-            // Debe = plata de más que retiene + lo que debe por deals pre-agencia que paga (ej. fijo de Fran).
-            const debeObj = { USD: Math.max(0, r.received.USD - r.owed.USD) + pd.USD, ARS: Math.max(0, r.received.ARS - r.owed.ARS) + pd.ARS };
-            return { person: r.person, corr, rec, falta: consSaldo(faltaObj), debe: consSaldo(debeObj) };
+            // Netear TODO en una sola moneda (USD): así un pago en pesos salda una deuda
+            // en dólares (le corresponde − recibió = falta), sin importar la moneda de cada uno.
+            const owedUsd = toUsd(r.owed), recUsd = toUsd(r.received), preUsd = toUsd(r.preDebe || { USD: 0, ARS: 0 });
+            const net = owedUsd - recUsd;                 // + = le falta cobrar; − = retiene de más
+            const faltaUsd = Math.max(0, net);
+            const debeUsd = Math.max(0, -net) + preUsd;   // retiene de más + deals pre-agencia que paga
+            return { person: r.person, corr: consSaldo(r.owed), rec: consSaldo(r.received), falta: disp(faltaUsd), debe: disp(debeUsd) };
           });
           // Caja de la agencia: fila aparte. Le corresponde y "falta recibir" = la caja (aún en las cuentas).
           const cajaCorr = consSaldo(balances.caja || { USD: 0, ARS: 0 });
