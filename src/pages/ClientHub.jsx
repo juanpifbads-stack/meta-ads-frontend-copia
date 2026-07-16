@@ -234,6 +234,13 @@ export default function ClientHub({ slug, onBack }) {
         <button className="ctrl-btn ctrl-btn--ghost" onClick={() => setTab('config')}>⚙ Configuración del cliente</button>
       </div>
 
+      {/* Aviso interno: cuenta operada con token propio del cliente (Cameo). Solo admin. */}
+      {slug === 'cameo' && (
+        <div style={{ margin: '4px 0 12px', padding: '10px 14px', borderRadius: 10, background: '#fef3c7', color: '#92620b', border: '1px solid #fde68a', fontSize: 14, lineHeight: 1.5 }}>
+          <strong>🔑 Cuenta con token propio.</strong> Cameo se opera con el token de su propia app (cuenta <code>act_1530871371447219</code>, cargado en Railway como <code>META_ACCOUNT_TOKENS</code>). <strong>Vence el 14/9/2026</strong> — antes de esa fecha hay que regenerarlo con <code>scripts/meta-token.js</code> y actualizar la env. Si el semáforo empieza a fallar, lo más probable es que el token haya vencido.
+        </div>
+      )}
+
       <div className="ctrl-divider" />
 
       {tab === 'resumen' && (
