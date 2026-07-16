@@ -231,7 +231,7 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
 }
 
 // ─── Reparto del mes ──────────────────────────────────────────────────────────
-const FUENTE_LBL = { 'pre': 'Pre-agencia', 'pre (fijo)': 'Pre-agencia (fijo)', 'sueldo socio': 'Sueldo socio', 'opex': 'OPEX' };
+const FUENTE_LBL = { 'pre': 'Pre-agencia', 'pre (fijo)': 'Pre-agencia (fijo)', 'sueldo socio': 'Sueldo socio', 'opex': 'OPEX', 'interno': 'Deal interno' };
 function RepartoTab({ month, clients }) {
   const [data, setData] = useState(null);
   const [cons, setCons] = useState('USD');
@@ -278,8 +278,8 @@ function RepartoTab({ month, clients }) {
                         <tbody>
                           {src.slice().sort((a, b) => b.amount - a.amount).map((s, si) => (
                             <tr key={si}>
-                              <td>{cname(s.client)}{s.descripcion ? <span className="fp-muted"> · {s.descripcion}</span> : ''}</td>
-                              <td>{servLabel(s.servicio)} <span className="fp-tag">{s.tipo}</span></td>
+                              <td>{s.client ? cname(s.client) : 'Interno'}{s.descripcion ? <span className="fp-muted"> · {s.descripcion}</span> : ''}</td>
+                              <td>{s.servicio ? servLabel(s.servicio) : '—'} <span className="fp-tag">{s.tipo}</span></td>
                               <td>{FUENTE_LBL[s.fuente] || s.fuente}</td>
                               <td><strong>{s.moneda} {fmt(s.amount)}</strong></td>
                             </tr>
@@ -354,34 +354,43 @@ function DealsClientesTab({ clients, people, month, setMonth }) {
 }
 
 // ─── Movimientos (cuentas + transferencias + saldos acumulados) ────────────────
-function MovimientosTab({ people }) {
+function MovimientosTab({ people, clients, month }) {
   const [accounts, setAccounts] = useState([]);
   const [transfers, setTransfers] = useState([]);
   const [balances, setBalances] = useState(null);
+  const [collections, setCollections] = useState(null);
   const [newAcc, setNewAcc] = useState('');
-  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), account_id: '', person: '', amount: '', moneda: 'ARS', note: '' });
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), tipo: 'cliente', account_id: '', person: '', from_person: '', client_slug: '', amount: '', moneda: 'ARS', note: '' });
   const [msg, setMsg] = useState('');
   const [cons, setCons] = useState('USD');
+  const cname = (slug) => (clients || []).find((c) => c.slug === slug)?.name || slug;
 
-  const load = useCallback(() => {
+  const loadStatic = useCallback(() => {
     apiClient.get('/admin/finance/accounts').then((r) => setAccounts(r.data.accounts || [])).catch(() => {});
     apiClient.get('/admin/finance/transfers').then((r) => setTransfers(r.data.transfers || [])).catch(() => {});
-    apiClient.get('/admin/finance/balances').then((r) => setBalances(r.data)).catch(() => setBalances({ rows: [], fx: null }));
   }, []);
-  useEffect(() => { load(); }, [load]);
+  const loadMonth = useCallback(() => {
+    apiClient.get(`/admin/finance/balances?month=${month}`).then((r) => setBalances(r.data)).catch(() => setBalances({ rows: [], fx: null }));
+    apiClient.get(`/admin/finance/collections?month=${month}`).then((r) => setCollections(r.data)).catch(() => setCollections({ rows: [] }));
+  }, [month]);
+  useEffect(() => { loadStatic(); }, [loadStatic]);
+  useEffect(() => { loadMonth(); }, [loadMonth]);
+  const reload = () => { loadStatic(); loadMonth(); };
 
   const addAccount = () => {
     if (!newAcc.trim()) return;
-    apiClient.post('/admin/finance/accounts', { name: newAcc.trim() }).then(() => { setNewAcc(''); load(); }).catch(() => {});
+    apiClient.post('/admin/finance/accounts', { name: newAcc.trim() }).then(() => { setNewAcc(''); loadStatic(); }).catch(() => {});
   };
-  const delAccount = (id) => { if (window.confirm('¿Borrar la cuenta?')) apiClient.delete(`/admin/finance/accounts/${id}`).then(load).catch(() => {}); };
+  const delAccount = (id) => { if (window.confirm('¿Borrar la cuenta?')) apiClient.delete(`/admin/finance/accounts/${id}`).then(loadStatic).catch(() => {}); };
   const addTransfer = () => {
-    if (!form.person || !(Number(form.amount) > 0)) { setMsg('Falta persona o monto'); return; }
+    if (!form.person || !(Number(form.amount) > 0)) { setMsg('Falta destinatario o monto'); return; }
+    if (form.tipo === 'cliente' && !form.client_slug) { setMsg('Elegí de qué cliente es el cobro'); return; }
+    if (form.tipo === 'interno' && !form.from_person) { setMsg('Elegí quién mandó la transferencia'); return; }
     apiClient.post('/admin/finance/transfers', form).then(() => {
-      setForm({ ...form, amount: '', note: '' }); setMsg('✓ Transferencia cargada'); setTimeout(() => setMsg(''), 2000); load();
+      setForm({ ...form, amount: '', note: '', client_slug: '', from_person: '' }); setMsg('✓ Transferencia cargada'); setTimeout(() => setMsg(''), 2000); reload();
     }).catch((e) => setMsg(e?.response?.data?.message || 'Error'));
   };
-  const delTransfer = (id) => { if (window.confirm('¿Borrar la transferencia?')) apiClient.delete(`/admin/finance/transfers/${id}`).then(load).catch(() => {}); };
+  const delTransfer = (id) => { if (window.confirm('¿Borrar la transferencia?')) apiClient.delete(`/admin/finance/transfers/${id}`).then(reload).catch(() => {}); };
 
   const accName = (id) => accounts.find((a) => a.id === id)?.name || '—';
   const fx = balances?.fx || 0;
@@ -411,8 +420,12 @@ function MovimientosTab({ people }) {
         <div className="fp-card-head"><strong>Cargar transferencia</strong>{msg && <span className="fp-msg" style={{ marginLeft: 'auto' }}>{msg}</span>}</div>
         <div className="fp-grid">
           <label>Fecha<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
-          <label>Cuenta<select value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}><option value="">—</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
+          <label>Tipo<select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}><option value="cliente">Cobro de cliente</option><option value="interno">Transferencia interna</option></select></label>
+          {form.tipo === 'cliente'
+            ? <label>Cliente (paga)<select value={form.client_slug} onChange={(e) => setForm({ ...form, client_slug: e.target.value })}><option value="">—</option>{(clients || []).filter((c) => c.active !== false).map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}</select></label>
+            : <label>De (manda)<select value={form.from_person} onChange={(e) => setForm({ ...form, from_person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>}
           <label>Le entró a<select value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+          <label>Cuenta<select value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}><option value="">—</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
           <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
           <label>Monto<input {...numProps} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></label>
           <label>Nota<input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
@@ -420,9 +433,31 @@ function MovimientosTab({ people }) {
         <div style={{ textAlign: 'right', marginTop: 8 }}><button className="fp-btn fp-btn--primary" onClick={addTransfer}>Cargar</button></div>
       </div>
 
-      {/* Saldos acumulados */}
+      {/* Cobros de clientes del mes */}
       <div className="fp-card">
-        <div className="fp-card-head"><strong>Saldos por cobrar (acumulado)</strong>
+        <div className="fp-card-head"><strong>Cobros de clientes — {month}</strong></div>
+        {!collections ? <div className="fp-muted">Cargando…</div> : collections.rows.length === 0 ? <div className="fp-muted">Sin clientes facturados este mes.</div> : (
+          <table className="fp-table">
+            <thead><tr><th>Cliente</th><th>Debe (USD/ARS)</th><th>Pagó (USD/ARS)</th><th>Falta (USD/ARS)</th><th>Estado</th></tr></thead>
+            <tbody>
+              {collections.rows.map((r, i) => (
+                <tr key={i}>
+                  <td>{cname(r.client)}</td>
+                  <td>{fmt(r.owed.USD)} / {fmt(r.owed.ARS)}</td>
+                  <td>{fmt(r.paid.USD)} / {fmt(r.paid.ARS)}</td>
+                  <td>{fmt(r.pending.USD)} / {fmt(r.pending.ARS)}</td>
+                  <td>{r.settled ? <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Pagó</span> : <span style={{ color: '#b91c1c', fontWeight: 700 }}>Falta</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="fp-muted" style={{ marginTop: 6 }}>Debe = lo facturado del mes (fee + implementación + variable). Se descuenta a medida que cargás cobros de ese cliente (aunque sean en varias transferencias).</p>
+      </div>
+
+      {/* Saldo del mes por persona */}
+      <div className="fp-card">
+        <div className="fp-card-head"><strong>Saldo del mes — {month}</strong>
           <span style={{ marginLeft: 'auto' }} className="fp-inline">Consolidar a
             <button className={`fp-btn ${cons === 'USD' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('USD')}>USD</button>
             <button className={`fp-btn ${cons === 'ARS' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('ARS')}>ARS</button>
@@ -430,7 +465,7 @@ function MovimientosTab({ people }) {
         </div>
         {!balances ? <div className="fp-muted">Cargando…</div> : (
           <table className="fp-table">
-            <thead><tr><th>Persona</th><th>Le corresponde (USD/ARS)</th><th>Recibido (USD/ARS)</th><th>Saldo (USD/ARS)</th><th>Saldo consolidado ({cons})</th></tr></thead>
+            <thead><tr><th>Persona</th><th>Le corresponde (USD/ARS)</th><th>Recibido neto (USD/ARS)</th><th>Saldo (USD/ARS)</th><th>Saldo consolidado ({cons})</th></tr></thead>
             <tbody>
               {balances.rows.map((r, i) => (
                 <tr key={i}>
@@ -444,7 +479,7 @@ function MovimientosTab({ people }) {
             </tbody>
           </table>
         )}
-        <p className="fp-muted" style={{ marginTop: 6 }}>Saldo = lo que le corresponde del reparto (histórico) − lo que ya recibió. Positivo = le deben; negativo = tiene plata de más.</p>
+        <p className="fp-muted" style={{ marginTop: 6 }}>Saldo del mes = lo que le corresponde del reparto − recibido neto (lo que le entró − lo que reenvió a otros). Positivo = le deben; negativo = tiene plata de más.</p>
       </div>
 
       {/* Últimas transferencias */}
@@ -452,11 +487,14 @@ function MovimientosTab({ people }) {
         <div className="fp-card-head"><strong>Transferencias cargadas</strong></div>
         {transfers.length === 0 ? <div className="fp-muted">Ninguna todavía.</div> : (
           <table className="fp-table">
-            <thead><tr><th>Fecha</th><th>Persona</th><th>Cuenta</th><th>Monto</th><th></th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Detalle</th><th>Le entró a</th><th>Cuenta</th><th>Monto</th><th></th></tr></thead>
             <tbody>
               {transfers.map((t) => (
                 <tr key={t.id}>
-                  <td>{t.date}</td><td>{t.person}</td><td>{accName(t.account_id)}{t.note ? <span className="fp-muted"> · {t.note}</span> : ''}</td>
+                  <td>{t.date}</td>
+                  <td>{t.tipo === 'interno' ? <>Interna · de <strong>{t.from_person || '—'}</strong></> : <>Cobro · <strong>{cname(t.client_slug)}</strong></>}{t.note ? <span className="fp-muted"> · {t.note}</span> : ''}</td>
+                  <td>{t.person}</td>
+                  <td>{accName(t.account_id)}</td>
                   <td>{t.moneda} {fmt(t.amount)}</td>
                   <td><span onClick={() => delTransfer(t.id)} style={{ cursor: 'pointer', color: '#b91c1c' }}>×</span></td>
                 </tr>
@@ -581,6 +619,57 @@ function PnlTab({ month, people }) {
   );
 }
 
+// ─── Deals Internos (fijo a un operador, sin cliente; se suma a su reparto) ─────
+function DealsInternosTab({ people, month }) {
+  const [deals, setDeals] = useState([]);
+  const [form, setForm] = useState({ person: '', concepto: '', monto: '', moneda: 'USD', from_month: month, to_month: '' });
+  const [msg, setMsg] = useState('');
+  const load = () => apiClient.get('/admin/finance/internal-deals').then((r) => setDeals(r.data.deals || [])).catch(() => setDeals([]));
+  useEffect(() => { load(); }, []);
+  useEffect(() => { setForm((f) => ({ ...f, from_month: f.from_month || month })); }, [month]);
+
+  const save = () => {
+    if (!form.person || !(Number(form.monto) > 0)) { setMsg('Elegí persona y cargá un monto.'); return; }
+    apiClient.post('/admin/finance/internal-deals', form)
+      .then(() => { setForm({ person: '', concepto: '', monto: '', moneda: 'USD', from_month: month, to_month: '' }); setMsg('✓ Deal interno guardado'); setTimeout(() => setMsg(''), 1800); load(); })
+      .catch((e) => setMsg(e?.response?.data?.message || 'Error al guardar'));
+  };
+  const del = (id) => apiClient.delete(`/admin/finance/internal-deals/${id}`).then(load).catch(() => {});
+
+  return (
+    <div>
+      <p className="fp-muted">Fijos que le pagás a un operador sin relación a ningún cliente. Se <strong>suman a su reparto del mes</strong> (no tocan la caja ni el P&amp;L: son un costo personal, no de la agencia). Recurrentes: aplican desde el mes de inicio hasta el de fin (o para siempre).</p>
+      <div className="fp-card">
+        <div className="fp-grid">
+          <label>Persona<select value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+          <label>Concepto<input value={form.concepto} onChange={(e) => setForm({ ...form, concepto: e.target.value })} placeholder="ej. Fijo edición" /></label>
+          <label>Monto<input {...numProps} value={form.monto} onChange={(e) => setForm({ ...form, monto: e.target.value })} /></label>
+          <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="USD">USD</option><option value="ARS">ARS</option></select></label>
+          <label>Desde<input type="month" value={form.from_month} onChange={(e) => setForm({ ...form, from_month: e.target.value })} /></label>
+          <label>Hasta (opcional)<input type="month" value={form.to_month} onChange={(e) => setForm({ ...form, to_month: e.target.value })} /></label>
+        </div>
+        {msg && <div className="fp-msg">{msg}</div>}
+        <div className="fp-card-foot"><button className="fp-btn fp-btn--primary" onClick={save}>Agregar deal interno</button></div>
+      </div>
+      <table className="fp-table">
+        <thead><tr><th>Persona</th><th>Concepto</th><th>Monto</th><th>Vigencia</th><th></th></tr></thead>
+        <tbody>
+          {deals.length === 0 && <tr><td colSpan={5} className="fp-muted">Sin deals internos cargados.</td></tr>}
+          {deals.map((d) => (
+            <tr key={d.id}>
+              <td>{d.person}</td>
+              <td>{d.concepto || '—'}</td>
+              <td><strong>{d.moneda} {fmt(d.monto)}</strong></td>
+              <td className="fp-muted">{d.from_month}{d.to_month ? ` → ${d.to_month}` : ' → sin fin'}</td>
+              <td><button className="fp-btn fp-btn--danger" onClick={() => del(d.id)}>×</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function FinancePanel() {
   const [tab, setTab] = useState('deals');
   const [clients, setClients] = useState([]);
@@ -597,18 +686,18 @@ export default function FinancePanel() {
       <h3 className="ad-section-title">Finanzas de la agencia</h3>
       <div className="fp-tabs">
         <button className={`fp-tab ${tab === 'deals' ? 'on' : ''}`} onClick={() => setTab('deals')}>Deals Clientes</button>
+        <button className={`fp-tab ${tab === 'internos' ? 'on' : ''}`} onClick={() => setTab('internos')}>Deals Internos</button>
         <button className={`fp-tab ${tab === 'reparto' ? 'on' : ''}`} onClick={() => setTab('reparto')}>Reparto del mes</button>
         <button className={`fp-tab ${tab === 'movimientos' ? 'on' : ''}`} onClick={() => setTab('movimientos')}>Movimientos</button>
         <button className={`fp-tab ${tab === 'pnl' ? 'on' : ''}`} onClick={() => setTab('pnl')}>P&amp;L</button>
-        {tab !== 'movimientos' && (
-          <label className="fp-inline" style={{ marginLeft: 'auto' }}>Mes
-            <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
-          </label>
-        )}
+        <label className="fp-inline" style={{ marginLeft: 'auto' }}>Mes
+          <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
+        </label>
       </div>
       {tab === 'deals' && <DealsClientesTab clients={clients} people={people} month={month} setMonth={setMonth} />}
+      {tab === 'internos' && <DealsInternosTab people={people} month={month} />}
       {tab === 'reparto' && <RepartoTab month={month} clients={clients} />}
-      {tab === 'movimientos' && <MovimientosTab people={people} />}
+      {tab === 'movimientos' && <MovimientosTab people={people} clients={clients} month={month} />}
       {tab === 'pnl' && <PnlTab month={month} people={people} />}
     </div>
   );
