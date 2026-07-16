@@ -419,6 +419,36 @@ function MovimientosTab({ people, clients, month }) {
   const fx = balances?.fx || 0;
   const consSaldo = (s) => cons === 'USD' ? (s.USD + (fx ? s.ARS / fx : 0)) : (s.ARS + s.USD * fx);
 
+  const formBody = (
+    <>
+      <div className="fp-grid">
+        <label>Fecha<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
+        <label>Tipo<select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}><option value="cliente">Cobro de cliente</option><option value="interno">Transferencia interna</option></select></label>
+        {form.tipo === 'cliente'
+          ? <label>Cliente (paga)<input list="fp-clients-dl" value={clientQuery} placeholder="Buscá el cliente…" onChange={(e) => { const v = e.target.value; setClientQuery(v); const c = (clients || []).find((x) => x.name === v); const slug = c ? c.slug : ''; const svcs = (collections?.rows || []).find((r) => r.client === slug)?.services || []; setForm({ ...form, client_slug: slug, servicio: svcs.length === 1 ? svcs[0].servicio : '' }); }} /><datalist id="fp-clients-dl">{(clients || []).filter((c) => c.active !== false).map((c) => <option key={c.slug} value={c.name} />)}</datalist></label>
+          : <label>De (manda)<select value={form.from_person} onChange={(e) => setForm({ ...form, from_person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>}
+        {form.tipo === 'cliente' && (() => {
+          const svcs = (collections?.rows || []).find((r) => r.client === form.client_slug)?.services || [];
+          return svcs.length > 0 ? (
+            <label>Servicio<select value={form.servicio} onChange={(e) => setForm({ ...form, servicio: e.target.value })}>
+              <option value="">General (todo el cliente)</option>
+              {svcs.map((s) => <option key={s.servicio} value={s.servicio}>{servLabel(s.servicio)}</option>)}
+            </select></label>
+          ) : null;
+        })()}
+        <label>Le entró a<select value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+        <label>Cuenta<select value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}><option value="">—</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
+        <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
+        <label>Monto<input {...numProps} value={form.amount} onChange={(e) => setForm({ ...form, amount: formatMiles(e.target.value) })} /></label>
+        <label>Nota<input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
+      </div>
+      <div style={{ textAlign: 'right', marginTop: 8 }}>
+        {editingId && <button className="fp-btn" style={{ marginRight: 8 }} onClick={resetForm}>Cancelar</button>}
+        <button className="fp-btn fp-btn--primary" onClick={saveTransfer}>{editingId ? 'Guardar cambios' : 'Cargar'}</button>
+      </div>
+    </>
+  );
+
   return (
     <div>
       {/* Cuentas */}
@@ -438,35 +468,23 @@ function MovimientosTab({ people, clients, month }) {
         </div>
       </div>
 
-      {/* Nueva transferencia */}
-      <div className="fp-card">
-        <div className="fp-card-head"><strong>{editingId ? 'Editar transferencia' : 'Cargar transferencia'}</strong>{msg && <span className="fp-msg" style={{ marginLeft: 'auto' }}>{msg}</span>}</div>
-        <div className="fp-grid">
-          <label>Fecha<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
-          <label>Tipo<select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}><option value="cliente">Cobro de cliente</option><option value="interno">Transferencia interna</option></select></label>
-          {form.tipo === 'cliente'
-            ? <label>Cliente (paga)<input list="fp-clients-dl" value={clientQuery} placeholder="Buscá el cliente…" onChange={(e) => { const v = e.target.value; setClientQuery(v); const c = (clients || []).find((x) => x.name === v); const slug = c ? c.slug : ''; const svcs = (collections?.rows || []).find((r) => r.client === slug)?.services || []; setForm({ ...form, client_slug: slug, servicio: svcs.length === 1 ? svcs[0].servicio : '' }); }} /><datalist id="fp-clients-dl">{(clients || []).filter((c) => c.active !== false).map((c) => <option key={c.slug} value={c.name} />)}</datalist></label>
-            : <label>De (manda)<select value={form.from_person} onChange={(e) => setForm({ ...form, from_person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>}
-          {form.tipo === 'cliente' && (() => {
-            const svcs = (collections?.rows || []).find((r) => r.client === form.client_slug)?.services || [];
-            return svcs.length > 0 ? (
-              <label>Servicio<select value={form.servicio} onChange={(e) => setForm({ ...form, servicio: e.target.value })}>
-                <option value="">General (todo el cliente)</option>
-                {svcs.map((s) => <option key={s.servicio} value={s.servicio}>{servLabel(s.servicio)}</option>)}
-              </select></label>
-            ) : null;
-          })()}
-          <label>Le entró a<select value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
-          <label>Cuenta<select value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}><option value="">—</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
-          <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
-          <label>Monto<input {...numProps} value={form.amount} onChange={(e) => setForm({ ...form, amount: formatMiles(e.target.value) })} /></label>
-          <label>Nota<input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
+      {/* Cargar transferencia (inline, solo para nuevas) */}
+      {!editingId && (
+        <div className="fp-card">
+          <div className="fp-card-head"><strong>Cargar transferencia</strong>{msg && <span className="fp-msg" style={{ marginLeft: 'auto' }}>{msg}</span>}</div>
+          {formBody}
         </div>
-        <div style={{ textAlign: 'right', marginTop: 8 }}>
-          {editingId && <button className="fp-btn" style={{ marginRight: 8 }} onClick={resetForm}>Cancelar</button>}
-          <button className="fp-btn fp-btn--primary" onClick={saveTransfer}>{editingId ? 'Guardar cambios' : 'Cargar'}</button>
+      )}
+
+      {/* Editar transferencia (modal, aparece donde estás) */}
+      {editingId && (
+        <div onClick={resetForm} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} className="fp-card" style={{ background: '#fff', maxWidth: 640, width: '100%', maxHeight: '85vh', overflowY: 'auto', margin: 0 }}>
+            <div className="fp-card-head"><strong>Editar transferencia</strong>{msg && <span className="fp-msg" style={{ marginLeft: 'auto' }}>{msg}</span>}</div>
+            {formBody}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Cobros de clientes del mes */}
       <div className="fp-card">
@@ -534,7 +552,7 @@ function MovimientosTab({ people, clients, month }) {
             </tbody>
           </table>
         )}
-        <p className="fp-muted" style={{ marginTop: 6 }}>Saldo del mes = lo que le corresponde del reparto − recibido neto (lo que le entró − lo que reenvió a otros). Positivo = le deben; negativo = tiene plata de más.</p>
+        <p className="fp-muted" style={{ marginTop: 6 }}><strong>Recibido neto</strong> = TODO lo que le entró a esa persona (incluidos los cobros de clientes que cayeron en su cuenta, no solo su parte) − lo que reenvió al equipo. <strong>Saldo</strong> = lo que le corresponde del reparto − recibido neto. Por eso, si a Juanpi le entran todos los cobros del mes, su saldo queda muy negativo: está <strong>reteniendo la plata del equipo/agencia hasta repartirla</strong>. A medida que reenvía (transferencias internas), su saldo sube hacia lo que realmente le corresponde. Positivo = le deben; negativo = tiene plata para repartir.</p>
       </div>
 
       {/* Últimas transferencias */}
