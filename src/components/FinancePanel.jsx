@@ -422,7 +422,9 @@ function MovimientosTab({ people, clients, month }) {
 
   const accName = (id) => accounts.find((a) => a.id === id)?.name || '—';
   const fx = balances?.fx || 0;
-  const consSaldo = (s) => cons === 'USD' ? (s.USD + (fx ? s.ARS / fx : 0)) : (s.ARS + s.USD * fx);
+  const eur = balances?.eur || 0; // EUR→USD
+  const toUsd = (s) => s.USD + (fx ? s.ARS / fx : 0);
+  const consSaldo = (s) => (cons === 'ARS' ? (s.ARS + s.USD * fx) : cons === 'EUR' ? (eur ? toUsd(s) / eur : 0) : toUsd(s));
 
   const formBody = (
     <>
@@ -443,7 +445,7 @@ function MovimientosTab({ people, clients, month }) {
         })()}
         <label>Le entró a<select value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
         <label>Cuenta<select value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })}><option value="">—</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
-        <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
+        <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
         <label>Monto<input {...numProps} value={form.amount} onChange={(e) => setForm({ ...form, amount: formatMiles(e.target.value) })} /></label>
         <label>Nota<input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
       </div>
@@ -546,6 +548,7 @@ function MovimientosTab({ people, clients, month }) {
           <span className="fp-inline" style={{ marginLeft: 12 }}>Ver en
             <button className={`fp-btn ${cons === 'USD' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('USD')}>USD</button>
             <button className={`fp-btn ${cons === 'ARS' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('ARS')}>ARS</button>
+            <button className={`fp-btn ${cons === 'EUR' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('EUR')}>EUR</button>
           </span>
         </div>
         {!balances ? <div className="fp-muted">Cargando…</div> : (() => {
