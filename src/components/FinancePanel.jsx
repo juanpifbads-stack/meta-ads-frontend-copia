@@ -509,17 +509,26 @@ function MovimientosTab({ people, clients, month }) {
           <table className="fp-table">
             <thead><tr><th>Cliente</th><th>Debe</th><th>Pagó</th><th>Falta</th><th>Estado</th><th></th></tr></thead>
             <tbody>
-              {collections.rows.map((r, i) => {
+              {/* Mes vencido pendiente va abajo de todo (no está atrasado, sólo falta cobrar). */}
+              {[...collections.rows].sort((a, b) => {
+                const rank = (r) => (!r.settled && r.pagaVencido ? 2 : r.settled ? 1 : 0);
+                return rank(a) - rank(b);
+              }).map((r, i) => {
                 const multi = r.services.length > 1;
                 const isOpen = openClient === r.client;
+                const vencidoPend = !r.settled && r.pagaVencido; // paga a mes vencido y todavía no cobró
                 return (
                   <React.Fragment key={i}>
                     <tr style={{ cursor: multi ? 'pointer' : 'default' }} onClick={() => multi && setOpenClient(isOpen ? null : r.client)} title={multi ? 'Ver desglose por servicio' : ''}>
-                      <td>{multi ? (isOpen ? '▾ ' : '▸ ') : ''}{cname(r.client)}{r.pagaVencido && <span className="fp-tag" style={{ marginLeft: 6, background: '#fef3c7', color: '#92620b' }}>mes vencido</span>}{multi ? <span className="fp-muted"> · {r.services.length} servicios</span> : ''}</td>
+                      <td>{multi ? (isOpen ? '▾ ' : '▸ ') : ''}{cname(r.client)}{multi ? <span className="fp-muted"> · {r.services.length} servicios</span> : ''}</td>
                       <td>{moneyLine(r.owed)}</td>
                       <td>{moneyLine(r.paid)}</td>
                       <td>{moneyLine(r.pending)}</td>
-                      <td>{r.settled ? <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Pagó{r.manual ? ' (saldado)' : ''}</span> : <span style={{ color: '#b91c1c', fontWeight: 700 }}>Falta</span>}</td>
+                      <td>{r.settled
+                        ? <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Pagó{r.manual ? ' (saldado)' : ''}</span>
+                        : vencidoPend
+                          ? <span style={{ color: '#92620b', fontWeight: 700 }}>Mes vencido</span>
+                          : <span style={{ color: '#b91c1c', fontWeight: 700 }}>Falta</span>}</td>
                       <td style={{ whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
                         {r.manual
                           ? <button className="fp-btn" onClick={() => toggleSettled(r.client, false)}>Reabrir</button>
