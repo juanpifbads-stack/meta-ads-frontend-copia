@@ -373,18 +373,20 @@ function MovimientosTab({ people, clients, month }) {
   const [editingId, setEditingId] = useState(null);      // transferencia en edición
   const [clientQuery, setClientQuery] = useState('');    // texto del buscador de cliente
   const [openClient, setOpenClient] = useState(null);    // cliente con desglose por servicio abierto
+  const [mMonth, setMMonth] = useState(month);           // mes local del tab (además del general)
   const [msg, setMsg] = useState('');
   const [cons, setCons] = useState('USD');
   const cname = (slug) => (clients || []).find((c) => c.slug === slug)?.name || slug;
+  useEffect(() => { setMMonth(month); }, [month]);        // si cambia el general, seguimos ese
 
   const loadStatic = useCallback(() => {
     apiClient.get('/admin/finance/accounts').then((r) => setAccounts(r.data.accounts || [])).catch(() => {});
     apiClient.get('/admin/finance/transfers').then((r) => setTransfers(r.data.transfers || [])).catch(() => {});
   }, []);
   const loadMonth = useCallback(() => {
-    apiClient.get(`/admin/finance/balances?month=${month}`).then((r) => setBalances(r.data)).catch(() => setBalances({ rows: [], fx: null }));
-    apiClient.get(`/admin/finance/collections?month=${month}`).then((r) => setCollections(r.data)).catch(() => setCollections({ rows: [] }));
-  }, [month]);
+    apiClient.get(`/admin/finance/balances?month=${mMonth}`).then((r) => setBalances(r.data)).catch(() => setBalances({ rows: [], fx: null }));
+    apiClient.get(`/admin/finance/collections?month=${mMonth}`).then((r) => setCollections(r.data)).catch(() => setCollections({ rows: [] }));
+  }, [mMonth]);
   useEffect(() => { loadStatic(); }, [loadStatic]);
   useEffect(() => { loadMonth(); }, [loadMonth]);
   const reload = () => { loadStatic(); loadMonth(); };
@@ -412,7 +414,8 @@ function MovimientosTab({ people, clients, month }) {
     setClientQuery(t.client_slug ? cname(t.client_slug) : '');
     setEditingId(t.id); setMsg('');
   };
-  const toggleSettled = (client, on) => apiClient.post('/admin/finance/collections/settle', { client_slug: client, month, on }).then(loadMonth).catch(() => {});
+  const toggleSettled = (client, on) => apiClient.post('/admin/finance/collections/settle', { client_slug: client, month: mMonth, on }).then(loadMonth).catch(() => {});
+  const moneyLine = (o) => { const p = []; if (o.USD) p.push(`USD ${fmt(o.USD)}`); if (o.ARS) p.push(`ARS ${fmt(o.ARS)}`); return p.length ? p.join(' · ') : '—'; };
   const delTransfer = (id) => { if (window.confirm('¿Borrar la transferencia?')) apiClient.delete(`/admin/finance/transfers/${id}`).then(() => { if (editingId === id) resetForm(); reload(); }).catch(() => {}); };
 
   const accName = (id) => accounts.find((a) => a.id === id)?.name || '—';
@@ -488,10 +491,13 @@ function MovimientosTab({ people, clients, month }) {
 
       {/* Cobros de clientes del mes */}
       <div className="fp-card">
-        <div className="fp-card-head"><strong>Cobros de clientes — {month}</strong><span className="fp-muted" style={{ marginLeft: 'auto' }}>{collections?.tc ? `TC del mes ${fmt(collections.tc)}` : 'sin TC del mes'}</span></div>
+        <div className="fp-card-head"><strong>Cobros de clientes</strong>
+          <label className="fp-inline" style={{ marginLeft: 'auto' }}>Mes<input type="month" value={mMonth} onChange={(e) => setMMonth(e.target.value)} /></label>
+          <span className="fp-muted" style={{ marginLeft: 12 }}>{collections?.tc ? `TC ${fmt(collections.tc)}` : 'sin TC'}</span>
+        </div>
         {!collections ? <div className="fp-muted">Cargando…</div> : collections.rows.length === 0 ? <div className="fp-muted">Sin clientes facturados este mes.</div> : (
           <table className="fp-table">
-            <thead><tr><th>Cliente</th><th>Debe (USD/ARS)</th><th>Pagó (USD/ARS)</th><th>Falta (USD/ARS)</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>Cliente</th><th>Debe</th><th>Pagó</th><th>Falta</th><th>Estado</th><th></th></tr></thead>
             <tbody>
               {collections.rows.map((r, i) => {
                 const multi = r.services.length > 1;
@@ -500,9 +506,9 @@ function MovimientosTab({ people, clients, month }) {
                   <React.Fragment key={i}>
                     <tr style={{ cursor: multi ? 'pointer' : 'default' }} onClick={() => multi && setOpenClient(isOpen ? null : r.client)} title={multi ? 'Ver desglose por servicio' : ''}>
                       <td>{multi ? (isOpen ? '▾ ' : '▸ ') : ''}{cname(r.client)}{multi ? <span className="fp-muted"> · {r.services.length} servicios</span> : ''}</td>
-                      <td>{fmt(r.owed.USD)} / {fmt(r.owed.ARS)}</td>
-                      <td>{fmt(r.paid.USD)} / {fmt(r.paid.ARS)}</td>
-                      <td>{fmt(r.pending.USD)} / {fmt(r.pending.ARS)}</td>
+                      <td>{moneyLine(r.owed)}</td>
+                      <td>{moneyLine(r.paid)}</td>
+                      <td>{moneyLine(r.pending)}</td>
                       <td>{r.settled ? <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Pagó{r.manual ? ' (saldado)' : ''}</span> : <span style={{ color: '#b91c1c', fontWeight: 700 }}>Falta</span>}</td>
                       <td style={{ whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
                         {r.manual
@@ -525,34 +531,42 @@ function MovimientosTab({ people, clients, month }) {
             </tbody>
           </table>
         )}
-        <p className="fp-muted" style={{ marginTop: 6 }}>Debe = lo facturado del mes (fee + implementación + variable) por servicio. Los pagos en otra moneda se convierten al TC del mes. Si por diferencia de TC queda un resto chico, usá "Dar por saldado".</p>
       </div>
 
       {/* Saldo del mes por persona */}
       <div className="fp-card">
-        <div className="fp-card-head"><strong>Saldo del mes — {month}</strong>
-          <span style={{ marginLeft: 'auto' }} className="fp-inline">Consolidar a
+        <div className="fp-card-head"><strong>Saldo del mes</strong>
+          <label className="fp-inline" style={{ marginLeft: 'auto' }}>Mes<input type="month" value={mMonth} onChange={(e) => setMMonth(e.target.value)} /></label>
+          <span className="fp-inline" style={{ marginLeft: 12 }}>Ver en
             <button className={`fp-btn ${cons === 'USD' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('USD')}>USD</button>
             <button className={`fp-btn ${cons === 'ARS' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('ARS')}>ARS</button>
           </span>
         </div>
-        {!balances ? <div className="fp-muted">Cargando…</div> : (
-          <table className="fp-table">
-            <thead><tr><th>Persona</th><th>Le corresponde (USD/ARS)</th><th>Recibido neto (USD/ARS)</th><th>Saldo (USD/ARS)</th><th>Saldo consolidado ({cons})</th></tr></thead>
-            <tbody>
-              {balances.rows.map((r, i) => (
-                <tr key={i}>
-                  <td>{r.person}</td>
-                  <td>{fmt(r.owed.USD)} / {fmt(r.owed.ARS)}</td>
-                  <td>{fmt(r.received.USD)} / {fmt(r.received.ARS)}</td>
-                  <td>{fmt(r.saldo.USD)} / {fmt(r.saldo.ARS)}</td>
-                  <td className="fp-cons">{fmt(consSaldo(r.saldo))}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        <p className="fp-muted" style={{ marginTop: 6 }}><strong>Recibido neto</strong> = TODO lo que le entró a esa persona (incluidos los cobros de clientes que cayeron en su cuenta, no solo su parte) − lo que reenvió al equipo. <strong>Saldo</strong> = lo que le corresponde del reparto − recibido neto. Por eso, si a Juanpi le entran todos los cobros del mes, su saldo queda muy negativo: está <strong>reteniendo la plata del equipo/agencia hasta repartirla</strong>. A medida que reenvía (transferencias internas), su saldo sube hacia lo que realmente le corresponde. Positivo = le deben; negativo = tiene plata para repartir.</p>
+        {!balances ? <div className="fp-muted">Cargando…</div> : (() => {
+          const rows = balances.rows.map((r) => {
+            const corr = consSaldo(r.owed), rec = consSaldo(r.received);
+            return { person: r.person, corr, rec, falta: Math.max(0, corr - rec), debe: Math.max(0, rec - corr) };
+          });
+          const tot = rows.reduce((a, r) => ({ falta: a.falta + r.falta, debe: a.debe + r.debe }), { falta: 0, debe: 0 });
+          return (
+            <table className="fp-table">
+              <thead><tr><th>Persona</th><th>Le corresponde ({cons})</th><th>Recibió ({cons})</th><th>Falta recibir ({cons})</th><th>Debe ({cons})</th></tr></thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={i}>
+                    <td>{r.person}</td>
+                    <td>{fmt(r.corr)}</td>
+                    <td>{fmt(r.rec)}</td>
+                    <td>{r.falta > 0 ? fmt(r.falta) : '—'}</td>
+                    <td>{r.debe > 0 ? <strong style={{ color: '#b91c1c' }}>{fmt(r.debe)}</strong> : '—'}</td>
+                  </tr>
+                ))}
+                <tr className="fp-pnl-strong"><td>Total</td><td></td><td></td><td>{fmt(tot.falta)}</td><td>{fmt(tot.debe)}</td></tr>
+              </tbody>
+            </table>
+          );
+        })()}
+        <p className="fp-muted" style={{ marginTop: 6 }}><strong>Falta recibir</strong> = lo que le corresponde y todavía no cobró. <strong>Debe</strong> = plata de más que tiene (de otros) para repartir.</p>
       </div>
 
       {/* Últimas transferencias */}
@@ -636,7 +650,7 @@ function PnlTab({ month, people }) {
   return (
     <div>
       <div className="fp-bar">
-        <strong>P&L post-agencia · {month}</strong>
+        <strong>P&L post-agencia</strong>
         <span style={{ marginLeft: 'auto' }} className="fp-inline">Ver en
           <button className={`fp-btn ${cons === 'ARS' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('ARS')}>ARS</button>
           <button className={`fp-btn ${cons === 'USD' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('USD')}>USD</button>
