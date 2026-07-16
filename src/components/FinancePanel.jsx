@@ -545,13 +545,17 @@ function MovimientosTab({ people, clients, month }) {
         {!balances ? <div className="fp-muted">Cargando…</div> : (() => {
           const rows = balances.rows.map((r) => {
             const corr = consSaldo(r.owed), rec = consSaldo(r.received);
+            const pd = r.preDebe || { USD: 0, ARS: 0 };
             // Falta/Debe se calculan POR MONEDA y después se consolidan (no se netean entre monedas):
             // así, si a alguien le falta cobrar USD pero retiene ARS de más, se ven las dos cosas.
             const faltaObj = { USD: Math.max(0, r.owed.USD - r.received.USD), ARS: Math.max(0, r.owed.ARS - r.received.ARS) };
-            const debeObj = { USD: Math.max(0, r.received.USD - r.owed.USD), ARS: Math.max(0, r.received.ARS - r.owed.ARS) };
+            // Debe = plata de más que retiene + lo que debe por deals pre-agencia que paga (ej. fijo de Fran).
+            const debeObj = { USD: Math.max(0, r.received.USD - r.owed.USD) + pd.USD, ARS: Math.max(0, r.received.ARS - r.owed.ARS) + pd.ARS };
             return { person: r.person, corr, rec, falta: consSaldo(faltaObj), debe: consSaldo(debeObj) };
           });
-          const tot = rows.reduce((a, r) => ({ falta: a.falta + r.falta, debe: a.debe + r.debe }), { falta: 0, debe: 0 });
+          // Caja de la agencia: fila aparte. Le corresponde y "falta recibir" = la caja (aún en las cuentas).
+          const cajaCorr = consSaldo(balances.caja || { USD: 0, ARS: 0 });
+          const tot = rows.reduce((a, r) => ({ falta: a.falta + r.falta, debe: a.debe + r.debe }), { falta: cajaCorr, debe: 0 });
           return (
             <table className="fp-table">
               <thead><tr><th>Persona</th><th>Le corresponde ({cons})</th><th>Recibió ({cons})</th><th>Falta recibir ({cons})</th><th>Debe ({cons})</th></tr></thead>
@@ -565,12 +569,13 @@ function MovimientosTab({ people, clients, month }) {
                     <td>{r.debe > 0 ? <strong style={{ color: '#b91c1c' }}>{fmt(r.debe)}</strong> : '—'}</td>
                   </tr>
                 ))}
+                <tr className="fp-src-row"><td>Caja agencia</td><td>{fmt(cajaCorr)}</td><td>—</td><td>{cajaCorr > 0 ? fmt(cajaCorr) : '—'}</td><td>—</td></tr>
                 <tr className="fp-pnl-strong"><td>Total</td><td></td><td></td><td>{fmt(tot.falta)}</td><td>{fmt(tot.debe)}</td></tr>
               </tbody>
             </table>
           );
         })()}
-        <p className="fp-muted" style={{ marginTop: 6 }}><strong>Falta recibir</strong> = lo que le corresponde y todavía no cobró. <strong>Debe</strong> = plata de más que tiene (de otros) para repartir.</p>
+        <p className="fp-muted" style={{ marginTop: 6 }}><strong>Falta recibir</strong> = lo que le corresponde y no cobró. <strong>Debe</strong> = plata de más que retiene (de otros) + deals pre-agencia que paga. La <strong>Caja agencia</strong> es la ganancia del mes (va aparte). Cuando esté todo cobrado de los clientes, Falta total = Debe total.</p>
       </div>
 
       {/* Últimas transferencias */}
@@ -720,7 +725,7 @@ function PnlTab({ month, people }) {
 // ─── Deals Internos (fijo a un operador, sin cliente; se suma a su reparto) ─────
 function DealsInternosTab({ people, month }) {
   const [deals, setDeals] = useState([]);
-  const [form, setForm] = useState({ person: '', concepto: '', monto: '', moneda: 'USD', tipo: 'pre', from_month: month, to_month: '' });
+  const [form, setForm] = useState({ person: '', concepto: '', monto: '', moneda: 'USD', tipo: 'pre', payer: '', from_month: month, to_month: '' });
   const [msg, setMsg] = useState('');
   const load = () => apiClient.get('/admin/finance/internal-deals').then((r) => setDeals(r.data.deals || [])).catch(() => setDeals([]));
   useEffect(() => { load(); }, []);
@@ -728,8 +733,9 @@ function DealsInternosTab({ people, month }) {
 
   const save = () => {
     if (!form.person || !(Number(parseMiles(form.monto)) > 0)) { setMsg('Elegí persona y cargá un monto.'); return; }
+    if (form.tipo === 'pre' && !form.payer) { setMsg('Elegí quién paga el deal pre-agencia.'); return; }
     apiClient.post('/admin/finance/internal-deals', { ...form, monto: parseMiles(form.monto) })
-      .then(() => { setForm({ person: '', concepto: '', monto: '', moneda: 'USD', tipo: 'pre', from_month: month, to_month: '' }); setMsg('✓ Deal interno guardado'); setTimeout(() => setMsg(''), 1800); load(); })
+      .then(() => { setForm({ person: '', concepto: '', monto: '', moneda: 'USD', tipo: 'pre', payer: '', from_month: month, to_month: '' }); setMsg('✓ Deal interno guardado'); setTimeout(() => setMsg(''), 1800); load(); })
       .catch((e) => setMsg(e?.response?.data?.message || 'Error al guardar'));
   };
   const del = (id) => apiClient.delete(`/admin/finance/internal-deals/${id}`).then(load).catch(() => {});
@@ -741,6 +747,7 @@ function DealsInternosTab({ people, month }) {
         <div className="fp-grid">
           <label>Persona<select value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
           <label>Tipo<select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}><option value="pre">Pre-agencia</option><option value="post">Post-agencia</option></select></label>
+          {form.tipo === 'pre' && <label>Paga<select value={form.payer} onChange={(e) => setForm({ ...form, payer: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>}
           <label>Concepto<input value={form.concepto} onChange={(e) => setForm({ ...form, concepto: e.target.value })} placeholder="ej. Fijo edición" /></label>
           <label>Monto<input {...numProps} value={form.monto} onChange={(e) => setForm({ ...form, monto: formatMiles(e.target.value) })} /></label>
           <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="USD">USD</option><option value="ARS">ARS</option></select></label>
@@ -757,7 +764,7 @@ function DealsInternosTab({ people, month }) {
           {deals.map((d) => (
             <tr key={d.id}>
               <td>{d.person}</td>
-              <td><span className="fp-tag">{d.tipo === 'post' ? 'Agencia' : 'Juanpi'}</span></td>
+              <td><span className="fp-tag">{d.tipo === 'post' ? 'Agencia' : (d.payer || '—')}</span></td>
               <td>{d.concepto || '—'}</td>
               <td><strong>{d.moneda} {fmt(d.monto)}</strong></td>
               <td className="fp-muted">{d.from_month}{d.to_month ? ` → ${d.to_month}` : ' → sin fin'}</td>
