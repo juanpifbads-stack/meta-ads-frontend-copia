@@ -374,6 +374,7 @@ function MovimientosTab({ people, clients, month }) {
   const [clientQuery, setClientQuery] = useState('');    // texto del buscador de cliente
   const [openClient, setOpenClient] = useState(null);    // cliente con desglose por servicio abierto
   const [mMonth, setMMonth] = useState(month);           // mes local del tab (además del general)
+  const [saldoMode, setSaldoMode] = useState('mes');     // 'mes' | 'acumulado' (para los Saldos)
   const [msg, setMsg] = useState('');
   const [cons, setCons] = useState('USD');
   const cname = (slug) => (clients || []).find((c) => c.slug === slug)?.name || slug;
@@ -384,9 +385,10 @@ function MovimientosTab({ people, clients, month }) {
     apiClient.get('/admin/finance/transfers').then((r) => setTransfers(r.data.transfers || [])).catch(() => {});
   }, []);
   const loadMonth = useCallback(() => {
-    apiClient.get(`/admin/finance/balances?month=${mMonth}`).then((r) => setBalances(r.data)).catch(() => setBalances({ rows: [], fx: null }));
+    const bMonth = saldoMode === 'acumulado' ? 'all' : mMonth;
+    apiClient.get(`/admin/finance/balances?month=${bMonth}`).then((r) => setBalances(r.data)).catch(() => setBalances({ rows: [], fx: null }));
     apiClient.get(`/admin/finance/collections?month=${mMonth}`).then((r) => setCollections(r.data)).catch(() => setCollections({ rows: [] }));
-  }, [mMonth]);
+  }, [mMonth, saldoMode]);
   useEffect(() => { loadStatic(); }, [loadStatic]);
   useEffect(() => { loadMonth(); }, [loadMonth]);
   const reload = () => { loadStatic(); loadMonth(); };
@@ -533,10 +535,14 @@ function MovimientosTab({ people, clients, month }) {
         )}
       </div>
 
-      {/* Saldo del mes por persona */}
+      {/* Saldo por persona (mes o acumulado) */}
       <div className="fp-card">
-        <div className="fp-card-head"><strong>Saldo del mes</strong>
-          <label className="fp-inline" style={{ marginLeft: 'auto' }}>Mes<input type="month" value={mMonth} onChange={(e) => setMMonth(e.target.value)} /></label>
+        <div className="fp-card-head"><strong>{saldoMode === 'acumulado' ? 'Saldo acumulado (desde julio)' : 'Saldo del mes'}</strong>
+          <span className="fp-inline" style={{ marginLeft: 'auto' }}>
+            <button className={`fp-btn ${saldoMode === 'mes' ? 'fp-btn--primary' : ''}`} onClick={() => setSaldoMode('mes')}>Mes</button>
+            <button className={`fp-btn ${saldoMode === 'acumulado' ? 'fp-btn--primary' : ''}`} onClick={() => setSaldoMode('acumulado')}>Acumulado</button>
+          </span>
+          {saldoMode === 'mes' && <label className="fp-inline" style={{ marginLeft: 12 }}>Mes<input type="month" value={mMonth} onChange={(e) => setMMonth(e.target.value)} /></label>}
           <span className="fp-inline" style={{ marginLeft: 12 }}>Ver en
             <button className={`fp-btn ${cons === 'USD' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('USD')}>USD</button>
             <button className={`fp-btn ${cons === 'ARS' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('ARS')}>ARS</button>
