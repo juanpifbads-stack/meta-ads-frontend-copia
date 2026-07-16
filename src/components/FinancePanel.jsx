@@ -700,11 +700,11 @@ function DealsInternosTab({ people, month }) {
 
   return (
     <div>
-      <p className="fp-muted">Fijos que le pagás a un operador sin relación a ningún cliente. Se <strong>suman a su reparto del mes</strong>. <strong>Pre-agencia</strong> = lo paga Juanpi (costo personal, no toca la caja/P&amp;L). <strong>Post-agencia</strong> = lo paga la agencia (baja la caja y aparece como costo en el P&amp;L). Recurrentes: aplican desde el mes de inicio hasta el de fin (o para siempre).</p>
+      <p className="fp-muted">Fijos que le pagás a un operador sin relación a ningún cliente. Se <strong>suman a su reparto del mes</strong>. Elegí si es <strong>pre</strong> o <strong>post agencia</strong>. Recurrentes: aplican desde el mes de inicio hasta el de fin (o para siempre).</p>
       <div className="fp-card">
         <div className="fp-grid">
           <label>Persona<select value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
-          <label>Tipo<select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}><option value="pre">Pre-agencia (lo paga Juanpi)</option><option value="post">Post-agencia (lo paga la agencia)</option></select></label>
+          <label>Tipo<select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}><option value="pre">Pre-agencia</option><option value="post">Post-agencia</option></select></label>
           <label>Concepto<input value={form.concepto} onChange={(e) => setForm({ ...form, concepto: e.target.value })} placeholder="ej. Fijo edición" /></label>
           <label>Monto<input {...numProps} value={form.monto} onChange={(e) => setForm({ ...form, monto: formatMiles(e.target.value) })} /></label>
           <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="USD">USD</option><option value="ARS">ARS</option></select></label>
