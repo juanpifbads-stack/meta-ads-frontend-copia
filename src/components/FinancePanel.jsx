@@ -545,7 +545,11 @@ function MovimientosTab({ people, clients, month }) {
         {!balances ? <div className="fp-muted">Cargando…</div> : (() => {
           const rows = balances.rows.map((r) => {
             const corr = consSaldo(r.owed), rec = consSaldo(r.received);
-            return { person: r.person, corr, rec, falta: Math.max(0, corr - rec), debe: Math.max(0, rec - corr) };
+            // Falta/Debe se calculan POR MONEDA y después se consolidan (no se netean entre monedas):
+            // así, si a alguien le falta cobrar USD pero retiene ARS de más, se ven las dos cosas.
+            const faltaObj = { USD: Math.max(0, r.owed.USD - r.received.USD), ARS: Math.max(0, r.owed.ARS - r.received.ARS) };
+            const debeObj = { USD: Math.max(0, r.received.USD - r.owed.USD), ARS: Math.max(0, r.received.ARS - r.owed.ARS) };
+            return { person: r.person, corr, rec, falta: consSaldo(faltaObj), debe: consSaldo(debeObj) };
           });
           const tot = rows.reduce((a, r) => ({ falta: a.falta + r.falta, debe: a.debe + r.debe }), { falta: 0, debe: 0 });
           return (
