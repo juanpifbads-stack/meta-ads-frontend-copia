@@ -53,8 +53,8 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
     if (!s) return;
     apiClient.get(`/admin/finance/services?client=${s}&month=${month}`).then((r) => { setLines((r.data.lines || []).map(normalizePost)); setPagaVencido(!!r.data.pagaVencido); }).catch(() => setLines([]));
   }, [month]);
-  const toggleVencido = () => {
-    const next = !pagaVencido; setPagaVencido(next);
+  const toggleVencido = (val) => {
+    const next = typeof val === 'boolean' ? val : !pagaVencido; setPagaVencido(next);
     apiClient.put(`/admin/finance/client-flags/${slug}`, { pagaVencido: next }).catch(() => setPagaVencido(!next));
   };
   useEffect(() => { loadLines(slug); }, [slug, month, loadLines]);
@@ -136,10 +136,6 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
         </label>
       </div>
       <p className="fp-muted" style={{ margin: '0 0 10px' }}>Guardar registra el fee desde el 1° de <strong>{month}</strong> (los meses anteriores no cambian).</p>
-      <label className="fp-inline" style={{ margin: '0 0 10px', gap: 6, cursor: 'pointer' }}>
-        <input type="checkbox" checked={pagaVencido} onChange={toggleVencido} />
-        <span>Paga a mes vencido (en Cobros no cuenta como atrasado)</span>
-      </label>
       {msg && <div className="fp-msg">{msg}</div>}
 
       {lines.map((l, i) => (
@@ -236,7 +232,7 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
           </div>
 
           <div className="fp-grid">
-            <label>Cobro<select value={l.cobro?.tipo || 'inicio_mes'} onChange={(e) => setLine(i, { cobro: { ...l.cobro, tipo: e.target.value } })}><option value="inicio_mes">Inicio de mes</option><option value="fecha">Fecha fija</option></select></label>
+            <label>Cobro<select value={pagaVencido ? 'vencido' : 'adelantado'} onChange={(e) => toggleVencido(e.target.value === 'vencido')}><option value="adelantado">Mes adelantado</option><option value="vencido">Mes vencido</option></select></label>
           </div>
 
           <div className="fp-card-foot"><button className="fp-btn fp-btn--primary" onClick={() => saveLine(i)}>Guardar {servLabel(l.servicio)}</button></div>
@@ -426,8 +422,8 @@ function MovimientosTab({ people, clients, month }) {
     setClientQuery(t.client_slug ? cname(t.client_slug) : '');
     setEditingId(t.id); setMsg('');
   };
-  const toggleSettled = (client, on) => apiClient.post('/admin/finance/collections/settle', { client_slug: client, month: mMonth, on }).then(loadMonth).catch(() => {});
-  const toggleSettledPerson = (person, on) => apiClient.post('/admin/finance/balances/settle', { person, month: saldoMode === 'acumulado' ? 'all' : mMonth, on }).then(loadMonth).catch(() => {});
+  const toggleSettled = (client, on) => apiClient.post('/admin/finance/collections/settle', { client_slug: client, month: mMonth, on }).then(loadMonth).catch((e) => setMsg(e?.response?.data?.message || 'Error al saldar'));
+  const toggleSettledPerson = (person, on) => apiClient.post('/admin/finance/balances/settle', { person, month: saldoMode === 'acumulado' ? 'all' : mMonth, on }).then(loadMonth).catch((e) => setMsg(e?.response?.data?.message || 'Error al saldar'));
   const moneyLine = (o) => { const p = []; if (o.USD) p.push(`USD ${fmt(o.USD)}`); if (o.ARS) p.push(`ARS ${fmt(o.ARS)}`); return p.length ? p.join(' · ') : '—'; };
   const delTransfer = (id) => { if (window.confirm('¿Borrar la transferencia?')) apiClient.delete(`/admin/finance/transfers/${id}`).then(() => { if (editingId === id) resetForm(); reload(); }).catch(() => {}); };
 
@@ -454,20 +450,27 @@ function MovimientosTab({ people, clients, month }) {
             </select></label>
           ) : null;
         })()}
-        {form.tipo === 'cliente' && (
-          <label title="Si este pago cubre varios meses (ej: pagó mayo y junio juntos), poné el rango y se prorratea en Cobros. Vacío = cuenta en el mes de la fecha.">Cubre meses (opcional)
-            <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              <input type="month" value={form.covers_from} onChange={(e) => setForm({ ...form, covers_from: e.target.value })} />
-              <span className="fp-muted">a</span>
-              <input type="month" value={form.covers_to} onChange={(e) => setForm({ ...form, covers_to: e.target.value })} />
-            </span>
-          </label>
-        )}
         <label>Le entró a<select value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
         <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
         <label>Monto<input {...numProps} value={form.amount} onChange={(e) => setForm({ ...form, amount: formatMiles(e.target.value) })} /></label>
         <label>Nota<input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
       </div>
+      {form.tipo === 'cliente' && (
+        <div style={{ marginTop: 8 }}>
+          <label className="fp-inline" style={{ gap: 6, cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!form.covers_from} onChange={(e) => setForm({ ...form, covers_from: e.target.checked ? mMonth : '', covers_to: e.target.checked ? mMonth : '' })} />
+            <span>Este pago cubre varios meses (se prorratea en Cobros)</span>
+          </label>
+          {form.covers_from && (
+            <div className="fp-inline" style={{ gap: 6, marginTop: 6 }}>
+              <span className="fp-muted">De</span>
+              <input type="month" value={form.covers_from} onChange={(e) => setForm({ ...form, covers_from: e.target.value })} />
+              <span className="fp-muted">a</span>
+              <input type="month" value={form.covers_to || form.covers_from} onChange={(e) => setForm({ ...form, covers_to: e.target.value })} />
+            </div>
+          )}
+        </div>
+      )}
       <div style={{ textAlign: 'right', marginTop: 8 }}>
         {editingId && <button className="fp-btn" style={{ marginRight: 8 }} onClick={resetForm}>Cancelar</button>}
         <button className="fp-btn fp-btn--primary" onClick={saveTransfer}>{editingId ? 'Guardar cambios' : 'Cargar'}</button>
