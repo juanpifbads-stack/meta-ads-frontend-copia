@@ -6,8 +6,15 @@ import AccountSelector from '../components/AccountSelector.jsx';
 import AdSetCard from '../components/AdSetCard.jsx';
 import CampaignCard from '../components/CampaignCard.jsx';
 
-export default function Dashboard({ onBack, initialAccount, lockedAccount }) {
-  const fixedAccount = lockedAccount != null ? String(lockedAccount).replace('act_', '') : null;
+export default function Dashboard({ onBack, initialAccount, lockedAccount, lockedAccounts }) {
+  const strip = (a) => String(a).replace(/^act_/, '');
+  // Cuentas permitidas cuando se entra desde un cliente. Si el cliente tiene varias
+  // asignadas, se muestra un select acotado a ESAS; con una sola, queda lockeada (como antes).
+  const lockedList = (lockedAccounts && lockedAccounts.length)
+    ? lockedAccounts.map(strip)
+    : (lockedAccount != null ? [strip(lockedAccount)] : []);
+  const multiLocked = lockedList.length > 1;
+  const fixedAccount = lockedList.length === 1 ? lockedList[0] : null;
   const { user, logout } = useAuth();
 
   // Accounts
@@ -15,7 +22,7 @@ export default function Dashboard({ onBack, initialAccount, lockedAccount }) {
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [accountsError, setAccountsError] = useState(null);
   // Preselección si viene desde el hub de un cliente; si no, el usuario elige.
-  const [selectedAccount, setSelectedAccount] = useState((lockedAccount || initialAccount) ? String(lockedAccount || initialAccount).replace('act_', '') : null);
+  const [selectedAccount, setSelectedAccount] = useState((lockedList[0] || initialAccount) ? strip(lockedList[0] || initialAccount) : null);
 
   // Adsets (ABO)
   const [adsets, setAdsets] = useState([]);
@@ -110,6 +117,21 @@ export default function Dashboard({ onBack, initialAccount, lockedAccount }) {
     } else {
       localStorage.removeItem('selectedAccount');
       localStorage.removeItem('selectedAccountName');
+    }
+  };
+
+  // Renombrar una cuenta (alias propio para el desplegable). alias '' = vuelve al de Meta.
+  const renameAccount = async (accountId, alias) => {
+    const nid = String(accountId).replace(/^act_/, '');
+    try {
+      await apiClient.put(`/accounts/${nid}/alias`, { alias });
+      setAccounts((prev) => prev.map((a) => (
+        String(a.id).replace(/^act_/, '') === nid
+          ? { ...a, alias, name: alias || a.metaName || a.name }
+          : a
+      )));
+    } catch (e) {
+      window.alert('No se pudo renombrar la cuenta.');
     }
   };
 
@@ -229,10 +251,12 @@ export default function Dashboard({ onBack, initialAccount, lockedAccount }) {
                 </div>
               )}
               <AccountSelector
-                accounts={accounts}
+                accounts={multiLocked ? accounts.filter((a) => lockedList.includes(strip(a.id))) : accounts}
                 selectedAccount={selectedAccount}
                 onSelect={handleSelectAccount}
                 loading={accountsLoading}
+                canRename
+                onRename={renameAccount}
               />
             </div>
           )}

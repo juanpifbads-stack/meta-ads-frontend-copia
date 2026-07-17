@@ -509,9 +509,9 @@ function MovimientosTab({ people, clients, month }) {
           <table className="fp-table">
             <thead><tr><th>Cliente</th><th>Debe</th><th>Pagó</th><th>Falta</th><th>Estado</th><th></th></tr></thead>
             <tbody>
-              {/* Mes vencido pendiente va abajo de todo (no está atrasado, sólo falta cobrar). */}
+              {/* Orden: los que no pagaron → mes vencido (deben, pero no están atrasados) → los que pagaron. */}
               {[...collections.rows].sort((a, b) => {
-                const rank = (r) => (!r.settled && r.pagaVencido ? 2 : r.settled ? 1 : 0);
+                const rank = (r) => (r.settled ? 2 : r.pagaVencido ? 1 : 0);
                 return rank(a) - rank(b);
               }).map((r, i) => {
                 const multi = r.services.length > 1;

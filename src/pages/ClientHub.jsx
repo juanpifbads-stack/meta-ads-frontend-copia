@@ -159,6 +159,10 @@ export default function ClientHub({ slug, onBack }) {
   const [msg, setMsg] = useState('');
 
   const accountId = cfg?.metaAccountId || null;
+  // Cuentas asignadas al cliente (una o varias). El optimizador muestra un select solo si hay >1.
+  const accountIds = (cfg?.metaAccountIds && cfg.metaAccountIds.length)
+    ? cfg.metaAccountIds
+    : (accountId ? [accountId] : []);
 
   const load = useCallback(() => {
     apiClient.get(`/admin/clients/${slug}/config`).then((r) => {
@@ -203,7 +207,7 @@ export default function ClientHub({ slug, onBack }) {
   if (tab === 'analizar') return <Analyze lockedAccount={accountId} onBack={() => setTab('resumen')} />;
   if (tab === 'media') return <MediaPlanHub slug={slug} onBack={() => setTab('resumen')} />;
   if (tab === 'config') return <Admin lockedSlug={slug} onBack={() => setTab('resumen')} />;
-  if (tab === 'optimizar') return <Dashboard initialAccount={accountId} lockedAccount={accountId} onBack={() => setTab('resumen')} />;
+  if (tab === 'optimizar') return <Dashboard initialAccount={accountIds[0] || accountId} lockedAccounts={accountIds} onBack={() => setTab('resumen')} />;
 
   const name = cfg?.name || slug;
   const spend = health?.spend || 0;
