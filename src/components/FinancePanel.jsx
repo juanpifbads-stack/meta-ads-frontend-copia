@@ -19,6 +19,63 @@ function formatMiles(str) {
 // A número plano para el backend: "1.234.567,5" → "1234567.5"
 const parseMiles = (str) => String(str == null ? '' : str).replace(/\./g, '').replace(',', '.');
 
+// Origen de una entrada del ledger ("cobro:slug" / "costo:concepto" / "transferencia") → legible.
+function prettyOrigin(key, cname) {
+  if (!key) return '';
+  const [kind, ...rest] = key.split(':');
+  const val = rest.join(':');
+  if (kind === 'cobro') return `cobro ${cname ? cname(val) : val}`;
+  if (kind === 'costo') return `costo ${val}`;
+  if (kind === 'transferencia') return 'transferencia';
+  return key;
+}
+// Drill-down de una persona: a quién le debe (owes) y quién le debe (owed), con origen.
+function LedgerDetail({ entry, disp, cons, cname }) {
+  const line = (items) => items.map((it, i) => (
+    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0' }}>
+      <span>{it.isCaja ? '🏦 Caja' : it.party} <span className="fp-muted" style={{ fontSize: 12 }}>· {Object.keys(it.origins || {}).map((k) => prettyOrigin(k, cname)).join(', ')}</span></span>
+      <strong>{cons} {fmt(disp(it.amount))}</strong>
+    </div>
+  ));
+  const owed = entry.owed || [], owes = entry.owes || [];
+  return (
+    <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 13 }}>
+      <div style={{ minWidth: 240 }}>
+        <div className="fp-muted" style={{ fontWeight: 700, marginBottom: 2 }}>Le deben</div>
+        {owed.length ? line(owed) : <div className="fp-muted">—</div>}
+      </div>
+      <div style={{ minWidth: 240 }}>
+        <div className="fp-muted" style={{ fontWeight: 700, marginBottom: 2 }}>Debe</div>
+        {owes.length ? line(owes) : <div className="fp-muted">—</div>}
+      </div>
+    </div>
+  );
+}
+// Drill-down de la caja: en manos de quién está (y a quién le debe la caja, si adelantaron costos).
+function CajaDetail({ caja, disp, cons, cname }) {
+  const line = (items, sign) => items.map((it, i) => (
+    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0' }}>
+      <span>{it.person} <span className="fp-muted" style={{ fontSize: 12 }}>· {Object.keys(it.origins || {}).map((k) => prettyOrigin(k, cname)).join(', ')}</span></span>
+      <strong>{cons} {fmt(disp(it.amount))}</strong>
+    </div>
+  ));
+  const heldBy = caja.heldBy || [], owesTo = caja.owesTo || [];
+  return (
+    <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 13 }}>
+      <div style={{ minWidth: 240 }}>
+        <div className="fp-muted" style={{ fontWeight: 700, marginBottom: 2 }}>La tiene</div>
+        {heldBy.length ? line(heldBy) : <div className="fp-muted">—</div>}
+      </div>
+      {owesTo.length > 0 && (
+        <div style={{ minWidth: 240 }}>
+          <div className="fp-muted" style={{ fontWeight: 700, marginBottom: 2 }}>La caja debe (adelantos)</div>
+          {line(owesTo)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function defaultLine(servicio) {
   return {
     servicio, tipo: 'post', moneda: 'ARS', fee: '', socio_pct: 50, opex_pct: 30, opex_operador: '',
@@ -373,6 +430,9 @@ function MovimientosTab({ people, clients, month }) {
   const [transfers, setTransfers] = useState([]);
   const [balances, setBalances] = useState(null);
   const [collections, setCollections] = useState(null);
+  const [ledger, setLedger] = useState(null);
+  const [openPerson, setOpenPerson] = useState(null);   // persona con drill-down abierto en Saldos
+  const [openCaja, setOpenCaja] = useState(false);      // caja con "en manos de quién" abierto
   const [newAcc, setNewAcc] = useState('');
   const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), tipo: 'cliente', account_id: '', person: '', from_person: '', client_slug: '', servicio: '', amount: '', moneda: 'ARS', note: '', covers_from: '', covers_to: '' });
   const [editingId, setEditingId] = useState(null);      // transferencia en edición
@@ -394,6 +454,7 @@ function MovimientosTab({ people, clients, month }) {
     const bMonth = saldoMode === 'acumulado' ? 'all' : mMonth;
     apiClient.get(`/admin/finance/balances?month=${bMonth}`).then((r) => setBalances(r.data)).catch(() => setBalances({ rows: [], fx: null }));
     apiClient.get(`/admin/finance/collections?month=${mMonth}`).then((r) => setCollections(r.data)).catch(() => setCollections({ rows: [] }));
+    apiClient.get(`/admin/finance/ledger?month=${bMonth}`).then((r) => setLedger(r.data)).catch(() => setLedger({ people: {}, caja: { heldBy: [] } }));
   }, [mMonth, saldoMode]);
   useEffect(() => { loadStatic(); }, [loadStatic]);
   useEffect(() => { loadMonth(); }, [loadMonth]);
@@ -586,9 +647,13 @@ function MovimientosTab({ people, clients, month }) {
             <table className="fp-table">
               <thead><tr><th>Persona</th><th>Le corresponde ({cons})</th><th>Recibió ({cons})</th><th>Falta recibir ({cons})</th><th>Debe ({cons})</th><th></th></tr></thead>
               <tbody>
-                {rows.map((r, i) => (
-                  <tr key={i}>
-                    <td>{r.person}{r.settled && <span className="fp-tag" style={{ marginLeft: 6 }}>saldado</span>}</td>
+                {rows.map((r, i) => {
+                  const lp = ledger?.people?.[r.person];
+                  const isOpen = openPerson === r.person;
+                  return (
+                  <React.Fragment key={i}>
+                  <tr>
+                    <td style={{ cursor: lp ? 'pointer' : 'default' }} onClick={() => lp && setOpenPerson(isOpen ? null : r.person)} title={lp ? 'Ver a quién le debe / quién le debe' : ''}>{lp ? (isOpen ? '▾ ' : '▸ ') : ''}{r.person}{r.settled && <span className="fp-tag" style={{ marginLeft: 6 }}>saldado</span>}</td>
                     <td>{fmt(r.corr)}</td>
                     <td>{fmt(r.rec)}</td>
                     <td>{r.falta > 0 ? fmt(r.falta) : '—'}</td>
@@ -597,8 +662,18 @@ function MovimientosTab({ people, clients, month }) {
                       ? <button className="fp-btn" onClick={() => toggleSettledPerson(r.person, false)}>Reabrir</button>
                       : ((r.falta > 0 || r.debe > 0) && <button className="fp-btn" onClick={() => toggleSettledPerson(r.person, true)}>Dar por saldado</button>)}</td>
                   </tr>
-                ))}
-                <tr className="fp-src-row"><td>Caja agencia</td><td>{fmt(cajaCorr)}</td><td>—</td><td>{cajaCorr > 0 ? fmt(cajaCorr) : '—'}</td><td>—</td><td></td></tr>
+                  {isOpen && lp && (
+                    <tr className="fp-src-row"><td colSpan={6}>
+                      <LedgerDetail entry={lp} disp={disp} cons={cons} cname={cname} />
+                    </td></tr>
+                  )}
+                  </React.Fragment>
+                  );
+                })}
+                <tr className="fp-src-row"><td style={{ cursor: ledger?.caja ? 'pointer' : 'default' }} onClick={() => ledger?.caja && setOpenCaja(!openCaja)} title="Ver en manos de quién está la caja">{ledger?.caja ? (openCaja ? '▾ ' : '▸ ') : ''}Caja agencia</td><td>{fmt(cajaCorr)}</td><td>—</td><td>{cajaCorr > 0 ? fmt(cajaCorr) : '—'}</td><td>—</td><td></td></tr>
+                {openCaja && ledger?.caja && (
+                  <tr className="fp-src-row"><td colSpan={6}><CajaDetail caja={ledger.caja} disp={disp} cons={cons} cname={cname} /></td></tr>
+                )}
                 <tr className="fp-pnl-strong"><td>Total</td><td></td><td></td><td>{fmt(tot.falta)}</td><td>{fmt(tot.debe)}</td><td></td></tr>
               </tbody>
             </table>
@@ -652,7 +727,6 @@ function PnlTab({ month, people }) {
   const [data, setData] = useState(null);
   const [cons, setCons] = useState('ARS');
   const [tax, setTax] = useState({ nombre: '', modo: 'pct', valor: '', moneda: 'ARS', quien_paga: '' });
-  const [g, setG] = useState({ date: new Date().toISOString().slice(0, 10), tipo: 'opex', concepto: '', monto: '', moneda: 'ARS' });
   const [open, setOpen] = useState({ socio: true, opex: true, imp: true, interno: true });
 
   const load = useCallback(() => { apiClient.get(`/admin/finance/pnl?month=${month}`).then((r) => setData(r.data)).catch(() => setData(null)); }, [month]);
@@ -660,12 +734,7 @@ function PnlTab({ month, people }) {
 
   const addTax = () => { if (!tax.nombre.trim()) return; apiClient.post('/admin/finance/tax-configs', tax).then(() => { setTax({ nombre: '', modo: 'pct', valor: '', moneda: 'ARS', quien_paga: '' }); load(); }).catch(() => {}); };
   const delTax = (id) => { if (window.confirm('¿Borrar el impuesto?')) apiClient.delete(`/admin/finance/tax-configs/${id}`).then(load).catch(() => {}); };
-  const addGasto = () => {
-    if (!(Number(g.monto) > 0)) return;
-    const payload = g.tipo === 'opex' ? { ...g, categoria: 'opex' } : { ...g, categoria: 'impuesto', tax_id: g.tipo.replace('tax:', '') };
-    apiClient.post('/admin/finance/expenses', payload).then(() => { setG({ ...g, concepto: '', monto: '' }); load(); }).catch(() => {});
-  };
-  const delGasto = (id) => { apiClient.delete(`/admin/finance/expenses/${id}`).then(load).catch(() => {}); };
+  const delGasto = (id) => { apiClient.delete(`/admin/finance/costs/${id}`).then(load).catch(() => {}); };
 
   if (!data) return <div className="fp-muted">Cargando…</div>;
   const fx = data.fx || 0;
@@ -728,18 +797,8 @@ function PnlTab({ month, people }) {
         {!fx && <p className="fp-muted">Sin TC del mes: no se pueden mezclar monedas.</p>}
       </div>
 
-      {/* Cargar gasto */}
-      <div className="fp-card">
-        <div className="fp-card-head"><strong>Cargar gasto</strong></div>
-        <div className="fp-grid">
-          <label>Fecha<input type="date" value={g.date} onChange={(e) => setG({ ...g, date: e.target.value })} /></label>
-          <label>Tipo<select value={g.tipo} onChange={(e) => setG({ ...g, tipo: e.target.value })}><option value="opex">OPEX</option>{(data.taxConfigs || []).map((t) => <option key={t.id} value={`tax:${t.id}`}>{t.nombre}</option>)}</select></label>
-          <label>Concepto<input value={g.concepto} onChange={(e) => setG({ ...g, concepto: e.target.value })} /></label>
-          <label>Moneda<select value={g.moneda} onChange={(e) => setG({ ...g, moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
-          <label>Monto<input {...numProps} value={g.monto} onChange={(e) => setG({ ...g, monto: e.target.value })} /></label>
-        </div>
-        <div style={{ textAlign: 'right', marginTop: 8 }}><button className="fp-btn fp-btn--primary" onClick={addGasto}>Cargar gasto</button></div>
-      </div>
+      {/* Los gastos ahora se cargan en la pestaña Costos (modelo unificado). */}
+      <p className="fp-muted" style={{ marginTop: 12 }}>Los gastos de la agencia se cargan en la pestaña <strong>Costos</strong> (como "Agencia (caja)"). Acá se ven reflejados en el P&L.</p>
 
       {/* Config impuestos */}
       <div className="fp-card">
@@ -763,53 +822,68 @@ function PnlTab({ month, people }) {
   );
 }
 
-// ─── Deals Internos (fijo a un operador, sin cliente; se suma a su reparto) ─────
-function DealsInternosTab({ people, month }) {
-  const [deals, setDeals] = useState([]);
-  const [form, setForm] = useState({ person: '', concepto: '', monto: '', moneda: 'USD', tipo: 'pre', payer: '', from_month: month, to_month: '' });
+// ─── Costos unificados (gastos de agencia, fijos internos, costos de una persona) ─
+function CostosTab({ people, clients, month }) {
+  const emptyForm = { concepto: '', monto: '', moneda: 'ARS', paid_by: '', bearer: 'agencia', bearer_person: '', bearer_client: '', beneficiary: '', recurrencia: 'once', from_month: month, to_month: '' };
+  const [costs, setCosts] = useState([]);
+  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState(null);
   const [msg, setMsg] = useState('');
-  const load = () => apiClient.get('/admin/finance/internal-deals').then((r) => setDeals(r.data.deals || [])).catch(() => setDeals([]));
+  const cname = (slug) => (clients || []).find((c) => c.slug === slug)?.name || slug;
+  const load = () => apiClient.get('/admin/finance/costs').then((r) => setCosts(r.data.costs || [])).catch(() => setCosts([]));
   useEffect(() => { load(); }, []);
   useEffect(() => { setForm((f) => ({ ...f, from_month: f.from_month || month })); }, [month]);
 
+  const reset = () => { setForm({ ...emptyForm, from_month: month }); setEditingId(null); };
   const save = () => {
-    if (!form.person || !(Number(parseMiles(form.monto)) > 0)) { setMsg('Elegí persona y cargá un monto.'); return; }
-    if (form.tipo === 'pre' && !form.payer) { setMsg('Elegí quién paga el deal pre-agencia.'); return; }
-    apiClient.post('/admin/finance/internal-deals', { ...form, monto: parseMiles(form.monto) })
-      .then(() => { setForm({ person: '', concepto: '', monto: '', moneda: 'USD', tipo: 'pre', payer: '', from_month: month, to_month: '' }); setMsg('✓ Deal interno guardado'); setTimeout(() => setMsg(''), 1800); load(); })
+    if (!(Number(parseMiles(form.monto)) > 0)) { setMsg('Cargá un monto.'); return; }
+    if (form.bearer === 'persona' && !form.bearer_person) { setMsg('Elegí qué persona soporta el costo.'); return; }
+    if (form.bearer === 'cliente' && !form.bearer_client) { setMsg('Elegí de qué cliente es el costo.'); return; }
+    const payload = { ...form, monto: parseMiles(form.monto) };
+    const req = editingId ? apiClient.put(`/admin/finance/costs/${editingId}`, payload) : apiClient.post('/admin/finance/costs', payload);
+    req.then(() => { reset(); setMsg(editingId ? '✓ Costo actualizado' : '✓ Costo guardado'); setTimeout(() => setMsg(''), 1800); load(); })
       .catch((e) => setMsg(e?.response?.data?.message || 'Error al guardar'));
   };
-  const del = (id) => apiClient.delete(`/admin/finance/internal-deals/${id}`).then(load).catch(() => {});
+  const edit = (c) => { setForm({ concepto: c.concepto || '', monto: formatMiles(String(c.monto)), moneda: c.moneda || 'ARS', paid_by: c.paid_by || '', bearer: c.bearer || 'agencia', bearer_person: c.bearer_person || '', bearer_client: c.bearer_client || '', beneficiary: c.beneficiary || '', recurrencia: c.recurrencia || 'once', from_month: c.from_month || month, to_month: c.to_month || '' }); setEditingId(c.id); };
+  const del = (id) => { if (window.confirm('¿Borrar el costo?')) apiClient.delete(`/admin/finance/costs/${id}`).then(() => { if (editingId === id) reset(); load(); }).catch(() => {}); };
+
+  const bearerLabel = (c) => c.bearer === 'agencia' ? 'Agencia (caja)' : c.bearer === 'persona' ? (c.bearer_person || 'Persona') : `Cliente: ${cname(c.bearer_client)}`;
 
   return (
     <div>
-      <p className="fp-muted">Fijos que le pagás a un operador sin relación a ningún cliente. Se <strong>suman a su reparto del mes</strong>. Elegí si es <strong>pre</strong> o <strong>post agencia</strong>. Recurrentes: aplican desde el mes de inicio hasta el de fin (o para siempre).</p>
+      <p className="fp-muted">Un costo lo <strong>paga</strong> alguien y lo <strong>soporta</strong> alguien. Quién lo soporta define de dónde sale: <strong>Agencia</strong> (baja la caja) · <strong>Persona</strong> (lo banca alguien de su bolsillo). Si es un fijo/sueldo a alguien, poné el <strong>beneficiario</strong>. <span className="fp-muted">(Los costos que son parte del servicio de un cliente —ej. automatización— se cargan en el servicio, en Deals Clientes.)</span></p>
       <div className="fp-card">
         <div className="fp-grid">
-          <label>Persona<select value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
-          <label>Tipo<select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}><option value="pre">Pre-agencia</option><option value="post">Post-agencia</option></select></label>
-          {form.tipo === 'pre' && <label>Paga<select value={form.payer} onChange={(e) => setForm({ ...form, payer: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>}
-          <label>Concepto<input value={form.concepto} onChange={(e) => setForm({ ...form, concepto: e.target.value })} placeholder="ej. Fijo edición" /></label>
+          <label>Concepto<input value={form.concepto} onChange={(e) => setForm({ ...form, concepto: e.target.value })} placeholder="ej. WATI, contador, fijo edición" /></label>
           <label>Monto<input {...numProps} value={form.monto} onChange={(e) => setForm({ ...form, monto: formatMiles(e.target.value) })} /></label>
-          <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="USD">USD</option><option value="ARS">ARS</option></select></label>
-          <label>Desde<input type="month" value={form.from_month} onChange={(e) => setForm({ ...form, from_month: e.target.value })} /></label>
-          <label>Hasta (opcional)<input type="month" value={form.to_month} onChange={(e) => setForm({ ...form, to_month: e.target.value })} /></label>
+          <label>Moneda<select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>
+          <label>Quién lo pagó<select value={form.paid_by} onChange={(e) => setForm({ ...form, paid_by: e.target.value })}><option value="">La agencia (directo)</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+          <label>Quién lo soporta<select value={form.bearer} onChange={(e) => setForm({ ...form, bearer: e.target.value })}><option value="agencia">Agencia (caja)</option><option value="persona">Una persona</option></select></label>
+          {form.bearer === 'persona' && <label>Persona que lo soporta<select value={form.bearer_person} onChange={(e) => setForm({ ...form, bearer_person: e.target.value })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>}
+          <label title="Sólo si es un fijo/sueldo que RECIBE una persona">Beneficiario (opcional)<select value={form.beneficiary} onChange={(e) => setForm({ ...form, beneficiary: e.target.value })}><option value="">— (costo externo)</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+          <label>Recurrencia<select value={form.recurrencia} onChange={(e) => setForm({ ...form, recurrencia: e.target.value })}><option value="once">Una vez</option><option value="monthly">Mensual</option></select></label>
+          <label>{form.recurrencia === 'monthly' ? 'Desde' : 'Mes'}<input type="month" value={form.from_month} onChange={(e) => setForm({ ...form, from_month: e.target.value })} /></label>
+          {form.recurrencia === 'monthly' && <label>Hasta (opcional)<input type="month" value={form.to_month} onChange={(e) => setForm({ ...form, to_month: e.target.value })} /></label>}
         </div>
         {msg && <div className="fp-msg">{msg}</div>}
-        <div className="fp-card-foot"><button className="fp-btn fp-btn--primary" onClick={save}>Agregar deal interno</button></div>
+        <div className="fp-card-foot">
+          {editingId && <button className="fp-btn" style={{ marginRight: 8 }} onClick={reset}>Cancelar</button>}
+          <button className="fp-btn fp-btn--primary" onClick={save}>{editingId ? 'Guardar cambios' : 'Agregar costo'}</button>
+        </div>
       </div>
       <table className="fp-table">
-        <thead><tr><th>Persona</th><th>Paga</th><th>Concepto</th><th>Monto</th><th>Vigencia</th><th></th></tr></thead>
+        <thead><tr><th>Concepto</th><th>Monto</th><th>Pagó</th><th>Lo soporta</th><th>Beneficiario</th><th>Vigencia</th><th></th></tr></thead>
         <tbody>
-          {deals.length === 0 && <tr><td colSpan={6} className="fp-muted">Sin deals internos cargados.</td></tr>}
-          {deals.map((d) => (
-            <tr key={d.id}>
-              <td>{d.person}</td>
-              <td><span className="fp-tag">{d.tipo === 'post' ? 'Agencia' : (d.payer || '—')}</span></td>
-              <td>{d.concepto || '—'}</td>
-              <td><strong>{d.moneda} {fmt(d.monto)}</strong></td>
-              <td className="fp-muted">{d.from_month}{d.to_month ? ` → ${d.to_month}` : ' → sin fin'}</td>
-              <td><button className="fp-btn fp-btn--danger" onClick={() => del(d.id)}>×</button></td>
+          {costs.length === 0 && <tr><td colSpan={7} className="fp-muted">Sin costos cargados.</td></tr>}
+          {costs.map((c) => (
+            <tr key={c.id}>
+              <td>{c.concepto || '—'}</td>
+              <td><strong>{c.moneda} {fmt(c.monto)}</strong></td>
+              <td>{c.paid_by || <span className="fp-muted">agencia</span>}</td>
+              <td><span className="fp-tag">{bearerLabel(c)}</span></td>
+              <td>{c.beneficiary || '—'}</td>
+              <td className="fp-muted">{c.recurrencia === 'monthly' ? `${c.from_month}${c.to_month ? ` → ${c.to_month}` : ' → sin fin'}` : c.from_month}</td>
+              <td style={{ whiteSpace: 'nowrap' }}><button className="fp-btn" onClick={() => edit(c)}>✎</button> <button className="fp-btn fp-btn--danger" onClick={() => del(c.id)}>×</button></td>
             </tr>
           ))}
         </tbody>
@@ -834,7 +908,7 @@ export default function FinancePanel() {
       <h3 className="ad-section-title">Finanzas de la agencia</h3>
       <div className="fp-tabs">
         <button className={`fp-tab ${tab === 'deals' ? 'on' : ''}`} onClick={() => setTab('deals')}>Deals Clientes</button>
-        <button className={`fp-tab ${tab === 'internos' ? 'on' : ''}`} onClick={() => setTab('internos')}>Deals Internos</button>
+        <button className={`fp-tab ${tab === 'costos' ? 'on' : ''}`} onClick={() => setTab('costos')}>Costos</button>
         <button className={`fp-tab ${tab === 'reparto' ? 'on' : ''}`} onClick={() => setTab('reparto')}>Reparto del mes</button>
         <button className={`fp-tab ${tab === 'movimientos' ? 'on' : ''}`} onClick={() => setTab('movimientos')}>Movimientos</button>
         <button className={`fp-tab ${tab === 'pnl' ? 'on' : ''}`} onClick={() => setTab('pnl')}>P&amp;L</button>
@@ -843,7 +917,7 @@ export default function FinancePanel() {
         </label>
       </div>
       {tab === 'deals' && <DealsClientesTab clients={clients} people={people} month={month} setMonth={setMonth} />}
-      {tab === 'internos' && <DealsInternosTab people={people} month={month} />}
+      {tab === 'costos' && <CostosTab people={people} clients={clients} month={month} />}
       {tab === 'reparto' && <RepartoTab month={month} clients={clients} />}
       {tab === 'movimientos' && <MovimientosTab people={people} clients={clients} month={month} />}
       {tab === 'pnl' && <PnlTab month={month} people={people} />}
