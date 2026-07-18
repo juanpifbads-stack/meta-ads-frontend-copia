@@ -525,6 +525,7 @@ function MovimientosTab({ people, clients, month }) {
     setEditingId(t.id); setMsg('');
   };
   const toggleSettled = (client, on) => apiClient.post('/admin/finance/collections/settle', { client_slug: client, month: mMonth, on }).then(loadMonth).catch((e) => setMsg(e?.response?.data?.message || 'Error al saldar'));
+  const toggleSettledPerson = (person, on) => apiClient.post('/admin/finance/balances/settle', { person, month: saldoMode === 'acumulado' ? 'all' : mMonth, on }).then(loadMonth).catch((e) => setMsg(e?.response?.data?.message || 'Error al saldar'));
   const moneyLine = (o) => { const p = []; if (o.USD) p.push(`USD ${fmt(o.USD)}`); if (o.ARS) p.push(`ARS ${fmt(o.ARS)}`); return p.length ? p.join(' · ') : '—'; };
   const delTransfer = (id) => { if (window.confirm('¿Borrar la transferencia?')) apiClient.delete(`/admin/finance/transfers/${id}`).then(() => { if (editingId === id) resetForm(); reload(); }).catch(() => {}); };
 
@@ -675,17 +676,22 @@ function MovimientosTab({ people, clients, month }) {
           const caja = settlement.caja || { held: [], owes: [] };
           return (
             <div>
-              {/* Neto por persona: o le deben, o debe */}
+              {/* Por persona: le corresponde, le entró, y el saldo neto (o le deben o debe) */}
               <table className="fp-table">
-                <thead><tr><th>Persona</th><th style={{ textAlign: 'right' }}>Saldo ({cons})</th></tr></thead>
+                <thead><tr><th>Persona</th><th style={{ textAlign: 'right' }}>Le corresponde ({cons})</th><th style={{ textAlign: 'right' }}>Le entró ({cons})</th><th style={{ textAlign: 'right' }}>Saldo ({cons})</th><th></th></tr></thead>
                 <tbody>
-                  {people.length === 0 && <tr><td colSpan={2} className="fp-muted">Todo saldado.</td></tr>}
+                  {people.length === 0 && <tr><td colSpan={5} className="fp-muted">Sin datos.</td></tr>}
                   {people.map((p, i) => (
                     <tr key={i}>
-                      <td>{p.person}</td>
-                      <td style={{ textAlign: 'right' }}>{p.net > 0
-                        ? <span style={{ color: '#15803d', fontWeight: 700 }}>le deben {fmt(disp(p.net))}</span>
+                      <td>{p.person}{p.settled && <span className="fp-tag" style={{ marginLeft: 6 }}>saldado</span>}</td>
+                      <td style={{ textAlign: 'right' }}>{fmt(disp(p.corresponde))}</td>
+                      <td style={{ textAlign: 'right' }}>{fmt(disp(p.entro))}</td>
+                      <td style={{ textAlign: 'right' }}>{p.settled ? <span className="fp-muted">saldado</span> : Math.abs(p.net) < 1 ? <span className="fp-muted">a mano</span> : p.net > 0
+                        ? <span style={{ color: '#15803d', fontWeight: 700 }}>le falta {fmt(disp(p.net))}</span>
                         : <span style={{ color: '#b91c1c', fontWeight: 700 }}>debe {fmt(disp(-p.net))}</span>}</td>
+                      <td style={{ textAlign: 'right' }}>{p.settled
+                        ? <button className="fp-btn" onClick={() => toggleSettledPerson(p.person, false)}>Reabrir</button>
+                        : (Math.abs(p.net) >= 1 && <button className="fp-btn" onClick={() => toggleSettledPerson(p.person, true)} title="Cerrar diferencias chicas de TC">Dar por saldado</button>)}</td>
                     </tr>
                   ))}
                 </tbody>
