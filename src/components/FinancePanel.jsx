@@ -129,7 +129,7 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
 
   const addService = () => {
     const used = lines.map((l) => l.servicio);
-    const free = SERVICIOS.find((s) => !used.includes(s.k));
+    const free = SERVICIOS.find((s) => !String(s.k).startsWith('automatizacion') && !used.includes(s.k));
     if (!free) return;
     setLines((ls) => [...ls, defaultLine(free.k)]);
   };
@@ -184,6 +184,99 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
     if (!l.id) { setLines((ls) => ls.filter((x) => x !== l)); return; }
     apiClient.delete(`/admin/finance/services/${slug}/${l.servicio}`).then(() => loadLines(slug)).catch(() => {});
   };
+  // Agrega la línea faltante de automatización (mantenimiento o implementación).
+  const addAutoPart = (servicio) => setLines((ls) => (ls.some((l) => l.servicio === servicio) ? ls
+    : [...ls, { ...defaultLine(servicio), tipo: servicio === 'automatizacion_impl' ? 'post' : 'pre' }]));
+
+  // Cuerpo del editor de una línea (sin el encabezado ni el botón Guardar).
+  const renderEditor = (l, i) => (
+    <>
+      <div className="fp-grid">
+        <label>Tipo<select value={l.tipo} onChange={(e) => { const tipo = e.target.value; const patch = { tipo }; if (tipo !== 'pre' && !(l.opex_reparto && l.opex_reparto.length)) patch.opex_reparto = [{ persona: l.opex_operador || '', modo: l.opex_modo || 'pct', pct: l.opex_pct ?? 30, monto: l.opex_monto ?? '' }]; setLine(i, patch); }}><option value="post">Post-agencia</option><option value="pre">Pre-agencia</option></select></label>
+        <label>Moneda<select value={l.moneda} onChange={(e) => setLine(i, { moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
+        {l.servicio !== 'automatizacion_impl' && <label>{l.servicio === 'automatizacion' ? 'Mantenimiento (mensual)' : 'Fee mensual'}<input {...numProps} value={l.fee ?? ''} onChange={(e) => setLine(i, { fee: e.target.value })} /></label>}
+      </div>
+
+      {l.servicio === 'automatizacion_impl' && (
+        <div className="fp-grid">
+          <label>Monto de la implementación (one-shot)<input {...numProps} value={l.setup_fee ?? ''} onChange={(e) => setLine(i, { setup_fee: e.target.value })} /></label>
+          <label>Mes del cobro<input type="month" value={l.setup_month || ''} onChange={(e) => setLine(i, { setup_month: e.target.value })} /></label>
+        </div>
+      )}
+      {l.servicio === 'automatizacion' && (
+        <div className="fp-pre">
+          <div className="fp-sub">Costos mensuales — se restan del mantenimiento antes de repartir y se le reintegran a quien los paga</div>
+          {(l.costos || []).map((c, ci) => (
+            <div className="fp-pre-row" key={ci}>
+              <input placeholder="Nombre del costo (ej. WATI, N8N)" value={c.nombre || ''} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, nombre: e.target.value } : x) })} style={{ flex: 1 }} />
+              <input {...numProps} placeholder="Monto" value={c.monto ?? ''} style={{ width: 90 }} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, monto: e.target.value } : x) })} /><span className="fp-pct">{l.moneda}</span>
+              <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>paga<select value={c.quien || ''} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, quien: e.target.value } : x) })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+              <button className="fp-btn fp-btn--danger" onClick={() => setLine(i, { costos: l.costos.filter((_, xi) => xi !== ci) })}>×</button>
+            </div>
+          ))}
+          <button className="fp-btn" onClick={() => setLine(i, { costos: [...(l.costos || []), { nombre: '', monto: '', quien: '' }] })}>+ Costo</button>
+          {(() => {
+            const ct = (l.costos || []).reduce((s, c) => s + (Number(c.monto) || 0), 0);
+            const rest = Math.max(0, (Number(l.fee) || 0) - ct);
+            return <div className="fp-muted" style={{ marginTop: 6, fontSize: 12 }}>Mantenimiento {fmt(Number(l.fee) || 0)} − costos {fmt(ct)} = <strong>restante {fmt(rest)}</strong> {l.moneda} → se reparte según el tipo/operadores de abajo. Los costos se le devuelven a quien los paga.</div>;
+          })()}
+        </div>
+      )}
+
+      {l.tipo === 'post' ? (
+        <>
+          <div className="fp-grid">
+            <label>Sueldo socios<select value={l.socio_modo || 'pct'} onChange={(e) => setLine(i, { socio_modo: e.target.value })}><option value="pct">% del total</option><option value="fijo">Monto fijo</option></select></label>
+            {(l.socio_modo || 'pct') === 'fijo'
+              ? <label>Sueldo socios fijo ({l.moneda})<input {...numProps} value={l.socio_monto ?? ''} onChange={(e) => setLine(i, { socio_monto: e.target.value })} /></label>
+              : <label>Sueldo socios %<input {...numProps} value={l.socio_pct ?? ''} onChange={(e) => setLine(i, { socio_pct: e.target.value })} /></label>}
+          </div>
+          <div className="fp-pre">
+            <div className="fp-sub">Operadores (OPEX) — cada uno cobra su monto fijo o su % del total; el resto queda en la caja</div>
+            {(l.opex_reparto || []).map((r, ri) => (
+              <div className="fp-pre-row" key={ri}>
+                <select value={r.persona || ''} onChange={(e) => setLine(i, { opex_reparto: l.opex_reparto.map((x, xi) => xi === ri ? { ...x, persona: e.target.value } : x) })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select>
+                <select value={r.modo || 'pct'} onChange={(e) => setLine(i, { opex_reparto: l.opex_reparto.map((x, xi) => xi === ri ? { ...x, modo: e.target.value } : x) })}><option value="pct">%</option><option value="fijo">Fijo</option></select>
+                {(r.modo || 'pct') === 'fijo'
+                  ? <><input {...numProps} value={r.monto ?? ''} style={{ width: 90 }} onChange={(e) => setLine(i, { opex_reparto: l.opex_reparto.map((x, xi) => xi === ri ? { ...x, monto: e.target.value } : x) })} /><span className="fp-pct">{l.moneda}</span></>
+                  : <><input {...numProps} value={r.pct ?? ''} style={{ width: 70 }} onChange={(e) => setLine(i, { opex_reparto: l.opex_reparto.map((x, xi) => xi === ri ? { ...x, pct: e.target.value } : x) })} /><span className="fp-pct">%</span></>}
+                {(l.opex_reparto || []).length > 1 && <button className="fp-btn fp-btn--danger" onClick={() => setLine(i, { opex_reparto: l.opex_reparto.filter((_, xi) => xi !== ri) })}>×</button>}
+              </div>
+            ))}
+            <button className="fp-btn" onClick={() => setLine(i, { opex_reparto: [...(l.opex_reparto || []), { persona: '', modo: 'pct', pct: 0, monto: '' }] })}>+ Operador</button>
+          </div>
+        </>
+      ) : (
+        <div className="fp-pre">
+          <div className="fp-sub">Operadores (los % reparten lo que queda después de los fijos)</div>
+          {(l.reparto || []).map((r, ri) => (
+            <div className="fp-pre-row" key={ri}>
+              <select value={r.persona || ''} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, persona: e.target.value } : x) })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select>
+              <select value={r.modo || 'pct'} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, modo: e.target.value } : x) })}><option value="pct">%</option><option value="fijo">Fijo</option></select>
+              {(r.modo || 'pct') === 'fijo'
+                ? <><input {...numProps} value={r.monto ?? ''} style={{ width: 90 }} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, monto: e.target.value } : x) })} /><span className="fp-pct">{l.moneda}</span></>
+                : <><input {...numProps} value={r.pct ?? ''} style={{ width: 70 }} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, pct: e.target.value } : x) })} /><span className="fp-pct">%</span></>}
+              {l.reparto.length > 1 && <button className="fp-btn fp-btn--danger" onClick={() => setLine(i, { reparto: l.reparto.filter((_, xi) => xi !== ri) })}>×</button>}
+            </div>
+          ))}
+          <button className="fp-btn" onClick={() => setLine(i, { reparto: [...l.reparto, { persona: '', modo: 'pct', pct: 0, monto: 0 }] })}>+ Operador</button>
+        </div>
+      )}
+
+      <div className="fp-grid">
+        <label>Variable<select value={l.variable?.modo || 'none'} onChange={(e) => setVar(i, { modo: e.target.value })}><option value="none">Sin variable</option><option value="differential">Diferencial</option><option value="percent">Sobre total</option></select></label>
+        {l.variable?.modo !== 'none' && <label>Base<input {...numProps} value={l.variable?.base ?? ''} onChange={(e) => setVar(i, { base: e.target.value })} /></label>}
+        {l.variable?.modo !== 'none' && <label>Rate %<input {...numProps} value={l.variable?.rate ?? ''} onChange={(e) => setVar(i, { rate: e.target.value })} /></label>}
+        {l.variable?.modo !== 'none' && <label>Facturación<select value={l.variable?.fuente || 'manual'} onChange={(e) => setVar(i, { fuente: e.target.value })}><option value="tiendanube">Tienda Nube</option><option value="manual">Manual</option></select></label>}
+      </div>
+    </>
+  );
+
+  // Índices de las dos partes de automatización (se muestran juntas en una tarjeta).
+  const autoMant = lines.map((l, i) => ({ l, i })).find((x) => x.l.servicio === 'automatizacion');
+  const autoImpl = lines.map((l, i) => ({ l, i })).find((x) => x.l.servicio === 'automatizacion_impl');
+  const hasAuto = autoMant || autoImpl;
+  const otherLines = lines.map((l, i) => ({ l, i })).filter((x) => !String(x.l.servicio).startsWith('automatizacion'));
 
   return (
     <div>
@@ -197,110 +290,54 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
       <p className="fp-muted" style={{ margin: '0 0 10px' }}>Guardar registra el fee desde el 1° de <strong>{month}</strong> (los meses anteriores no cambian).</p>
       {msg && <div className="fp-msg">{msg}</div>}
 
-      {lines.map((l, i) => (
+      {/* Cobro: cómo paga el cliente (a nivel cliente, no por servicio) */}
+      <div className="fp-grid" style={{ marginBottom: 12 }}>
+        <label>Cobro<select value={pagaVencido ? 'vencido' : 'adelantado'} onChange={(e) => toggleVencido(e.target.value === 'vencido')}><option value="adelantado">Mes adelantado</option><option value="vencido">Mes vencido</option></select></label>
+      </div>
+
+      {otherLines.map(({ l, i }) => (
         <div className="fp-card" key={l.id || `new-${i}`}>
           <div className="fp-card-head">
             {l.id
               ? <strong>{servLabel(l.servicio)}</strong>
               : (
                 <select value={l.servicio} onChange={(e) => setLine(i, { servicio: e.target.value })}>
-                  {SERVICIOS.filter((s) => s.k === l.servicio || !lines.some((x, xi) => xi !== i && x.servicio === s.k))
-                    .map((s) => <option key={s.k} value={s.k}>{s.l}</option>)}
+                  {SERVICIOS.filter((s) => s.k !== 'automatizacion_impl').filter((s) => s.k === l.servicio || !lines.some((x, xi) => xi !== i && x.servicio === s.k)).map((s) => <option key={s.k} value={s.k}>{s.k === 'automatizacion' ? 'Automatización' : s.l}</option>)}
                 </select>
               )}
             <span className="fp-tag">{l.tipo === 'pre' ? 'pre-agencia' : 'post-agencia'}</span>
             <button className="fp-btn fp-btn--danger" style={{ marginLeft: 'auto' }} onClick={() => delLine(l)}>Quitar</button>
           </div>
-          <div className="fp-grid">
-            <label>Tipo<select value={l.tipo} onChange={(e) => { const tipo = e.target.value; const patch = { tipo }; if (tipo !== 'pre' && !(l.opex_reparto && l.opex_reparto.length)) patch.opex_reparto = [{ persona: l.opex_operador || '', modo: l.opex_modo || 'pct', pct: l.opex_pct ?? 30, monto: l.opex_monto ?? '' }]; setLine(i, patch); }}><option value="post">Post-agencia</option><option value="pre">Pre-agencia</option></select></label>
-            <label>Moneda<select value={l.moneda} onChange={(e) => setLine(i, { moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
-            {l.servicio !== 'automatizacion_impl' && <label>{l.servicio === 'automatizacion' ? 'Mantenimiento (mensual)' : 'Fee mensual'}<input {...numProps} value={l.fee ?? ''} onChange={(e) => setLine(i, { fee: e.target.value })} /></label>}
-          </div>
-
-          {l.servicio === 'automatizacion_impl' && (
-            <div className="fp-grid">
-              <label>Monto de la implementación (one-shot)<input {...numProps} value={l.setup_fee ?? ''} onChange={(e) => setLine(i, { setup_fee: e.target.value })} /></label>
-              <label>Mes del cobro<input type="month" value={l.setup_month || ''} onChange={(e) => setLine(i, { setup_month: e.target.value })} /></label>
-            </div>
-          )}
-          {l.servicio === 'automatizacion' && (
-            <>
-              <div className="fp-pre">
-                <div className="fp-sub">Costos mensuales — se restan del mantenimiento antes de repartir y se le reintegran a quien los paga</div>
-                {(l.costos || []).map((c, ci) => (
-                  <div className="fp-pre-row" key={ci}>
-                    <input placeholder="Nombre del costo (ej. WATI, N8N)" value={c.nombre || ''} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, nombre: e.target.value } : x) })} style={{ flex: 1 }} />
-                    <input {...numProps} placeholder="Monto" value={c.monto ?? ''} style={{ width: 90 }} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, monto: e.target.value } : x) })} /><span className="fp-pct">{l.moneda}</span>
-                    <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>paga<select value={c.quien || ''} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, quien: e.target.value } : x) })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
-                    <button className="fp-btn fp-btn--danger" onClick={() => setLine(i, { costos: l.costos.filter((_, xi) => xi !== ci) })}>×</button>
-                  </div>
-                ))}
-                <button className="fp-btn" onClick={() => setLine(i, { costos: [...(l.costos || []), { nombre: '', monto: '', quien: '' }] })}>+ Costo</button>
-                {(() => {
-                  const ct = (l.costos || []).reduce((s, c) => s + (Number(c.monto) || 0), 0);
-                  const rest = Math.max(0, (Number(l.fee) || 0) - ct);
-                  return <div className="fp-muted" style={{ marginTop: 6, fontSize: 12 }}>Mantenimiento {fmt(Number(l.fee) || 0)} − costos {fmt(ct)} = <strong>restante {fmt(rest)}</strong> {l.moneda} → se reparte según el tipo/operadores de abajo. Los costos se le devuelven a quien los paga.</div>;
-                })()}
-              </div>
-            </>
-          )}
-
-          {l.tipo === 'post' ? (
-            <>
-              <div className="fp-grid">
-                <label>Sueldo socios<select value={l.socio_modo || 'pct'} onChange={(e) => setLine(i, { socio_modo: e.target.value })}><option value="pct">% del total</option><option value="fijo">Monto fijo</option></select></label>
-                {(l.socio_modo || 'pct') === 'fijo'
-                  ? <label>Sueldo socios fijo ({l.moneda})<input {...numProps} value={l.socio_monto ?? ''} onChange={(e) => setLine(i, { socio_monto: e.target.value })} /></label>
-                  : <label>Sueldo socios %<input {...numProps} value={l.socio_pct ?? ''} onChange={(e) => setLine(i, { socio_pct: e.target.value })} /></label>}
-              </div>
-              <div className="fp-pre">
-                <div className="fp-sub">Operadores (OPEX) — cada uno cobra su monto fijo o su % del total; el resto queda en la caja</div>
-                {(l.opex_reparto || []).map((r, ri) => (
-                  <div className="fp-pre-row" key={ri}>
-                    <select value={r.persona || ''} onChange={(e) => setLine(i, { opex_reparto: l.opex_reparto.map((x, xi) => xi === ri ? { ...x, persona: e.target.value } : x) })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select>
-                    <select value={r.modo || 'pct'} onChange={(e) => setLine(i, { opex_reparto: l.opex_reparto.map((x, xi) => xi === ri ? { ...x, modo: e.target.value } : x) })}><option value="pct">%</option><option value="fijo">Fijo</option></select>
-                    {(r.modo || 'pct') === 'fijo'
-                      ? <><input {...numProps} value={r.monto ?? ''} style={{ width: 90 }} onChange={(e) => setLine(i, { opex_reparto: l.opex_reparto.map((x, xi) => xi === ri ? { ...x, monto: e.target.value } : x) })} /><span className="fp-pct">{l.moneda}</span></>
-                      : <><input {...numProps} value={r.pct ?? ''} style={{ width: 70 }} onChange={(e) => setLine(i, { opex_reparto: l.opex_reparto.map((x, xi) => xi === ri ? { ...x, pct: e.target.value } : x) })} /><span className="fp-pct">%</span></>}
-                    {(l.opex_reparto || []).length > 1 && <button className="fp-btn fp-btn--danger" onClick={() => setLine(i, { opex_reparto: l.opex_reparto.filter((_, xi) => xi !== ri) })}>×</button>}
-                  </div>
-                ))}
-                <button className="fp-btn" onClick={() => setLine(i, { opex_reparto: [...(l.opex_reparto || []), { persona: '', modo: 'pct', pct: 0, monto: '' }] })}>+ Operador</button>
-              </div>
-            </>
-          ) : (
-            <div className="fp-pre">
-              <div className="fp-sub">Operadores (los % reparten lo que queda después de los fijos)</div>
-              {(l.reparto || []).map((r, ri) => (
-                <div className="fp-pre-row" key={ri}>
-                  <select value={r.persona || ''} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, persona: e.target.value } : x) })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select>
-                  <select value={r.modo || 'pct'} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, modo: e.target.value } : x) })}><option value="pct">%</option><option value="fijo">Fijo</option></select>
-                  {(r.modo || 'pct') === 'fijo'
-                    ? <><input {...numProps} value={r.monto ?? ''} style={{ width: 90 }} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, monto: e.target.value } : x) })} /><span className="fp-pct">{l.moneda}</span></>
-                    : <><input {...numProps} value={r.pct ?? ''} style={{ width: 70 }} onChange={(e) => setLine(i, { reparto: l.reparto.map((x, xi) => xi === ri ? { ...x, pct: e.target.value } : x) })} /><span className="fp-pct">%</span></>}
-                  {l.reparto.length > 1 && <button className="fp-btn fp-btn--danger" onClick={() => setLine(i, { reparto: l.reparto.filter((_, xi) => xi !== ri) })}>×</button>}
-                </div>
-              ))}
-              <button className="fp-btn" onClick={() => setLine(i, { reparto: [...l.reparto, { persona: '', modo: 'pct', pct: 0, monto: 0 }] })}>+ Operador</button>
-            </div>
-          )}
-
-          <div className="fp-grid">
-            <label>Variable<select value={l.variable?.modo || 'none'} onChange={(e) => setVar(i, { modo: e.target.value })}><option value="none">Sin variable</option><option value="differential">Diferencial</option><option value="percent">Sobre total</option></select></label>
-            {l.variable?.modo !== 'none' && <label>Base<input {...numProps} value={l.variable?.base ?? ''} onChange={(e) => setVar(i, { base: e.target.value })} /></label>}
-            {l.variable?.modo !== 'none' && <label>Rate %<input {...numProps} value={l.variable?.rate ?? ''} onChange={(e) => setVar(i, { rate: e.target.value })} /></label>}
-            {l.variable?.modo !== 'none' && <label>Facturación<select value={l.variable?.fuente || 'manual'} onChange={(e) => setVar(i, { fuente: e.target.value })}><option value="tiendanube">Tienda Nube</option><option value="manual">Manual</option></select></label>}
-          </div>
-
-          <div className="fp-grid">
-            <label>Cobro<select value={pagaVencido ? 'vencido' : 'adelantado'} onChange={(e) => toggleVencido(e.target.value === 'vencido')}><option value="adelantado">Mes adelantado</option><option value="vencido">Mes vencido</option></select></label>
-          </div>
-
+          {renderEditor(l, i)}
           <div className="fp-card-foot"><button className="fp-btn fp-btn--primary" onClick={() => saveLine(i)}>Guardar {servLabel(l.servicio)}</button></div>
         </div>
       ))}
 
-      {lines.length < SERVICIOS.length && <button className="fp-btn" onClick={addService}>+ Agregar servicio</button>}
+      {hasAuto && (
+        <div className="fp-card">
+          <div className="fp-card-head"><strong>Automatización</strong><button className="fp-btn fp-btn--danger" style={{ marginLeft: 'auto' }} onClick={() => { if (autoImpl) delLine(autoImpl.l); if (autoMant) delLine(autoMant.l); }}>Quitar</button></div>
+          <p className="fp-muted" style={{ margin: '0 0 8px' }}>Dos partes configurables por separado: la <strong>implementación</strong> (one-shot) y el <strong>mantenimiento</strong> (mensual).</p>
+          <div style={{ borderTop: '1px solid var(--color-gray-light,#eee)', paddingTop: 10 }}>
+            <div className="fp-sub" style={{ fontWeight: 700 }}>Implementación (one-shot)</div>
+            {autoImpl ? (<>
+              {renderEditor(autoImpl.l, autoImpl.i)}
+              <div className="fp-card-foot"><button className="fp-btn" onClick={() => delLine(autoImpl.l)}>Quitar</button> <button className="fp-btn fp-btn--primary" onClick={() => saveLine(autoImpl.i)}>Guardar implementación</button></div>
+            </>) : <button className="fp-btn" onClick={() => addAutoPart('automatizacion_impl')}>+ Configurar implementación</button>}
+          </div>
+          <div style={{ borderTop: '1px solid var(--color-gray-light,#eee)', paddingTop: 10, marginTop: 10 }}>
+            <div className="fp-sub" style={{ fontWeight: 700 }}>Mantenimiento (mensual)</div>
+            {autoMant ? (<>
+              {renderEditor(autoMant.l, autoMant.i)}
+              <div className="fp-card-foot"><button className="fp-btn" onClick={() => delLine(autoMant.l)}>Quitar</button> <button className="fp-btn fp-btn--primary" onClick={() => saveLine(autoMant.i)}>Guardar mantenimiento</button></div>
+            </>) : <button className="fp-btn" onClick={() => addAutoPart('automatizacion')}>+ Configurar mantenimiento</button>}
+          </div>
+        </div>
+      )}
+
+      <div className="fp-inline" style={{ gap: 8 }}>
+        {otherLines.length < SERVICIOS.filter((s) => !String(s.k).startsWith('automatizacion')).length && <button className="fp-btn" onClick={addService}>+ Agregar servicio</button>}
+        {!hasAuto && <button className="fp-btn" onClick={() => addAutoPart('automatizacion')}>+ Automatización</button>}
+      </div>
     </div>
   );
 }
