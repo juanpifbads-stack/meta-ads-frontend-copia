@@ -433,6 +433,8 @@ function MovimientosTab({ people, clients, month }) {
   const [ledger, setLedger] = useState(null);
   const [openPerson, setOpenPerson] = useState(null);   // persona con drill-down abierto en Saldos
   const [openCaja, setOpenCaja] = useState(false);      // caja con "en manos de quién" abierto
+  const [balA, setBalA] = useState('');                 // balanza: persona A
+  const [balB, setBalB] = useState('');                 // balanza: persona B (o Caja)
   const [newAcc, setNewAcc] = useState('');
   const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), tipo: 'cliente', account_id: '', person: '', from_person: '', client_slug: '', servicio: '', amount: '', moneda: 'ARS', note: '', covers_from: '', covers_to: '' });
   const [editingId, setEditingId] = useState(null);      // transferencia en edición
@@ -680,6 +682,48 @@ function MovimientosTab({ people, clients, month }) {
           );
         })()}
         <p className="fp-muted" style={{ marginTop: 6 }}><strong>Falta recibir</strong> = lo que le corresponde y no cobró. <strong>Debe</strong> = plata de más que retiene (de otros) + deals pre-agencia que paga. La <strong>Caja agencia</strong> es la ganancia del mes (va aparte). Cuando esté todo cobrado de los clientes, Falta total = Debe total.</p>
+      </div>
+
+      {/* Balanza entre dos partes */}
+      <div className="fp-card">
+        <div className="fp-card-head"><strong>Balanza entre dos</strong>
+          <label className="fp-inline" style={{ marginLeft: 'auto' }}><select value={balA} onChange={(e) => setBalA(e.target.value)}><option value="">—</option>{(ledger?.parties || []).map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+          <span className="fp-muted" style={{ margin: '0 6px' }}>vs</span>
+          <label className="fp-inline"><select value={balB} onChange={(e) => setBalB(e.target.value)}><option value="">—</option>{(ledger?.parties || []).map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
+        </div>
+        {(!balA || !balB || balA === balB) ? <div className="fp-muted">Elegí dos partes para ver la balanza.</div> : (() => {
+          const oweAB = (ledger?.owe?.[balA]?.[balB]?.origins) || {};
+          const oweBA = (ledger?.owe?.[balB]?.[balA]?.origins) || {};
+          const keys = new Set([...Object.keys(oweAB), ...Object.keys(oweBA)]);
+          const combined = {}; // + = A tiene plata de B (A le debe a B)
+          keys.forEach((k) => { combined[k] = (oweAB[k] || 0) - (oweBA[k] || 0); });
+          const aHasB = Object.entries(combined).filter(([, v]) => v > 0.5).map(([k, v]) => ({ k, v }));
+          const bHasA = Object.entries(combined).filter(([, v]) => v < -0.5).map(([k, v]) => ({ k, v: -v }));
+          const netA = Object.values(combined).reduce((s, v) => s + v, 0); // + = A le debe a B
+          const col = (title, items) => (
+            <div style={{ minWidth: 260, flex: 1 }}>
+              <div className="fp-muted" style={{ fontWeight: 700, marginBottom: 4 }}>{title}</div>
+              {items.length ? items.map((it, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0' }}>
+                  <span>{prettyOrigin(it.k, cname)}</span><strong>{cons} {fmt(disp(it.v))}</strong>
+                </div>
+              )) : <div className="fp-muted">—</div>}
+            </div>
+          );
+          return (
+            <div>
+              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                {col(`${balA} tiene plata de ${balB}`, aHasB)}
+                {col(`${balB} tiene plata de ${balA}`, bHasA)}
+              </div>
+              <div className="fp-pnl-strong" style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--color-gray-light, #e5e7eb)' }}>
+                {Math.abs(netA) < 1 ? <span>Están a mano.</span> : netA > 0
+                  ? <span><strong>{balA}</strong> le debe a <strong>{balB}</strong>: <strong>{cons} {fmt(disp(netA))}</strong></span>
+                  : <span><strong>{balB}</strong> le debe a <strong>{balA}</strong>: <strong>{cons} {fmt(disp(-netA))}</strong></span>}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Últimas transferencias + filtros */}
