@@ -692,6 +692,7 @@ function MovimientosTab({ people, clients, month }) {
           <label className="fp-inline"><select value={balB} onChange={(e) => setBalB(e.target.value)}><option value="">—</option>{(ledger?.parties || []).map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
         </div>
         {(!balA || !balB || balA === balB) ? <div className="fp-muted">Elegí dos partes para ver la balanza.</div> : (() => {
+          const disp = (usd) => (cons === 'ARS' ? usd * fx : cons === 'EUR' ? (eur ? usd / eur : 0) : usd);
           const oweAB = (ledger?.owe?.[balA]?.[balB]?.origins) || {};
           const oweBA = (ledger?.owe?.[balB]?.[balA]?.origins) || {};
           const keys = new Set([...Object.keys(oweAB), ...Object.keys(oweBA)]);
