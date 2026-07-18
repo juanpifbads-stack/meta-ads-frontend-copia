@@ -138,7 +138,8 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
   const validateLine = (l) => {
     // Automatización: mantenimiento reparte el fee NETO de costos; implementación reparte el setup.
     const costos = l.servicio === 'automatizacion' ? (l.costos || []).reduce((s, c) => s + (Number(c.monto) || 0), 0) : 0;
-    const fee = Math.max(0, (Number(l.fee) || 0) + (Number(l.setup_fee) || 0) - costos);
+    const setup = l.servicio === 'automatizacion_impl' ? (Number(l.setup_fee) || 0) : 0;
+    const fee = Math.max(0, (Number(l.fee) || 0) + setup - costos);
     if (fee <= 0) return 'Cargá el monto (fee mensual o implementación).';
     if (l.tipo === 'pre') {
       const entries = l.reparto || [];
@@ -168,6 +169,9 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
     // Post: mantenemos las columnas legacy (opex_operador/modo/pct/monto) en sync con el
     // primer operador, así no quedan desactualizadas para quien las lea sin la lista.
     const payload = { client_slug: slug, ...l, effective_month: month };
+    // Limpieza: el mantenimiento no lleva setup; la implementación no lleva fee mensual ni costos.
+    if (l.servicio === 'automatizacion') { payload.setup_fee = 0; payload.setup_month = null; }
+    if (l.servicio === 'automatizacion_impl') { payload.fee = 0; payload.costos = []; }
     if (l.tipo !== 'pre') {
       const first = (l.opex_reparto && l.opex_reparto[0]) || {};
       payload.opex_operador = first.persona || '';
