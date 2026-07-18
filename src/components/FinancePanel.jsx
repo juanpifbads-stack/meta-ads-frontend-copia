@@ -473,13 +473,8 @@ function DealsClientesTab({ clients, people, month, setMonth }) {
 function MovimientosTab({ people, clients, month }) {
   const [accounts, setAccounts] = useState([]);
   const [transfers, setTransfers] = useState([]);
-  const [balances, setBalances] = useState(null);
   const [collections, setCollections] = useState(null);
-  const [ledger, setLedger] = useState(null);
-  const [openPerson, setOpenPerson] = useState(null);   // persona con drill-down abierto en Saldos
-  const [openCaja, setOpenCaja] = useState(false);      // caja con "en manos de quién" abierto
-  const [balA, setBalA] = useState('');                 // balanza: persona A
-  const [balB, setBalB] = useState('');                 // balanza: persona B (o Caja)
+  const [settlement, setSettlement] = useState(null);   // Tricount: neto por persona + cómo saldar + caja
   const [newAcc, setNewAcc] = useState('');
   const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), tipo: 'cliente', account_id: '', person: '', from_person: '', client_slug: '', servicio: '', amount: '', moneda: 'ARS', note: '', covers_from: '', covers_to: '' });
   const [editingId, setEditingId] = useState(null);      // transferencia en edición
@@ -499,9 +494,8 @@ function MovimientosTab({ people, clients, month }) {
   }, []);
   const loadMonth = useCallback(() => {
     const bMonth = saldoMode === 'acumulado' ? 'all' : mMonth;
-    apiClient.get(`/admin/finance/balances?month=${bMonth}`).then((r) => setBalances(r.data)).catch(() => setBalances({ rows: [], fx: null }));
     apiClient.get(`/admin/finance/collections?month=${mMonth}`).then((r) => setCollections(r.data)).catch(() => setCollections({ rows: [] }));
-    apiClient.get(`/admin/finance/ledger?month=${bMonth}`).then((r) => setLedger(r.data)).catch(() => setLedger({ people: {}, caja: { heldBy: [] } }));
+    apiClient.get(`/admin/finance/settlement?month=${bMonth}`).then((r) => setSettlement(r.data)).catch(() => setSettlement({ people: [], caja: { held: [], owes: [] }, settlement: [] }));
   }, [mMonth, saldoMode]);
   useEffect(() => { loadStatic(); }, [loadStatic]);
   useEffect(() => { loadMonth(); }, [loadMonth]);
@@ -531,13 +525,12 @@ function MovimientosTab({ people, clients, month }) {
     setEditingId(t.id); setMsg('');
   };
   const toggleSettled = (client, on) => apiClient.post('/admin/finance/collections/settle', { client_slug: client, month: mMonth, on }).then(loadMonth).catch((e) => setMsg(e?.response?.data?.message || 'Error al saldar'));
-  const toggleSettledPerson = (person, on) => apiClient.post('/admin/finance/balances/settle', { person, month: saldoMode === 'acumulado' ? 'all' : mMonth, on }).then(loadMonth).catch((e) => setMsg(e?.response?.data?.message || 'Error al saldar'));
   const moneyLine = (o) => { const p = []; if (o.USD) p.push(`USD ${fmt(o.USD)}`); if (o.ARS) p.push(`ARS ${fmt(o.ARS)}`); return p.length ? p.join(' · ') : '—'; };
   const delTransfer = (id) => { if (window.confirm('¿Borrar la transferencia?')) apiClient.delete(`/admin/finance/transfers/${id}`).then(() => { if (editingId === id) resetForm(); reload(); }).catch(() => {}); };
 
   const accName = (id) => accounts.find((a) => a.id === id)?.name || '—';
-  const fx = balances?.fx || 0;
-  const eur = balances?.eur || 0; // EUR→USD
+  const fx = settlement?.fx || 0;
+  const eur = settlement?.eur || 0; // EUR→USD
   const toUsd = (s) => s.USD + (fx ? s.ARS / fx : 0);
   const consSaldo = (s) => (cons === 'ARS' ? (s.ARS + s.USD * fx) : cons === 'EUR' ? (eur ? toUsd(s) / eur : 0) : toUsd(s));
 
@@ -660,7 +653,7 @@ function MovimientosTab({ people, clients, month }) {
         )}
       </div>
 
-      {/* Saldo por persona (mes o acumulado) */}
+      {/* Saldo del mes — lógica Tricount: un neto por persona + cómo saldar + caja */}
       <div className="fp-card">
         <div className="fp-card-head"><strong>{saldoMode === 'acumulado' ? 'Saldo acumulado (desde julio)' : 'Saldo del mes'}</strong>
           <span className="fp-inline" style={{ marginLeft: 'auto' }}>
@@ -674,102 +667,63 @@ function MovimientosTab({ people, clients, month }) {
             <button className={`fp-btn ${cons === 'EUR' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('EUR')}>EUR</button>
           </span>
         </div>
-        {!balances ? <div className="fp-muted">Cargando…</div> : (() => {
-          // Mostramos en la moneda elegida un monto que viene consolidado a USD.
+        {!settlement ? <div className="fp-muted">Cargando…</div> : (() => {
           const disp = (usd) => (cons === 'ARS' ? usd * fx : cons === 'EUR' ? (eur ? usd / eur : 0) : usd);
-          const rows = balances.rows.map((r) => {
-            // Netear TODO en una sola moneda (USD): así un pago en pesos salda una deuda
-            // en dólares (le corresponde − recibió = falta), sin importar la moneda de cada uno.
-            const owedUsd = toUsd(r.owed), recUsd = toUsd(r.received), preUsd = toUsd(r.preDebe || { USD: 0, ARS: 0 });
-            const net = owedUsd - recUsd;                 // + = le falta cobrar; − = retiene de más
-            // Si está "dado por saldado", la diferencia se cierra: no queda falta ni debe.
-            const faltaUsd = r.settled ? 0 : Math.max(0, net);
-            const debeUsd = r.settled ? 0 : Math.max(0, -net) + preUsd;   // retiene de más + deals pre-agencia que paga
-            return { person: r.person, corr: consSaldo(r.owed), rec: consSaldo(r.received), falta: disp(faltaUsd), debe: disp(debeUsd), settled: r.settled };
-          });
-          // Caja de la agencia: fila aparte. Le corresponde y "falta recibir" = la caja (aún en las cuentas).
-          const cajaCorr = consSaldo(balances.caja || { USD: 0, ARS: 0 });
-          const tot = rows.reduce((a, r) => ({ falta: a.falta + r.falta, debe: a.debe + r.debe }), { falta: cajaCorr, debe: 0 });
-          return (
-            <table className="fp-table">
-              <thead><tr><th>Persona</th><th>Le corresponde ({cons})</th><th>Recibió ({cons})</th><th>Falta recibir ({cons})</th><th>Debe ({cons})</th><th></th></tr></thead>
-              <tbody>
-                {rows.map((r, i) => {
-                  const lp = ledger?.people?.[r.person];
-                  const isOpen = openPerson === r.person;
-                  return (
-                  <React.Fragment key={i}>
-                  <tr>
-                    <td style={{ cursor: lp ? 'pointer' : 'default' }} onClick={() => lp && setOpenPerson(isOpen ? null : r.person)} title={lp ? 'Ver a quién le debe / quién le debe' : ''}>{lp ? (isOpen ? '▾ ' : '▸ ') : ''}{r.person}{r.settled && <span className="fp-tag" style={{ marginLeft: 6 }}>saldado</span>}</td>
-                    <td>{fmt(r.corr)}</td>
-                    <td>{fmt(r.rec)}</td>
-                    <td>{r.falta > 0 ? fmt(r.falta) : '—'}</td>
-                    <td>{r.debe > 0 ? <strong style={{ color: '#b91c1c' }}>{fmt(r.debe)}</strong> : '—'}</td>
-                    <td style={{ textAlign: 'right' }}>{r.settled
-                      ? <button className="fp-btn" onClick={() => toggleSettledPerson(r.person, false)}>Reabrir</button>
-                      : ((r.falta > 0 || r.debe > 0) && <button className="fp-btn" onClick={() => toggleSettledPerson(r.person, true)}>Dar por saldado</button>)}</td>
-                  </tr>
-                  {isOpen && lp && (
-                    <tr className="fp-src-row"><td colSpan={6}>
-                      <LedgerDetail entry={lp} disp={disp} cons={cons} cname={cname} />
-                    </td></tr>
-                  )}
-                  </React.Fragment>
-                  );
-                })}
-                <tr className="fp-src-row"><td style={{ cursor: ledger?.caja ? 'pointer' : 'default' }} onClick={() => ledger?.caja && setOpenCaja(!openCaja)} title="Ver en manos de quién está la caja">{ledger?.caja ? (openCaja ? '▾ ' : '▸ ') : ''}Caja agencia</td><td>{fmt(cajaCorr)}</td><td>—</td><td>{cajaCorr > 0 ? fmt(cajaCorr) : '—'}</td><td>—</td><td></td></tr>
-                {openCaja && ledger?.caja && (
-                  <tr className="fp-src-row"><td colSpan={6}><CajaDetail caja={ledger.caja} disp={disp} cons={cons} cname={cname} /></td></tr>
-                )}
-                <tr className="fp-pnl-strong"><td>Total</td><td></td><td></td><td>{fmt(tot.falta)}</td><td>{fmt(tot.debe)}</td><td></td></tr>
-              </tbody>
-            </table>
-          );
-        })()}
-        <p className="fp-muted" style={{ marginTop: 6 }}><strong>Falta recibir</strong> = lo que le corresponde y no cobró. <strong>Debe</strong> = plata de más que retiene (de otros) + deals pre-agencia que paga. La <strong>Caja agencia</strong> es la ganancia del mes (va aparte). Cuando esté todo cobrado de los clientes, Falta total = Debe total.</p>
-      </div>
-
-      {/* Balanza entre dos partes */}
-      <div className="fp-card">
-        <div className="fp-card-head"><strong>Balanza entre dos</strong>
-          <label className="fp-inline" style={{ marginLeft: 'auto' }}><select value={balA} onChange={(e) => setBalA(e.target.value)}><option value="">—</option>{(ledger?.parties || []).map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
-          <span className="fp-muted" style={{ margin: '0 6px' }}>vs</span>
-          <label className="fp-inline"><select value={balB} onChange={(e) => setBalB(e.target.value)}><option value="">—</option>{(ledger?.parties || []).map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
-        </div>
-        {(!balA || !balB || balA === balB) ? <div className="fp-muted">Elegí dos partes para ver la balanza.</div> : (() => {
-          const disp = (usd) => (cons === 'ARS' ? usd * fx : cons === 'EUR' ? (eur ? usd / eur : 0) : usd);
-          const oweAB = (ledger?.owe?.[balA]?.[balB]?.origins) || {};
-          const oweBA = (ledger?.owe?.[balB]?.[balA]?.origins) || {};
-          const keys = new Set([...Object.keys(oweAB), ...Object.keys(oweBA)]);
-          const combined = {}; // + = A tiene plata de B (A le debe a B)
-          keys.forEach((k) => { combined[k] = (oweAB[k] || 0) - (oweBA[k] || 0); });
-          const aHasB = Object.entries(combined).filter(([, v]) => v > 0.5).map(([k, v]) => ({ k, v }));
-          const bHasA = Object.entries(combined).filter(([, v]) => v < -0.5).map(([k, v]) => ({ k, v: -v }));
-          const netA = Object.values(combined).reduce((s, v) => s + v, 0); // + = A le debe a B
-          const col = (title, items) => (
-            <div style={{ minWidth: 260, flex: 1 }}>
-              <div className="fp-muted" style={{ fontWeight: 700, marginBottom: 4 }}>{title}</div>
-              {items.length ? items.map((it, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0' }}>
-                  <span>{prettyOrigin(it.k, cname)}</span><strong>{cons} {fmt(disp(it.v))}</strong>
-                </div>
-              )) : <div className="fp-muted">—</div>}
-            </div>
-          );
+          const nodeName = (id, type) => (type === 'cliente' ? cname(id) : id);
+          const people = settlement.people || [];
+          const settle = settlement.settlement || [];
+          const caja = settlement.caja || { held: [], owes: [] };
           return (
             <div>
-              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-                {col(`${balA} tiene plata de ${balB}`, aHasB)}
-                {col(`${balB} tiene plata de ${balA}`, bHasA)}
+              {/* Neto por persona: o le deben, o debe */}
+              <table className="fp-table">
+                <thead><tr><th>Persona</th><th style={{ textAlign: 'right' }}>Saldo ({cons})</th></tr></thead>
+                <tbody>
+                  {people.length === 0 && <tr><td colSpan={2} className="fp-muted">Todo saldado.</td></tr>}
+                  {people.map((p, i) => (
+                    <tr key={i}>
+                      <td>{p.person}</td>
+                      <td style={{ textAlign: 'right' }}>{p.net > 0
+                        ? <span style={{ color: '#15803d', fontWeight: 700 }}>le deben {fmt(disp(p.net))}</span>
+                        : <span style={{ color: '#b91c1c', fontWeight: 700 }}>debe {fmt(disp(-p.net))}</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Cómo saldar: transferencias mínimas (incluye clientes que deben) */}
+              <div style={{ marginTop: 14 }}>
+                <div className="fp-sub" style={{ fontWeight: 700, marginBottom: 6 }}>Cómo saldar (mínimo de transferencias)</div>
+                {settle.length === 0 ? <div className="fp-muted">No hay nada que saldar.</div> : settle.map((s, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
+                    <strong>{nodeName(s.from, s.fromType)}</strong>
+                    {s.fromType === 'cliente' && <span className="fp-tag">cliente</span>}
+                    <span className="fp-muted">→</span>
+                    <strong>{nodeName(s.to, s.toType)}</strong>
+                    {s.toType === 'cliente' && <span className="fp-tag">cliente</span>}
+                    <span style={{ marginLeft: 'auto', fontWeight: 700 }}>{cons} {fmt(disp(s.amount))}</span>
+                  </div>
+                ))}
               </div>
-              <div className="fp-pnl-strong" style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--color-gray-light, #e5e7eb)' }}>
-                {Math.abs(netA) < 1 ? <span>Están a mano.</span> : netA > 0
-                  ? <span><strong>{balA}</strong> le debe a <strong>{balB}</strong>: <strong>{cons} {fmt(disp(netA))}</strong></span>
-                  : <span><strong>{balB}</strong> le debe a <strong>{balA}</strong>: <strong>{cons} {fmt(disp(-netA))}</strong></span>}
+
+              {/* Caja: quién la tiene y a quién le debe */}
+              <div style={{ marginTop: 14, borderTop: '1px solid var(--color-gray-light,#eee)', paddingTop: 10 }}>
+                <div className="fp-sub" style={{ fontWeight: 700, marginBottom: 6 }}>Caja de la agencia <span className="fp-muted" style={{ fontWeight: 400 }}>· {cons} {fmt(disp(caja.neta || 0))}</span></div>
+                {(caja.held || []).length === 0 && (caja.owes || []).length === 0
+                  ? <div className="fp-muted">Sin plata de caja en manos de nadie.</div>
+                  : <>
+                      {(caja.held || []).map((h, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}><span>La tiene <strong>{h.person}</strong></span><strong>{cons} {fmt(disp(h.amount))}</strong></div>
+                      ))}
+                      {(caja.owes || []).map((o, i) => (
+                        <div key={'o' + i} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: '#b91c1c' }}><span>La caja le debe a <strong>{o.person}</strong> (adelantó un costo)</span><strong>{cons} {fmt(disp(o.amount))}</strong></div>
+                      ))}
+                    </>}
               </div>
             </div>
           );
         })()}
+        <p className="fp-muted" style={{ marginTop: 10 }}><strong>Saldo</strong> = lo que le corresponde (reparto de cada cliente + fijos) − lo que le entró (cobros + transferencias). Cada uno <strong>o debe o le deben</strong>. <strong>Cómo saldar</strong> es la forma más eficiente de cerrar todo; los <strong>clientes que no pagaron</strong> pueden pagarle directo a quien corresponda. La <strong>caja</strong> va aparte.</p>
       </div>
 
       {/* Últimas transferencias + filtros */}
