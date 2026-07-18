@@ -4,7 +4,9 @@ import './FinancePanel.css';
 
 const SERVICIOS = [
   { k: 'meta', l: 'Meta Ads' }, { k: 'tiktok', l: 'TikTok' }, { k: 'contenido', l: 'Contenido' },
-  { k: 'ecommerce', l: 'Ecommerce' }, { k: 'web', l: 'Web' }, { k: 'automatizacion', l: 'Automatización' },
+  { k: 'ecommerce', l: 'Ecommerce' }, { k: 'web', l: 'Web' },
+  { k: 'automatizacion', l: 'Automatización — Mantenimiento' },
+  { k: 'automatizacion_impl', l: 'Automatización — Implementación' },
 ];
 const servLabel = (k) => (SERVICIOS.find((s) => s.k === k) || {}).l || k;
 const currentYM = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; };
@@ -134,10 +136,10 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
   // Regla: lo que cobran los operadores no puede exceder el fee mensual.
   // Pre-agencia → debe dar EXACTO el fee (no hay caja). Post → no lo supera (queda caja).
   const validateLine = (l) => {
-    // Automatización: se reparte el fee NETO de costos mensuales.
+    // Automatización: mantenimiento reparte el fee NETO de costos; implementación reparte el setup.
     const costos = l.servicio === 'automatizacion' ? (l.costos || []).reduce((s, c) => s + (Number(c.monto) || 0), 0) : 0;
-    const fee = Math.max(0, (Number(l.fee) || 0) - costos);
-    if (fee <= 0) return 'Cargá el fee mensual (o los costos se comen todo el fee).';
+    const fee = Math.max(0, (Number(l.fee) || 0) + (Number(l.setup_fee) || 0) - costos);
+    if (fee <= 0) return 'Cargá el monto (fee mensual o implementación).';
     if (l.tipo === 'pre') {
       const entries = l.reparto || [];
       const fixedTot = entries.filter((e) => (e.modo || 'pct') === 'fijo').reduce((s, e) => s + (Number(e.monto) || 0), 0);
@@ -212,15 +214,17 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
           <div className="fp-grid">
             <label>Tipo<select value={l.tipo} onChange={(e) => { const tipo = e.target.value; const patch = { tipo }; if (tipo !== 'pre' && !(l.opex_reparto && l.opex_reparto.length)) patch.opex_reparto = [{ persona: l.opex_operador || '', modo: l.opex_modo || 'pct', pct: l.opex_pct ?? 30, monto: l.opex_monto ?? '' }]; setLine(i, patch); }}><option value="post">Post-agencia</option><option value="pre">Pre-agencia</option></select></label>
             <label>Moneda<select value={l.moneda} onChange={(e) => setLine(i, { moneda: e.target.value })}><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
-            <label>{l.servicio === 'automatizacion' ? 'Mantenimiento (mensual)' : 'Fee mensual'}<input {...numProps} value={l.fee ?? ''} onChange={(e) => setLine(i, { fee: e.target.value })} /></label>
+            {l.servicio !== 'automatizacion_impl' && <label>{l.servicio === 'automatizacion' ? 'Mantenimiento (mensual)' : 'Fee mensual'}<input {...numProps} value={l.fee ?? ''} onChange={(e) => setLine(i, { fee: e.target.value })} /></label>}
           </div>
 
+          {l.servicio === 'automatizacion_impl' && (
+            <div className="fp-grid">
+              <label>Monto de la implementación (one-shot)<input {...numProps} value={l.setup_fee ?? ''} onChange={(e) => setLine(i, { setup_fee: e.target.value })} /></label>
+              <label>Mes del cobro<input type="month" value={l.setup_month || ''} onChange={(e) => setLine(i, { setup_month: e.target.value })} /></label>
+            </div>
+          )}
           {l.servicio === 'automatizacion' && (
             <>
-              <div className="fp-grid">
-                <label>Implementación (one-shot)<input {...numProps} value={l.setup_fee ?? ''} onChange={(e) => setLine(i, { setup_fee: e.target.value })} /></label>
-                <label>Mes del cobro de implementación<input type="month" value={l.setup_month || ''} onChange={(e) => setLine(i, { setup_month: e.target.value })} /></label>
-              </div>
               <div className="fp-pre">
                 <div className="fp-sub">Costos mensuales — se restan del mantenimiento antes de repartir y se le reintegran a quien los paga</div>
                 {(l.costos || []).map((c, ci) => (
@@ -235,7 +239,7 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
                 {(() => {
                   const ct = (l.costos || []).reduce((s, c) => s + (Number(c.monto) || 0), 0);
                   const rest = Math.max(0, (Number(l.fee) || 0) - ct);
-                  return <div className="fp-muted" style={{ marginTop: 6, fontSize: 12 }}>Mantenimiento {fmt(Number(l.fee) || 0)} − costos {fmt(ct)} = <strong>restante {fmt(rest)}</strong> {l.moneda} → se reparte 50% socios / OPEX / caja. Los costos se le devuelven a quien los paga.</div>;
+                  return <div className="fp-muted" style={{ marginTop: 6, fontSize: 12 }}>Mantenimiento {fmt(Number(l.fee) || 0)} − costos {fmt(ct)} = <strong>restante {fmt(rest)}</strong> {l.moneda} → se reparte según el tipo/operadores de abajo. Los costos se le devuelven a quien los paga.</div>;
                 })()}
               </div>
             </>
