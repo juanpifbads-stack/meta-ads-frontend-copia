@@ -701,21 +701,43 @@ function MovimientosTab({ people, clients, month }) {
                         ? <button className="fp-btn" onClick={() => toggleSettledPerson(p.person, false)}>Reabrir</button>
                         : (Math.abs(p.net) >= 1 && <button className="fp-btn" onClick={() => toggleSettledPerson(p.person, true)} title="Cerrar diferencias chicas de TC">Dar por saldado</button>)}</td>
                     </tr>
-                    {isOpen && (
+                    {isOpen && (() => {
+                      // Ambas columnas en la moneda elegida (USD interno → cons) para que los totales cierren.
+                      const toC = (amt, mon) => disp(mon === 'USD' ? amt : mon === 'EUR' ? amt * eur : (fx ? amt / fx : 0));
+                      const corrItems = p.correspondeItems || [];
+                      const corrTot = corrItems.reduce((s, it) => s + disp(it.amount), 0);
+                      const recItems = recibidos.map((t) => {
+                        const sent = t.tipo === 'interno' && t.from_person === p.person;
+                        const label = t.tipo === 'cliente' ? cname(t.client_slug) : (sent ? `Mandó a ${t.person}` : `De ${t.from_person}`);
+                        const val = toC(Number(t.amount) || 0, t.moneda) * (sent ? -1 : 1);
+                        const cov = t.covers_from ? ` · cubre ${t.covers_from}${t.covers_to && t.covers_to !== t.covers_from ? `→${t.covers_to}` : ''}` : '';
+                        return { label: `${t.date} · ${label}`, sub: cov, val };
+                      });
+                      const recTot = recItems.reduce((s, it) => s + it.val, 0);
+                      const rows = Math.max(corrItems.length, recItems.length);
+                      return (
                       <tr className="fp-src-row"><td colSpan={5}>
-                        <div className="fp-muted" style={{ fontWeight: 700, marginBottom: 4 }}>Lo que recibió</div>
-                        {recibidos.length === 0 ? <div className="fp-muted">No recibió nada en este período.</div> : recibidos.map((t, ti) => {
-                          const sent = t.tipo === 'interno' && t.from_person === p.person; // salida (mandó)
-                          const label = t.tipo === 'cliente' ? `Cobro · ${cname(t.client_slug)}` : (sent ? `Mandó a ${t.person}` : `De ${t.from_person}`);
-                          return (
-                            <div key={ti} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0' }}>
-                              <span>{t.date} · {label}{t.covers_from ? <span className="fp-muted"> · cubre {t.covers_from}{t.covers_to && t.covers_to !== t.covers_from ? `→${t.covers_to}` : ''}</span> : ''}</span>
-                              <strong style={{ color: sent ? '#b91c1c' : 'inherit' }}>{sent ? '−' : ''}{t.moneda} {fmt(t.amount)}</strong>
-                            </div>
-                          );
-                        })}
+                        <table className="fp-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+                          <thead><tr><th>Le corresponde</th><th style={{ textAlign: 'right' }}>{cons}</th><th>Recibió</th><th style={{ textAlign: 'right' }}>{cons}</th></tr></thead>
+                          <tbody>
+                            {rows === 0 && <tr><td colSpan={4} className="fp-muted">Sin movimientos.</td></tr>}
+                            {Array.from({ length: rows }).map((_, ri) => {
+                              const c = corrItems[ri]; const r = recItems[ri];
+                              return (
+                                <tr key={ri}>
+                                  <td>{c ? (c.client ? cname(c.client) : c.label) : ''}</td>
+                                  <td style={{ textAlign: 'right' }}>{c ? fmt(disp(c.amount)) : ''}</td>
+                                  <td>{r ? <span>{r.label}{r.sub && <span className="fp-muted">{r.sub}</span>}</span> : ''}</td>
+                                  <td style={{ textAlign: 'right', color: r && r.val < 0 ? '#b91c1c' : 'inherit' }}>{r ? fmt(r.val) : ''}</td>
+                                </tr>
+                              );
+                            })}
+                            <tr className="fp-pnl-strong"><td>Total corresponde</td><td style={{ textAlign: 'right' }}>{fmt(corrTot)}</td><td>Total recibió</td><td style={{ textAlign: 'right' }}>{fmt(recTot)}</td></tr>
+                          </tbody>
+                        </table>
                       </td></tr>
-                    )}
+                      );
+                    })()}
                     </React.Fragment>
                     );
                   })}
