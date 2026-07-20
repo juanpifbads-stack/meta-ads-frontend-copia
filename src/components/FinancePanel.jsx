@@ -732,7 +732,10 @@ function MovimientosTab({ people, clients, month }) {
                                 </tr>
                               );
                             })}
-                            <tr className="fp-pnl-strong"><td>Total corresponde</td><td style={{ textAlign: 'right' }}>{fmt(corrTot)}</td><td>Total recibió</td><td style={{ textAlign: 'right' }}>{fmt(recTot)}</td></tr>
+                            {p.excedentePrev > 0 && (
+                              <tr><td></td><td></td><td className="fp-muted">de meses previos (no cuenta)</td><td className="fp-muted" style={{ textAlign: 'right' }}>−{fmt(disp(p.excedentePrev))}</td></tr>
+                            )}
+                            <tr className="fp-pnl-strong"><td>Total corresponde</td><td style={{ textAlign: 'right' }}>{fmt(corrTot)}</td><td>Total que cuenta</td><td style={{ textAlign: 'right' }}>{fmt(recTot - disp(p.excedentePrev || 0))}</td></tr>
                           </tbody>
                         </table>
                       </td></tr>
