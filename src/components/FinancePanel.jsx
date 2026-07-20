@@ -106,15 +106,20 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
   const [fx, setFx] = useState('');
   const [msg, setMsg] = useState('');
   const [pagaVencido, setPagaVencido] = useState(false);
+  const [financiadoHasta, setFinanciadoHasta] = useState('');
 
   // Cargamos la config VIGENTE DEL MES elegido (así ves el fee que corresponde a ese mes).
   const loadLines = useCallback((s) => {
     if (!s) return;
-    apiClient.get(`/admin/finance/services?client=${s}&month=${month}`).then((r) => { setLines((r.data.lines || []).map(normalizePost)); setPagaVencido(!!r.data.pagaVencido); }).catch(() => setLines([]));
+    apiClient.get(`/admin/finance/services?client=${s}&month=${month}`).then((r) => { setLines((r.data.lines || []).map(normalizePost)); setPagaVencido(!!r.data.pagaVencido); setFinanciadoHasta(r.data.financiadoHasta || ''); }).catch(() => setLines([]));
   }, [month]);
   const toggleVencido = (val) => {
     const next = typeof val === 'boolean' ? val : !pagaVencido; setPagaVencido(next);
     apiClient.put(`/admin/finance/client-flags/${slug}`, { pagaVencido: next }).catch(() => setPagaVencido(!next));
+  };
+  const saveFinanciado = (val) => {
+    const prev = financiadoHasta; setFinanciadoHasta(val);
+    apiClient.put(`/admin/finance/client-flags/${slug}`, { financiadoHasta: val || null }).catch(() => setFinanciadoHasta(prev));
   };
   useEffect(() => { loadLines(slug); }, [slug, month, loadLines]);
   useEffect(() => {
@@ -294,9 +299,10 @@ function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
       <p className="fp-muted" style={{ margin: '0 0 10px' }}>Guardar registra el fee desde el 1° de <strong>{month}</strong> (los meses anteriores no cambian).</p>
       {msg && <div className="fp-msg">{msg}</div>}
 
-      {/* Cobro: cómo paga el cliente (a nivel cliente, no por servicio) */}
+      {/* Cobro + financiado: condición de pago del cliente (a nivel cliente, no por servicio) */}
       <div className="fp-grid" style={{ marginBottom: 12 }}>
         <label>Cobro<select value={pagaVencido ? 'vencido' : 'adelantado'} onChange={(e) => toggleVencido(e.target.value === 'vencido')}><option value="adelantado">Mes adelantado</option><option value="vencido">Mes vencido</option></select></label>
+        <label title="Si el cliente difiere el pago (ej. junta y paga en septiembre): hasta ese mes su honorario no cuenta como cobrable, figura como 'pendiente'. Vacío = no financiado.">Financiado hasta<input type="month" value={financiadoHasta} onChange={(e) => saveFinanciado(e.target.value)} /></label>
       </div>
 
       {otherLines.map(({ l, i }) => (
@@ -696,7 +702,8 @@ function MovimientosTab({ people, clients, month }) {
                       <td style={{ textAlign: 'right' }}>{fmt(disp(p.entro))}</td>
                       <td style={{ textAlign: 'right' }}>{p.settled ? <span className="fp-muted">saldado</span> : Math.abs(p.net) < 1 ? <span className="fp-muted">a mano</span> : p.net > 0
                         ? <span style={{ color: '#15803d', fontWeight: 700 }}>le falta {fmt(disp(p.net))}</span>
-                        : <span style={{ color: '#b91c1c', fontWeight: 700 }}>debe {fmt(disp(-p.net))}</span>}</td>
+                        : <span style={{ color: '#b91c1c', fontWeight: 700 }}>debe {fmt(disp(-p.net))}</span>}
+                        {p.pendiente > 0 && <div className="fp-muted" style={{ fontSize: 12 }}>+ pendiente {fmt(disp(p.pendiente))}</div>}</td>
                       <td style={{ textAlign: 'right' }}>{p.settled
                         ? <button className="fp-btn" onClick={() => toggleSettledPerson(p.person, false)}>Reabrir</button>
                         : (Math.abs(p.net) >= 1 && <button className="fp-btn" onClick={() => toggleSettledPerson(p.person, true)} title="Cerrar diferencias chicas de TC">Dar por saldado</button>)}</td>
@@ -738,6 +745,14 @@ function MovimientosTab({ people, clients, month }) {
                             <tr className="fp-pnl-strong"><td>Total corresponde</td><td style={{ textAlign: 'right' }}>{fmt(corrTot)}</td><td>Total que cuenta</td><td style={{ textAlign: 'right' }}>{fmt(recTot - disp(p.excedentePrev || 0))}</td></tr>
                           </tbody>
                         </table>
+                        {(p.pendienteItems || []).length > 0 && (
+                          <div style={{ marginTop: 8 }}>
+                            <div className="fp-muted" style={{ fontWeight: 700 }}>Pendiente (financiado, aún no cobrable)</div>
+                            {p.pendienteItems.map((it, pi) => (
+                              <div key={pi} className="fp-muted" style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 0' }}><span>{cname(it.client)}</span><span>{cons} {fmt(disp(it.amount))}</span></div>
+                            ))}
+                          </div>
+                        )}
                       </td></tr>
                       );
                     })()}
