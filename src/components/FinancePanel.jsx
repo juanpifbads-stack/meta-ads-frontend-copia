@@ -475,6 +475,7 @@ function MovimientosTab({ people, clients, month }) {
   const [transfers, setTransfers] = useState([]);
   const [collections, setCollections] = useState(null);
   const [settlement, setSettlement] = useState(null);   // Tricount: neto por persona + cómo saldar + caja
+  const [openPerson, setOpenPerson] = useState(null);   // persona con el detalle de "lo que recibí" abierto
   const [newAcc, setNewAcc] = useState('');
   const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), tipo: 'cliente', account_id: '', person: '', from_person: '', client_slug: '', servicio: '', amount: '', moneda: 'ARS', note: '', covers_from: '', covers_to: '' });
   const [editingId, setEditingId] = useState(null);      // transferencia en edición
@@ -681,9 +682,16 @@ function MovimientosTab({ people, clients, month }) {
                 <thead><tr><th>Persona</th><th style={{ textAlign: 'right' }}>Le corresponde ({cons})</th><th style={{ textAlign: 'right' }}>Le entró ({cons})</th><th style={{ textAlign: 'right' }}>Saldo ({cons})</th><th></th></tr></thead>
                 <tbody>
                   {people.length === 0 && <tr><td colSpan={5} className="fp-muted">Sin datos.</td></tr>}
-                  {people.map((p, i) => (
-                    <tr key={i}>
-                      <td>{p.person}{p.settled && <span className="fp-tag" style={{ marginLeft: 6 }}>saldado</span>}</td>
+                  {people.map((p, i) => {
+                    const isOpen = openPerson === p.person;
+                    // Lo que recibió: cobros de cliente que le entraron + transferencias internas (in/out) del scope.
+                    const scopeMonth = saldoMode === 'acumulado' ? null : mMonth;
+                    const inScope = (t) => !scopeMonth || (t.date || '').slice(0, 7) === scopeMonth;
+                    const recibidos = (transfers || []).filter((t) => inScope(t) && ((t.person === p.person) || (t.tipo === 'interno' && t.from_person === p.person)));
+                    return (
+                    <React.Fragment key={i}>
+                    <tr>
+                      <td style={{ cursor: 'pointer' }} onClick={() => setOpenPerson(isOpen ? null : p.person)} title="Ver qué cobró / recibió">{isOpen ? '▾ ' : '▸ '}{p.person}{p.settled && <span className="fp-tag" style={{ marginLeft: 6 }}>saldado</span>}</td>
                       <td style={{ textAlign: 'right' }}>{fmt(disp(p.corresponde))}</td>
                       <td style={{ textAlign: 'right' }}>{fmt(disp(p.entro))}</td>
                       <td style={{ textAlign: 'right' }}>{p.settled ? <span className="fp-muted">saldado</span> : Math.abs(p.net) < 1 ? <span className="fp-muted">a mano</span> : p.net > 0
@@ -693,7 +701,24 @@ function MovimientosTab({ people, clients, month }) {
                         ? <button className="fp-btn" onClick={() => toggleSettledPerson(p.person, false)}>Reabrir</button>
                         : (Math.abs(p.net) >= 1 && <button className="fp-btn" onClick={() => toggleSettledPerson(p.person, true)} title="Cerrar diferencias chicas de TC">Dar por saldado</button>)}</td>
                     </tr>
-                  ))}
+                    {isOpen && (
+                      <tr className="fp-src-row"><td colSpan={5}>
+                        <div className="fp-muted" style={{ fontWeight: 700, marginBottom: 4 }}>Lo que recibió</div>
+                        {recibidos.length === 0 ? <div className="fp-muted">No recibió nada en este período.</div> : recibidos.map((t, ti) => {
+                          const sent = t.tipo === 'interno' && t.from_person === p.person; // salida (mandó)
+                          const label = t.tipo === 'cliente' ? `Cobro · ${cname(t.client_slug)}` : (sent ? `Mandó a ${t.person}` : `De ${t.from_person}`);
+                          return (
+                            <div key={ti} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0' }}>
+                              <span>{t.date} · {label}{t.covers_from ? <span className="fp-muted"> · cubre {t.covers_from}{t.covers_to && t.covers_to !== t.covers_from ? `→${t.covers_to}` : ''}</span> : ''}</span>
+                              <strong style={{ color: sent ? '#b91c1c' : 'inherit' }}>{sent ? '−' : ''}{t.moneda} {fmt(t.amount)}</strong>
+                            </div>
+                          );
+                        })}
+                      </td></tr>
+                    )}
+                    </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
 
