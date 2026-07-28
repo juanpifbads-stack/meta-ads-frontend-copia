@@ -753,12 +753,30 @@ function MovimientosTab({ people, clients, month }) {
                             ))}
                           </div>
                         )}
+                        {p.pair && (p.pair.owes.length > 0 || p.pair.owed.length > 0) && (
+                          <div style={{ marginTop: 10, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                            <div style={{ minWidth: 200 }}>
+                              <div className="fp-sub" style={{ fontWeight: 700, color: '#b91c1c' }}>Le debés a</div>
+                              {p.pair.owes.length ? p.pair.owes.map((x, xi) => <div key={xi} style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 0' }}><span>{x.party}</span><strong>{cons} {fmt(disp(x.amount))}</strong></div>) : <div className="fp-muted">—</div>}
+                            </div>
+                            <div style={{ minWidth: 200 }}>
+                              <div className="fp-sub" style={{ fontWeight: 700, color: '#15803d' }}>Te deben</div>
+                              {p.pair.owed.length ? p.pair.owed.map((x, xi) => <div key={xi} style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 0' }}><span>{x.party}</span><strong>{cons} {fmt(disp(x.amount))}</strong></div>) : <div className="fp-muted">—</div>}
+                            </div>
+                          </div>
+                        )}
                       </td></tr>
                       );
                     })()}
                     </React.Fragment>
                     );
                   })}
+                  <tr className="fp-pnl-strong">
+                    <td>Total</td>
+                    <td style={{ textAlign: 'right' }}>{fmt(disp(people.reduce((s, p) => s + p.corresponde, 0)))}</td>
+                    <td style={{ textAlign: 'right' }}>{fmt(disp(people.reduce((s, p) => s + p.entro, 0)))}</td>
+                    <td></td><td></td>
+                  </tr>
                 </tbody>
               </table>
 
