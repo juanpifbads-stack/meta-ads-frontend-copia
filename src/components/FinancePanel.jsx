@@ -664,12 +664,9 @@ function MovimientosTab({ people, clients, month }) {
 
       {/* Saldo del mes — lógica Tricount: un neto por persona + cómo saldar + caja */}
       <div className="fp-card">
-        <div className="fp-card-head"><strong>{saldoMode === 'acumulado' ? 'Saldo acumulado (desde julio)' : 'Saldo del mes'}</strong>
-          <span className="fp-inline" style={{ marginLeft: 'auto' }}>
-            <button className={`fp-btn ${saldoMode === 'mes' ? 'fp-btn--primary' : ''}`} onClick={() => setSaldoMode('mes')}>Mes</button>
-            <button className={`fp-btn ${saldoMode === 'acumulado' ? 'fp-btn--primary' : ''}`} onClick={() => setSaldoMode('acumulado')}>Acumulado</button>
-          </span>
-          {saldoMode === 'mes' && <label className="fp-inline" style={{ marginLeft: 12 }}>Mes<input type="month" value={mMonth} onChange={(e) => setMMonth(e.target.value)} /></label>}
+        <div className="fp-card-head"><strong>Saldo del mes</strong>
+          <label className="fp-inline" style={{ marginLeft: 'auto' }}>Mes<input type="month" value={mMonth} onChange={(e) => setMMonth(e.target.value)} /></label>
+          <span className="fp-muted" style={{ marginLeft: 8, fontSize: 12 }}>· el acumulado está en la pestaña <strong>Acumulado</strong></span>
           <span className="fp-inline" style={{ marginLeft: 12 }}>Ver en
             <button className={`fp-btn ${cons === 'USD' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('USD')}>USD</button>
             <button className={`fp-btn ${cons === 'ARS' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('ARS')}>ARS</button>
@@ -1026,6 +1023,116 @@ function CostosTab({ people, clients, month }) {
   );
 }
 
+// ─── Acumulado: la foto grande desde el inicio (deuda + caja acumuladas) ───────
+function AcumuladoTab({ clients }) {
+  const [st, setSt] = useState(null);
+  const [caja, setCaja] = useState(null);
+  const [cons, setCons] = useState('USD');
+  const [openPerson, setOpenPerson] = useState(null);
+  const cname = (slug) => (clients || []).find((c) => c.slug === slug)?.name || slug;
+  useEffect(() => {
+    apiClient.get('/admin/finance/settlement?month=all').then((r) => setSt(r.data)).catch(() => setSt({ people: [], settlement: [], caja: { held: [], owes: [] } }));
+    apiClient.get('/admin/finance/caja-monthly').then((r) => setCaja(r.data)).catch(() => setCaja({ months: [] }));
+  }, []);
+  const fx = st?.fx || 0; const eur = st?.eur || 0;
+  const disp = (usd) => (cons === 'ARS' ? usd * fx : cons === 'EUR' ? (eur ? usd / eur : 0) : usd);
+  const nodeName = (id, type) => (type === 'cliente' ? cname(id) : id);
+  const fmtMonthYM = (ym) => { if (!ym) return ''; const [y, m] = ym.split('-'); return `${['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][+m - 1]} ${y}`; };
+
+  if (!st) return <div className="fp-muted">Cargando…</div>;
+  const people = st.people || [];
+  const settle = st.settlement || [];
+  const cajaHeld = st.caja?.held || [];
+  const cajaOwes = st.caja?.owes || [];
+  const cajaGen = caja?.months?.length ? caja.months[caja.months.length - 1].acumulada : (st.caja?.neta || 0);
+
+  return (
+    <div>
+      <div className="fp-card">
+        <div className="fp-card-head"><strong>Balance acumulado (desde el inicio)</strong>
+          <span className="fp-inline" style={{ marginLeft: 'auto' }}>Ver en
+            <button className={`fp-btn ${cons === 'USD' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('USD')}>USD</button>
+            <button className={`fp-btn ${cons === 'ARS' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('ARS')}>ARS</button>
+            <button className={`fp-btn ${cons === 'EUR' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('EUR')}>EUR</button>
+          </span>
+        </div>
+        <table className="fp-table">
+          <thead><tr><th>Persona</th><th style={{ textAlign: 'right' }}>Le corresponde</th><th style={{ textAlign: 'right' }}>Le entró</th><th style={{ textAlign: 'right' }}>Saldo ({cons})</th></tr></thead>
+          <tbody>
+            {people.length === 0 && <tr><td colSpan={4} className="fp-muted">Sin datos.</td></tr>}
+            {people.map((p, i) => {
+              const isOpen = openPerson === p.person;
+              const hasPair = p.pair && (p.pair.owes.length || p.pair.owed.length);
+              return (
+                <React.Fragment key={i}>
+                  <tr>
+                    <td style={{ cursor: hasPair ? 'pointer' : 'default' }} onClick={() => hasPair && setOpenPerson(isOpen ? null : p.person)}>{hasPair ? (isOpen ? '▾ ' : '▸ ') : ''}{p.person}</td>
+                    <td style={{ textAlign: 'right' }}>{fmt(disp(p.corresponde))}</td>
+                    <td style={{ textAlign: 'right' }}>{fmt(disp(p.entro))}</td>
+                    <td style={{ textAlign: 'right' }}>{Math.abs(p.net) < 1 ? <span className="fp-muted">a mano</span> : p.net > 0
+                      ? <span style={{ color: '#15803d', fontWeight: 700 }}>le deben {fmt(disp(p.net))}</span>
+                      : <span style={{ color: '#b91c1c', fontWeight: 700 }}>debe {fmt(disp(-p.net))}</span>}</td>
+                  </tr>
+                  {isOpen && hasPair && (
+                    <tr className="fp-src-row"><td colSpan={4}>
+                      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                        <div style={{ minWidth: 200 }}><div className="fp-sub" style={{ fontWeight: 700, color: '#b91c1c' }}>Le debés a</div>{p.pair.owes.length ? p.pair.owes.map((x, xi) => <div key={xi} style={{ display: 'flex', justifyContent: 'space-between' }}><span>{x.party}</span><strong>{cons} {fmt(disp(x.amount))}</strong></div>) : <div className="fp-muted">—</div>}</div>
+                        <div style={{ minWidth: 200 }}><div className="fp-sub" style={{ fontWeight: 700, color: '#15803d' }}>Te deben</div>{p.pair.owed.length ? p.pair.owed.map((x, xi) => <div key={xi} style={{ display: 'flex', justifyContent: 'space-between' }}><span>{x.party}</span><strong>{cons} {fmt(disp(x.amount))}</strong></div>) : <div className="fp-muted">—</div>}</div>
+                      </div>
+                    </td></tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+        <div style={{ marginTop: 12 }}>
+          <div className="fp-sub" style={{ fontWeight: 700, marginBottom: 6 }}>Cómo saldar todo (mínimo de transferencias)</div>
+          {settle.length === 0 ? <div className="fp-muted">Todo saldado.</div> : settle.map((s, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
+              <strong>{nodeName(s.from, s.fromType)}</strong>{s.fromType === 'cliente' && <span className="fp-tag">cliente</span>}
+              <span className="fp-muted">→</span><strong>{nodeName(s.to, s.toType)}</strong>{s.toType === 'cliente' && <span className="fp-tag">cliente</span>}
+              <span style={{ marginLeft: 'auto', fontWeight: 700 }}>{cons} {fmt(disp(s.amount))}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Caja acumulada */}
+      <div className="fp-card">
+        <div className="fp-card-head"><strong>Caja de la agencia (acumulada)</strong></div>
+        <p className="fp-muted" style={{ marginTop: 0 }}>La caja es la <strong>ganancia de la agencia</strong>: la generan los clientes post-agencia, la tienen físicamente los que cobraron, y se descarga con los costos de agencia.</p>
+        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 10 }}>
+          <div><div className="fp-muted">Generada (acumulada)</div><strong style={{ fontSize: 18 }}>{cons} {fmt(disp(cajaGen))}</strong></div>
+          <div><div className="fp-muted">En manos de todos (hoy)</div><strong style={{ fontSize: 18 }}>{cons} {fmt(disp(st.caja?.neta || 0))}</strong></div>
+        </div>
+        <div className="fp-sub" style={{ fontWeight: 700, marginBottom: 4 }}>La tiene</div>
+        {cajaHeld.length === 0 ? <div className="fp-muted">Nadie tiene plata de la caja.</div> : cajaHeld.map((h, i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}><span>{h.person}</span><strong>{cons} {fmt(disp(h.amount))}</strong></div>
+        ))}
+        {cajaOwes.map((o, i) => (
+          <div key={'o' + i} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: '#b91c1c' }}><span>La caja le debe a {o.person} (adelantó un costo)</span><strong>{cons} {fmt(disp(o.amount))}</strong></div>
+        ))}
+      </div>
+
+      {/* Evolución mes a mes */}
+      {caja?.months?.length > 0 && (
+        <div className="fp-card">
+          <div className="fp-card-head"><strong>Evolución de la caja (mes a mes)</strong></div>
+          <table className="fp-table">
+            <thead><tr><th>Mes</th><th style={{ textAlign: 'right' }}>Generada</th><th style={{ textAlign: 'right' }}>Acumulada</th></tr></thead>
+            <tbody>
+              {caja.months.map((m, i) => (
+                <tr key={i}><td>{fmtMonthYM(m.month)}</td><td style={{ textAlign: 'right' }}>{cons} {fmt(disp(m.generada))}</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{cons} {fmt(disp(m.acumulada))}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FinancePanel() {
   const [tab, setTab] = useState('movimientos');
   const [clients, setClients] = useState([]);
@@ -1042,6 +1149,7 @@ export default function FinancePanel() {
       <h3 className="ad-section-title">Finanzas de la agencia</h3>
       <div className="fp-tabs">
         <button className={`fp-tab ${tab === 'movimientos' ? 'on' : ''}`} onClick={() => setTab('movimientos')}>Movimientos</button>
+        <button className={`fp-tab ${tab === 'acumulado' ? 'on' : ''}`} onClick={() => setTab('acumulado')}>Acumulado</button>
         <button className={`fp-tab ${tab === 'reparto' ? 'on' : ''}`} onClick={() => setTab('reparto')}>Reparto del mes</button>
         <button className={`fp-tab ${tab === 'costos' ? 'on' : ''}`} onClick={() => setTab('costos')}>Costos</button>
         <button className={`fp-tab ${tab === 'pnl' ? 'on' : ''}`} onClick={() => setTab('pnl')}>P&amp;L</button>
@@ -1049,6 +1157,7 @@ export default function FinancePanel() {
           <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
         </label>
       </div>
+      {tab === 'acumulado' && <AcumuladoTab clients={clients} />}
       {tab === 'costos' && <CostosTab people={people} clients={clients} month={month} />}
       {tab === 'reparto' && <RepartoTab month={month} clients={clients} />}
       {tab === 'movimientos' && <MovimientosTab people={people} clients={clients} month={month} />}
