@@ -8,7 +8,7 @@ const SERVICIOS = [
   { k: 'automatizacion', l: 'Automatización — Mantenimiento' },
   { k: 'automatizacion_impl', l: 'Automatización — Implementación' },
 ];
-const servLabel = (k) => (SERVICIOS.find((s) => s.k === k) || {}).l || k;
+export const servLabel = (k) => (SERVICIOS.find((s) => s.k === k) || {}).l || k;
 const currentYM = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; };
 const fmt = (x) => Math.round(x || 0).toLocaleString('es-AR');
 // Formato es-AR mientras se tipea: miles con punto, decimales con coma. "1234567,5" → "1.234.567,5"
@@ -101,7 +101,7 @@ function normalizePost(l) {
 const numProps = { type: 'text', inputMode: 'decimal' };
 
 // ─── Editor de un deal (se abre desde la ficha del cliente) ────────────────────
-function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
+export function ConfigTab({ slug, clientName, people, month, setMonth, onBack }) {
   const [lines, setLines] = useState([]);
   const [fx, setFx] = useState('');
   const [msg, setMsg] = useState('');
@@ -1027,7 +1027,7 @@ function CostosTab({ people, clients, month }) {
 }
 
 export default function FinancePanel() {
-  const [tab, setTab] = useState('deals');
+  const [tab, setTab] = useState('movimientos');
   const [clients, setClients] = useState([]);
   const [people, setPeople] = useState([]);
   const [month, setMonth] = useState(currentYM());
@@ -1041,16 +1041,14 @@ export default function FinancePanel() {
     <div className="ad-section">
       <h3 className="ad-section-title">Finanzas de la agencia</h3>
       <div className="fp-tabs">
-        <button className={`fp-tab ${tab === 'deals' ? 'on' : ''}`} onClick={() => setTab('deals')}>Deals Clientes</button>
-        <button className={`fp-tab ${tab === 'costos' ? 'on' : ''}`} onClick={() => setTab('costos')}>Costos</button>
-        <button className={`fp-tab ${tab === 'reparto' ? 'on' : ''}`} onClick={() => setTab('reparto')}>Reparto del mes</button>
         <button className={`fp-tab ${tab === 'movimientos' ? 'on' : ''}`} onClick={() => setTab('movimientos')}>Movimientos</button>
+        <button className={`fp-tab ${tab === 'reparto' ? 'on' : ''}`} onClick={() => setTab('reparto')}>Reparto del mes</button>
+        <button className={`fp-tab ${tab === 'costos' ? 'on' : ''}`} onClick={() => setTab('costos')}>Costos</button>
         <button className={`fp-tab ${tab === 'pnl' ? 'on' : ''}`} onClick={() => setTab('pnl')}>P&amp;L</button>
         <label className="fp-inline" style={{ marginLeft: 'auto' }}>Mes
           <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
         </label>
       </div>
-      {tab === 'deals' && <DealsClientesTab clients={clients} people={people} month={month} setMonth={setMonth} />}
       {tab === 'costos' && <CostosTab people={people} clients={clients} month={month} />}
       {tab === 'reparto' && <RepartoTab month={month} clients={clients} />}
       {tab === 'movimientos' && <MovimientosTab people={people} clients={clients} month={month} />}

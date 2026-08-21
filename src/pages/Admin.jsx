@@ -530,7 +530,6 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
                   )}
               </div>
 
-              {!isPaid && <ChurnBlock slug={slug} name={cfg.name || slug} />}
             </>
           )}
 

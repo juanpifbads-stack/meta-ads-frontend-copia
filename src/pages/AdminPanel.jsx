@@ -119,19 +119,12 @@ function UsersSection() {
 }
 
 // Lista de clientes: activar / marcar "no es cliente" / eliminar; y crear (mismo form que la Home).
-function ClientsSection({ onOpenClient }) {
+function ClientsSection({ onOpenClient, onOpenConfig }) {
   const [clients, setClients] = useState([]);
   const [open, setOpen] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const load = () => apiClient.get('/admin/clients?all=1').then((r) => setClients(r.data.clients || [])).catch(() => setClients([]));
   useEffect(() => { load(); }, []);
-  const toggle = (c) => apiClient.put(`/admin/${c.slug}/active`, { active: !c.active })
-    .then(() => setClients((cs) => cs.map((x) => x.slug === c.slug ? { ...x, active: !x.active } : x)))
-    .catch(() => {});
-  const remove = (c) => {
-    if (!window.confirm(`¿Eliminar definitivamente a "${c.name}"? No se puede deshacer.`)) return;
-    apiClient.delete(`/admin/${c.slug}`).then(() => setClients((cs) => cs.filter((x) => x.slug !== c.slug))).catch(() => {});
-  };
   const activos = clients.filter((c) => c.active).length;
   return (
     <div className="ad-section">
@@ -144,15 +137,13 @@ function ClientsSection({ onOpenClient }) {
         <button className="ad-btn" onClick={() => setShowNew((s) => !s)}>{showNew ? 'Cerrar' : '+ Agregar cliente'}</button>
       </div>
       {showNew && <NewClientForm onClose={() => setShowNew(false)} onCreated={() => { setShowNew(false); load(); }} />}
-      <p className="ad-muted">Los inactivos no aparecen en finanzas ni en el semáforo (no se borran). Eliminar es definitivo.</p>
+      <p className="ad-muted">Configuración = el deal del cliente (servicios/fees) + dar de baja/alta. Los de baja no aparecen en finanzas ni en el semáforo.</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {clients.map((c) => (
-          <div key={c.slug} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', border: '0.5px solid #e3e1d8', borderRadius: 8, opacity: c.active ? 1 : 0.55 }}>
-            <button onClick={() => onOpenClient && onOpenClient(c.slug)} title="Abrir cliente" style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--color-text-primary)', padding: 0 }}>{c.name} →</button>
-            <button className="ad-btn ad-btn--ghost" onClick={() => toggle(c)} style={c.active ? {} : { color: '#b91c1c' }}>
-              {c.active ? 'Activo' : 'No es cliente'}
-            </button>
-            <button className="ad-btn ad-btn--ghost" onClick={() => remove(c)} style={{ color: '#b91c1c' }} title="Eliminar definitivamente">Eliminar</button>
+          <div key={c.slug} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', border: '0.5px solid #e3e1d8', borderRadius: 8, opacity: c.active ? 1 : 0.6 }}>
+            <button onClick={() => onOpenClient && onOpenClient(c.slug)} title="Abrir panel del cliente" style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--color-text-primary)', padding: 0 }}>{c.name} →</button>
+            <span className="ad-tag" style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: c.active ? '#dcfce7' : '#fee2e2', color: c.active ? '#15803d' : '#b91c1c' }}>{c.active ? 'Activo' : 'De baja'}</span>
+            <button className="ad-btn ad-btn--ghost" onClick={() => onOpenConfig && onOpenConfig(c.slug)}>Configuración</button>
           </div>
         ))}
       </div>
@@ -161,7 +152,7 @@ function ClientsSection({ onOpenClient }) {
   );
 }
 
-export default function AdminPanel({ onBack, onOpenClient }) {
+export default function AdminPanel({ onBack, onOpenClient, onOpenConfig }) {
   const { user } = useAuth();
   return (
     <div className="ad-page">
@@ -175,7 +166,7 @@ export default function AdminPanel({ onBack, onOpenClient }) {
 
       <UsersSection />
 
-      <ClientsSection onOpenClient={onOpenClient} />
+      <ClientsSection onOpenClient={onOpenClient} onOpenConfig={onOpenConfig} />
 
       {/* Finanzas de la agencia — SOLO socios. */}
       {user?.isSocio && <FinancePanel />}

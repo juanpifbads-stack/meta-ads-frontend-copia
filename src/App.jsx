@@ -8,6 +8,7 @@ import Home from './pages/Home.jsx';
 import ClientHub from './pages/ClientHub.jsx';
 import Admin from './pages/Admin.jsx';
 import AdminPanel from './pages/AdminPanel.jsx';
+import ClientDeal from './pages/ClientDeal.jsx';
 import ClientPortal, { PaymentsPortal } from './pages/ClientPortal.jsx';
 // Redirige los links viejos de /cliente/:slug/onboarding al portal unificado.
 function RedirectToPortal() {
@@ -78,8 +79,9 @@ function AppShell() {
 
   let content;
   if (view === 'optimize') content = <Dashboard onBack={() => setView('home')} />;
-  else if (view === 'adminPanel') content = <AdminPanel onBack={() => setView('home')} onOpenClient={(s) => { setSlug(s); setView('client'); }} />;
+  else if (view === 'adminPanel') content = <AdminPanel onBack={() => setView('home')} onOpenClient={(s) => { setSlug(s); setView('client'); }} onOpenConfig={(s) => { setSlug(s); setView('clientDeal'); }} />;
   else if (view === 'admin') content = <Admin onBack={() => setView('home')} autoNew={adminNew} />;
+  else if (view === 'clientDeal' && slug) content = <ClientDeal slug={slug} onBack={() => { setSlug(null); setView('adminPanel'); }} />;
   else if (view === 'client' && slug) content = <ClientHub slug={slug} onBack={() => { setView('home'); setSlug(null); }} />;
   else content = (
     <Home
