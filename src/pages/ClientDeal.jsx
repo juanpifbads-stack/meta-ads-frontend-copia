@@ -61,13 +61,13 @@ function BajaAlta({ slug, name, active, servicios, onChange }) {
 
   return (
     <div className="fp-card" style={{ marginTop: 18, borderColor: '#f0c9c9' }}>
-      <div className="fp-card-head">
-        <strong>Estado del cliente</strong>
-        <span className="fp-tag" style={{ marginLeft: 8, background: active ? '#dcfce7' : '#fee2e2', color: active ? '#15803d' : '#b91c1c' }}>{active ? 'Activo' : 'De baja'}</span>
-        <div style={{ marginLeft: 'auto' }}>
+      <div style={{ textAlign: 'center', padding: '4px 0 2px' }}>
+        <div className="fp-sub" style={{ fontWeight: 700, marginBottom: 8 }}>Estado del cliente</div>
+        <span style={{ display: 'inline-block', fontSize: 14, fontWeight: 700, padding: '5px 18px', borderRadius: 999, background: active ? '#dcfce7' : '#fee2e2', color: active ? '#15803d' : '#b91c1c' }}>{active ? 'Activo' : 'De baja'}</span>
+        <div style={{ marginTop: 12 }}>
           {active
-            ? <button className="fp-btn fp-btn--danger" onClick={() => setOpen((o) => !o)}>Dar de baja</button>
-            : <button className="fp-btn fp-btn--primary" onClick={darAlta}>Dar de alta</button>}
+            ? <button className="fp-btn fp-btn--danger" style={{ fontSize: 15, padding: '10px 24px' }} onClick={() => setOpen((o) => !o)}>Dar de baja</button>
+            : <button className="fp-btn fp-btn--primary" style={{ fontSize: 15, padding: '10px 24px' }} onClick={darAlta}>Dar de alta</button>}
         </div>
       </div>
       {active && open && (

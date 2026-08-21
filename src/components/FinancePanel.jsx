@@ -345,9 +345,9 @@ export function ConfigTab({ slug, clientName, people, month, setMonth, onBack })
         </div>
       )}
 
-      <div className="fp-inline" style={{ gap: 8 }}>
-        {otherLines.length < SERVICIOS.filter((s) => !String(s.k).startsWith('automatizacion')).length && <button className="fp-btn" onClick={addService}>+ Agregar servicio</button>}
-        {!hasAuto && <button className="fp-btn" onClick={() => addAutoPart('automatizacion')}>+ Automatización</button>}
+      <div className="fp-inline" style={{ gap: 10, justifyContent: 'center', marginTop: 6 }}>
+        {otherLines.length < SERVICIOS.filter((s) => !String(s.k).startsWith('automatizacion')).length && <button className="fp-btn" style={{ fontSize: 15, padding: '10px 22px' }} onClick={addService}>+ Agregar servicio</button>}
+        {!hasAuto && <button className="fp-btn" style={{ fontSize: 15, padding: '10px 22px' }} onClick={() => addAutoPart('automatizacion')}>+ Automatización</button>}
       </div>
     </div>
   );
