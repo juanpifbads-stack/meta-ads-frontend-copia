@@ -92,7 +92,6 @@ function ClientCard({ c, onOpen }) {
             {c.name}
             {c.stage === 'onboarding' && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: '#854f0b', background: '#faeeda', padding: '2px 8px', borderRadius: 6, verticalAlign: 'middle' }}>Onboarding</span>}
           </div>
-          <div className="ctrl-card-am">👤 {c.am || '—'} · {c.type === 'servicios' ? 'Servicios' : 'Ecommerce'}{health?.currency ? ` · 💱 ${health.currency}` : ''}</div>
         </div>
         <div className="ctrl-card-badges">
           {!isServ && <Badge band={roasBand} prefix="ROAS" kind="roas" />}
@@ -126,7 +125,7 @@ function ClientCard({ c, onOpen }) {
                 {dev >= 0
                   ? `✓ Adelantado un ${dev.toFixed(0)}% sobre el ritmo`
                   : `⚠ Te desviaste un ${Math.abs(dev).toFixed(0)}% del ritmo`}
-                <span className="hm-pace-exp"> · esperado {fmtMoney(expected)}</span>
+                {` · esperado ${fmtMoney(expected)}`}
               </span>
             </div>
           )}
@@ -136,6 +135,7 @@ function ClientCard({ c, onOpen }) {
                 <div className="ctrl-goal-row">
                   <div className="ctrl-goal-top"><span>Objetivo facturación</span><span>{revPct.toFixed(0)}%</span></div>
                   <div className="ctrl-bar"><div className="ctrl-bar-fill" style={{ width: Math.min(revPct, 100) + '%', background: (paceBand || {}).color }} /></div>
+                  <div className="ctrl-goal-sub" style={{ fontSize: 11, color: '#8b8d94', marginTop: 2 }}>{fmtMoney(purchaseValue)} de {fmtMoney(revGoal)}</div>
                 </div>
               )}
               {budget > 0 && (
@@ -152,7 +152,6 @@ function ClientCard({ c, onOpen }) {
           )}
         </>
       )}
-      <div className="hm-card-cta">Abrir cliente →</div>
     </button>
   );
 }
