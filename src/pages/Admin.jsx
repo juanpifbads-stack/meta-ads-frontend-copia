@@ -346,27 +346,39 @@ function MultiAccountSelect({ ids, onChange, disabled, all }) {
   }, [all]);
   const norm = (v) => String(v || '').replace('act_', '');
   const sel = (ids || []).map(norm);
-  const nameOf = (id) => { const a = (accounts || []).find((x) => norm(x.id) === norm(id)); return a ? a.name : norm(id); };
+  const opts = accounts || [];
+  // Opciones para un select: las libres + la propia (para poder cambiarla sin perderla).
+  const optionsFor = (ownId) => opts.filter((a) => !sel.includes(norm(a.id)) || norm(a.id) === norm(ownId));
+  const setAt = (i, id) => { const n = norm(id); const next = [...sel]; if (!n) next.splice(i, 1); else next[i] = n; onChange([...new Set(next.filter(Boolean))]); };
   const add = (id) => { const n = norm(id); if (n && !sel.includes(n)) onChange([...sel, n]); };
-  const remove = (id) => onChange(sel.filter((x) => x !== norm(id)));
-  const available = (accounts || []).filter((a) => !sel.includes(norm(a.id)));
   return (
     <div className="ad-field ad-field--grow">
       <label>Cuentas publicitarias (Meta){disabled ? ' 🔒' : ''}</label>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-        {sel.length === 0 && <span className="ad-muted">— Sin cuenta —</span>}
-        {sel.map((id) => (
-          <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#eef0ff', color: '#1b1fe8', borderRadius: 999, padding: '4px 10px', fontSize: 13 }}>
-            {nameOf(id)}
-            {!disabled && <button className="ad-del" style={{ marginLeft: 2 }} onClick={() => remove(id)}>×</button>}
-          </span>
-        ))}
-      </div>
-      {!disabled && (
-        <select value="" onChange={(e) => { if (e.target.value) add(e.target.value); }}>
-          <option value="">+ Agregar cuenta…</option>
-          {accounts === null ? <option disabled>Cargando…</option> : available.map((a) => <option key={a.id} value={norm(a.id)}>{a.name}</option>)}
-        </select>
+      {accounts === null ? (
+        <select disabled><option>Cargando…</option></select>
+      ) : (
+        <>
+          {/* Cada cuenta elegida es un select (como Responsable); se puede cambiar o quitar. */}
+          {sel.map((id, i) => (
+            <select
+              key={id}
+              value={id}
+              disabled={disabled}
+              onChange={(e) => setAt(i, e.target.value)}
+              style={{ marginBottom: 6 }}
+            >
+              {!disabled && <option value="">— Quitar cuenta —</option>}
+              {optionsFor(id).map((a) => <option key={a.id} value={norm(a.id)}>{a.name}</option>)}
+            </select>
+          ))}
+          {/* Selector para agregar (la primera cuenta, o una más). */}
+          {!disabled && (
+            <select value="" onChange={(e) => { if (e.target.value) add(e.target.value); }}>
+              <option value="">{sel.length ? '+ Agregar otra cuenta…' : '— Seleccionar cuenta —'}</option>
+              {optionsFor().map((a) => <option key={a.id} value={norm(a.id)}>{a.name}</option>)}
+            </select>
+          )}
+        </>
       )}
     </div>
   );
