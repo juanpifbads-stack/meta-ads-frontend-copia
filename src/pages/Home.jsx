@@ -46,6 +46,18 @@ function Badge({ band, prefix, kind }) {
   return <span className="hm-badge" style={{ color: band.color, background: band.bg }}>{prefix ? `${prefix} ` : ''}{bandLabel(band.key, kind)}</span>;
 }
 
+// Ranking del semáforo para ordenar (0 = peor/emergencia … 4 = con margen; sin dato = al final).
+const BAND_RANK = { emergencia: 0, alejado: 1, cerca: 2, objetivo: 3, margen: 4 };
+function severityScore(c) {
+  const health = c.health;
+  const revGoal = parseFloat(c.goals?.revenue) || 0;
+  if (!health || revGoal <= 0) return 99; // servicios / sin objetivo → sin semáforo, al final
+  const expected = (revGoal / daysInMonth()) * elapsedPace();
+  if (expected <= 0) return 99;
+  const band = statusByRatio((health.purchaseValue || 0) / expected);
+  return BAND_RANK[band.key] ?? 99;
+}
+
 function ClientCard({ c, onOpen }) {
   const health = c.health;
   const revGoal = parseFloat(c.goals?.revenue) || 0;
@@ -160,6 +172,9 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
   // Forma de ver las tarjetas del semáforo: 'estirado' (a lo ancho) o 'cuadrados' (grilla).
   const [layout, setLayout] = useState(() => localStorage.getItem('home_layout') || 'estirado');
   const changeLayout = (l) => { setLayout(l); localStorage.setItem('home_layout', l); };
+  // Orden de las tarjetas: 'alfa' (A-Z) o 'semaforo' (peor estado primero).
+  const [sortBy, setSortBy] = useState(() => localStorage.getItem('home_sort') || 'alfa');
+  const changeSort = (s) => { setSortBy(s); localStorage.setItem('home_sort', s); };
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -188,6 +203,14 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
     if (type !== 'todos' && (c.type || 'ecommerce') !== type) return false;
     return true;
   }), [clients, hidden, selectedAM, type]);
+
+  const byName = (a, b) => (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' });
+  const ordered = useMemo(() => {
+    const arr = [...visible];
+    if (sortBy === 'semaforo') arr.sort((a, b) => severityScore(a) - severityScore(b) || byName(a, b));
+    else arr.sort(byName);
+    return arr;
+  }, [visible, sortBy]);
 
   return (
     <div className="ctrl-page">
@@ -221,6 +244,13 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
               </div>
             </div>
           )}
+          <div className="ctrl-filter-group">
+            <span className="ctrl-filter-label">Ordenar</span>
+            <div className="ctrl-filter-pills">
+              <button className={`ctrl-pill ${sortBy === 'alfa' ? 'ctrl-pill--active' : ''}`} onClick={() => changeSort('alfa')}>A-Z</button>
+              <button className={`ctrl-pill ${sortBy === 'semaforo' ? 'ctrl-pill--active' : ''}`} onClick={() => changeSort('semaforo')}>Semáforo</button>
+            </div>
+          </div>
           <div className="ctrl-filter-group">
             <span className="ctrl-filter-label">Vista</span>
             <div className="ctrl-filter-pills">
@@ -268,7 +298,7 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
       {!loading && clients.length === 0 && isAdmin && <div className="ctrl-loading">No hay clientes para mostrar. Creá uno con "+ Nuevo cliente".</div>}
 
       <div className={`ctrl-grid ${layout === 'cuadrados' ? 'ctrl-grid--cuadrados' : ''}`}>
-        {visible.map((c) => <ClientCard key={c.slug} c={c} onOpen={onOpenClient} />)}
+        {ordered.map((c) => <ClientCard key={c.slug} c={c} onOpen={onOpenClient} />)}
       </div>
     </div>
   );
