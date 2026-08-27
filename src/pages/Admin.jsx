@@ -357,7 +357,7 @@ function MultiAccountSelect({ ids, onChange, disabled, all }) {
         {sel.length === 0 && <span className="ad-muted">— Sin cuenta —</span>}
         {sel.map((id) => (
           <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#eef0ff', color: '#1b1fe8', borderRadius: 999, padding: '4px 10px', fontSize: 13 }}>
-            {nameOf(id)} <span className="ad-muted" style={{ fontSize: 11 }}>({id})</span>
+            {nameOf(id)}
             {!disabled && <button className="ad-del" style={{ marginLeft: 2 }} onClick={() => remove(id)}>×</button>}
           </span>
         ))}
@@ -365,7 +365,7 @@ function MultiAccountSelect({ ids, onChange, disabled, all }) {
       {!disabled && (
         <select value="" onChange={(e) => { if (e.target.value) add(e.target.value); }}>
           <option value="">+ Agregar cuenta…</option>
-          {accounts === null ? <option disabled>Cargando…</option> : available.map((a) => <option key={a.id} value={norm(a.id)}>{a.name} ({norm(a.id)})</option>)}
+          {accounts === null ? <option disabled>Cargando…</option> : available.map((a) => <option key={a.id} value={norm(a.id)}>{a.name}</option>)}
         </select>
       )}
     </div>
@@ -385,9 +385,11 @@ export function NewClientForm({ onClose, onCreated }) {
   const create = () => {
     if (!f.name.trim()) { setErr('Poné el nombre del cliente.'); return; }
     // Mínimo: nombre, tipo y responsable. El resto se configura después.
+    // Clave del portal = slug sin guiones + 2026 (ej. "the-sellection" → "thesellection2026").
+    const key = `${f.slug.replace(/-/g, '')}2026`;
     const config = {
       name: f.name.trim(), type: f.type, am: isPaid ? '' : (f.am || ''),
-      accessKey: `${f.slug}2026`, paymentsKey: `${f.slug}2026`,
+      accessKey: key, paymentsKey: key,
       capabilities: { ecommerce: f.type === 'ecommerce', meta: true },
       // Cliente nuevo arranca en onboarding (formulario + contenido + fechas).
       onboarding: { pedirFormulario: true, pedirContenido: true, mostrarFechas: true },
