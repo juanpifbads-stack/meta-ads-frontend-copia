@@ -3,8 +3,8 @@ import apiClient from '../api/client.js';
 import './FinancePanel.css';
 
 const SERVICIOS = [
-  { k: 'meta', l: 'Meta Ads' }, { k: 'tiktok', l: 'TikTok' }, { k: 'contenido', l: 'Contenido' },
-  { k: 'ecommerce', l: 'Ecommerce' }, { k: 'web', l: 'Web' },
+  { k: 'meta', l: 'Meta Ads' }, { k: 'google', l: 'Google Ads' }, { k: 'tiktok', l: 'TikTok' },
+  { k: 'contenido', l: 'Contenido' }, { k: 'ecommerce', l: 'Ecommerce' }, { k: 'web', l: 'Web' },
   { k: 'automatizacion', l: 'Automatización — Mantenimiento' },
   { k: 'automatizacion_impl', l: 'Automatización — Implementación' },
 ];
@@ -142,7 +142,9 @@ export function ConfigTab({ slug, clientName, people, month, setMonth, onBack })
   // Pre-agencia → debe dar EXACTO el fee (no hay caja). Post → no lo supera (queda caja).
   const validateLine = (l) => {
     // Costos del servicio (cualquiera) se restan del fee antes de repartir; la implementación reparte el setup.
-    const costos = l.servicio === 'automatizacion_impl' ? 0 : (l.costos || []).reduce((s, c) => s + (Number(c.monto) || 0), 0);
+    // Solo restamos los costos en la MISMA moneda del fee; los de otra moneda se convierten
+    // por TC en el backend (acá no tenemos el TC, así que no los contamos para no bloquear).
+    const costos = l.servicio === 'automatizacion_impl' ? 0 : (l.costos || []).filter((c) => (c.moneda || l.moneda) === l.moneda).reduce((s, c) => s + (Number(c.monto) || 0), 0);
     const setup = l.servicio === 'automatizacion_impl' ? (Number(l.setup_fee) || 0) : 0;
     const fee = Math.max(0, (Number(l.fee) || 0) + setup - costos);
     if (fee <= 0) return 'Cargá el monto (fee mensual o implementación).';
@@ -218,17 +220,23 @@ export function ConfigTab({ slug, clientName, people, month, setMonth, onBack })
           {(l.costos || []).map((c, ci) => (
             <div className="fp-pre-row" key={ci}>
               <input placeholder="Nombre del costo (ej. WATI, herramienta)" value={c.nombre || ''} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, nombre: e.target.value } : x) })} style={{ flex: 1 }} />
-              <input {...numProps} placeholder="Monto" value={c.monto ?? ''} style={{ width: 90 }} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, monto: e.target.value } : x) })} /><span className="fp-pct">{l.moneda}</span>
+              <input {...numProps} placeholder="Monto" value={c.monto ?? ''} style={{ width: 90 }} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, monto: e.target.value } : x) })} />
+              <select value={c.moneda || l.moneda} title="Moneda del costo" onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, moneda: e.target.value } : x) })} style={{ width: 66 }}><option value="ARS">ARS</option><option value="USD">USD</option></select>
               <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>paga<select value={c.quien || ''} onChange={(e) => setLine(i, { costos: l.costos.map((x, xi) => xi === ci ? { ...x, quien: e.target.value } : x) })}><option value="">—</option>{people.map((p) => <option key={p} value={p}>{p}</option>)}</select></label>
               <button className="fp-btn fp-btn--danger" onClick={() => setLine(i, { costos: l.costos.filter((_, xi) => xi !== ci) })}>×</button>
             </div>
           ))}
-          <button className="fp-btn" onClick={() => setLine(i, { costos: [...(l.costos || []), { nombre: '', monto: '', quien: '' }] })}>+ Costo</button>
+          <button className="fp-btn" onClick={() => setLine(i, { costos: [...(l.costos || []), { nombre: '', monto: '', quien: '', moneda: l.moneda }] })}>+ Costo</button>
           {(() => {
-            const ct = (l.costos || []).reduce((s, c) => s + (Number(c.monto) || 0), 0);
-            const rest = Math.max(0, (Number(l.fee) || 0) - ct);
-            if (ct <= 0) return null;
-            return <div className="fp-muted" style={{ marginTop: 6, fontSize: 12 }}>Fee {fmt(Number(l.fee) || 0)} − costos {fmt(ct)} = <strong>restante {fmt(rest)}</strong> {l.moneda} → se reparte según el tipo/operadores de abajo. Los costos se le devuelven a quien los paga.</div>;
+            const lm = l.moneda;
+            const sameCur = (l.costos || []).filter((c) => (c.moneda || lm) === lm).reduce((s, c) => s + (Number(c.monto) || 0), 0);
+            const otherCur = (l.costos || []).filter((c) => (c.moneda || lm) !== lm && Number(c.monto) > 0);
+            if (sameCur <= 0 && otherCur.length === 0) return null;
+            const rest = Math.max(0, (Number(l.fee) || 0) - sameCur);
+            return <div className="fp-muted" style={{ marginTop: 6, fontSize: 12 }}>
+              Fee {fmt(Number(l.fee) || 0)} − costos {fmt(sameCur)} {lm} = <strong>restante {fmt(rest)} {lm}</strong> → se reparte según el tipo/operadores de abajo. Los costos se le devuelven a quien los paga.
+              {otherCur.length > 0 && <> · Hay {otherCur.length} costo(s) en otra moneda: se convierten al TC del mes al restarlos del fee.</>}
+            </div>;
           })()}
         </div>
       )}
