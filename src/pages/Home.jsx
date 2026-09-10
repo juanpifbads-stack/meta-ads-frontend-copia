@@ -266,7 +266,17 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
 
         {showHide && (
           <div className="hm-hide-panel">
-            <div className="hm-hide-title">Mostrar / ocultar marcas</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+              <div className="hm-hide-title" style={{ marginBottom: 0 }}>Mostrar / ocultar marcas</div>
+              {hidden.length > 0 && (
+                <button
+                  className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm"
+                  onClick={() => { setHidden([]); localStorage.setItem('home_hidden_clients', '[]'); }}
+                >
+                  Mostrar todas ({hidden.length} oculta{hidden.length > 1 ? 's' : ''})
+                </button>
+              )}
+            </div>
             <div className="hm-hide-grid">
               {[...clients].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' })).map((c) => (
                 <label key={c.slug} className="hm-hide-item">

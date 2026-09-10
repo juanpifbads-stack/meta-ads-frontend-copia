@@ -569,6 +569,15 @@ function ClientConfigEditor({ slug, section = 'cliente' }) {
                 </button>
                 <p className="ad-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>Hasta presentarlo, el cliente ve solo tareas y calendario. Al presentarlo, ve el resto (cada sección aparece cuando tiene datos). Acordate de <strong>Guardar config</strong>.</p>
               </div>
+              {/* Finalizar onboarding: fuerza el estado a "activo" (saca el globo del semáforo)
+                  aunque falte alguna tarea o la cuenta de Meta. */}
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #eef0f3' }}>
+                <button className={`ad-btn ${cfg.onboarding?.done ? 'ad-btn--ghost' : ''}`}
+                  onClick={() => setCfg({ ...cfg, onboarding: { ...(cfg.onboarding || {}), done: !(cfg.onboarding?.done) } })}>
+                  {cfg.onboarding?.done ? '✓ Onboarding finalizado — reabrir' : 'Finalizar onboarding ✓'}
+                </button>
+                <p className="ad-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>Marca el onboarding como terminado y saca el globo del semáforo, aunque falte alguna tarea. Acordate de <strong>Guardar config</strong>.</p>
+              </div>
             </>
           )}
 

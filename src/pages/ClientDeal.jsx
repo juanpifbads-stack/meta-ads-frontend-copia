@@ -4,6 +4,13 @@ import { ConfigTab, servLabel } from '../components/FinancePanel.jsx';
 
 const currentYM = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; };
 
+// Estilo de cada opción de alcance (todo el cliente / algunos servicios). Resalta la elegida.
+const optCard = (on) => ({
+  display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', cursor: 'pointer',
+  border: `1.5px solid ${on ? '#b91c1c' : '#e5e6ea'}`, borderRadius: 12,
+  background: on ? '#fff5f5' : '#fff',
+});
+
 // Página de Configuración del cliente (admin): el DEAL (servicios/fees) + dar de baja/alta.
 // El deal es una característica del cliente, por eso vive acá y no en Finanzas.
 export default function ClientDeal({ slug, onBack }) {
@@ -71,26 +78,47 @@ function BajaAlta({ slug, name, active, servicios, onChange }) {
         </div>
       </div>
       {active && open && (
-        <div style={{ marginTop: 6 }}>
+        <div style={{ marginTop: 14, textAlign: 'left', maxWidth: 640, margin: '14px auto 0' }}>
+          <div className="fp-sub" style={{ fontWeight: 700, marginBottom: 8 }}>¿Qué querés dar de baja?</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+            {/* Opción 1: todo el cliente */}
+            <label style={optCard(alcance === 'cliente')}>
+              <input type="radio" name="alcance-baja" checked={alcance === 'cliente'} onChange={() => setAlcance('cliente')} style={{ marginTop: 3 }} />
+              <div>
+                <div style={{ fontWeight: 600 }}>Todo el cliente</div>
+                <div className="fp-muted" style={{ fontSize: 12 }}>Deja de ser cliente: sale de Finanzas y del semáforo.</div>
+              </div>
+            </label>
+            {/* Opción 2: solo algunos servicios (checkboxes adentro) */}
+            <label style={optCard(alcance === 'servicios')}>
+              <input type="radio" name="alcance-baja" checked={alcance === 'servicios'} onChange={() => setAlcance('servicios')} style={{ marginTop: 3 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600 }}>Solo algunos servicios</div>
+                <div className="fp-muted" style={{ fontSize: 12 }}>El cliente sigue activo; se dan de baja únicamente los servicios que tildes.</div>
+                {alcance === 'servicios' && (
+                  <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #eee' }}>
+                    {servicios.length === 0
+                      ? <div className="fp-muted">Este cliente no tiene servicios cargados.</div>
+                      : servicios.map((s) => (
+                        <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '3px 0', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={sel.includes(s)} onChange={() => toggleServ(s)} /> {servLabel(s)}
+                        </label>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </label>
+          </div>
           <div className="fp-grid">
-            <label>Alcance<select value={alcance} onChange={(e) => setAlcance(e.target.value)}><option value="cliente">Todo el cliente</option><option value="servicios">Solo algunos servicios</option></select></label>
             <label>Último mes que cobra<input type="month" value={ultimoMes} onChange={(e) => setUltimoMes(e.target.value)} /></label>
             <label>Motivo<input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="ej. se pausó, se fue…" /></label>
           </div>
-          {alcance === 'servicios' && (
-            <div className="fp-pre" style={{ marginTop: 8 }}>
-              <div className="fp-sub">Servicios a dar de baja</div>
-              {servicios.length === 0 ? <div className="fp-muted">Este cliente no tiene servicios cargados.</div> : servicios.map((s) => (
-                <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
-                  <input type="checkbox" checked={sel.includes(s)} onChange={() => toggleServ(s)} /> {servLabel(s)}
-                </label>
-              ))}
-            </div>
-          )}
           {msg && <div className="fp-msg" style={{ color: '#b91c1c' }}>{msg}</div>}
           <div className="fp-card-foot">
             <button className="fp-btn" style={{ marginRight: 8 }} onClick={() => setOpen(false)}>Cancelar</button>
-            <button className="fp-btn fp-btn--danger" onClick={darBaja}>Confirmar baja</button>
+            <button className="fp-btn fp-btn--danger" onClick={darBaja}>
+              {alcance === 'servicios' ? 'Dar de baja los servicios elegidos' : `Dar de baja todo el cliente`}
+            </button>
           </div>
         </div>
       )}

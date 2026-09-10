@@ -854,14 +854,23 @@ function MovimientosTab({ people, clients, month }) {
 }
 
 // ─── P&L post-agencia (Profit First) ───────────────────────────────────────────
-function PnlTab({ month, people }) {
+function PnlTab({ month, people, clients }) {
   const [data, setData] = useState(null);
   const [cons, setCons] = useState('ARS');
   const [tax, setTax] = useState({ nombre: '', modo: 'pct', valor: '', moneda: 'ARS', quien_paga: '' });
   const [open, setOpen] = useState({ socio: true, opex: true, imp: true, interno: true });
+  const [cajaRows, setCajaRows] = useState(null); // de dónde entra la caja (fee neto por servicio)
+  const cname = (slug) => (clients || []).find((c) => c.slug === slug)?.name || slug;
 
   const load = useCallback(() => { apiClient.get(`/admin/finance/pnl?month=${month}`).then((r) => setData(r.data)).catch(() => setData(null)); }, [month]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    apiClient.get(`/admin/finance/by-client?month=${month}`).then((r) => {
+      const out = [];
+      (r.data.clients || []).forEach((c) => (c.lines || []).forEach((l) => { if (l.caja) out.push({ client: c.client, servicio: l.servicio, moneda: l.moneda, caja: l.caja }); }));
+      setCajaRows(out);
+    }).catch(() => setCajaRows([]));
+  }, [month]);
 
   const addTax = () => { if (!tax.nombre.trim()) return; apiClient.post('/admin/finance/tax-configs', tax).then(() => { setTax({ nombre: '', modo: 'pct', valor: '', moneda: 'ARS', quien_paga: '' }); load(); }).catch(() => {}); };
   const delTax = (id) => { if (window.confirm('¿Borrar el impuesto?')) apiClient.delete(`/admin/finance/tax-configs/${id}`).then(load).catch(() => {}); };
@@ -927,6 +936,31 @@ function PnlTab({ month, people }) {
         </table>
         {!fx && <p className="fp-muted">Sin TC del mes: no se pueden mezclar monedas.</p>}
       </div>
+
+      {/* De dónde entra la caja: el fee neto (después de socios y OPEX) de cada servicio post-agencia. */}
+      {cajaRows && (() => {
+        const conv = cajaRows.map((r) => ({ ...r, dispv: conv1(r.caja, r.moneda) })).filter((r) => Math.round(r.dispv) !== 0).sort((a, b) => b.dispv - a.dispv);
+        const totalCaja = conv.reduce((s, r) => s + r.dispv, 0);
+        return (
+          <div className="fp-card" style={{ marginTop: 14 }}>
+            <div className="fp-sub" style={{ fontWeight: 700, marginBottom: 6 }}>De dónde entra la caja <span className="fp-muted" style={{ fontWeight: 400 }}>· fee neto de socios y OPEX, por servicio (antes de impuestos)</span></div>
+            {conv.length === 0
+              ? <div className="fp-muted">Ningún servicio deja plata en la caja este mes (todo es pre-agencia o el fee se reparte entero).</div>
+              : (
+                <table className="fp-table">
+                  <thead><tr><th>Cliente</th><th>Servicio</th><th>A caja ({cons})</th></tr></thead>
+                  <tbody>
+                    {conv.map((r, i) => (
+                      <tr key={i}><td>{cname(r.client)}</td><td>{servLabel(r.servicio)}</td><td className="fp-cons">{fmt(r.dispv)}</td></tr>
+                    ))}
+                    <tr className="fp-pnl-strong"><td>Total a caja (bruto)</td><td></td><td className="fp-cons">{fmt(totalCaja)}</td></tr>
+                  </tbody>
+                </table>
+              )}
+            <p className="fp-muted" style={{ marginTop: 8 }}>Es la caja <strong>antes</strong> de impuestos y deals internos de agencia. Las líneas <strong>pre-agencia</strong> no aparecen: se reparten enteras entre las personas y no dejan nada en caja.</p>
+          </div>
+        );
+      })()}
 
       {/* Los gastos ahora se cargan en la pestaña Costos (modelo unificado). */}
       <p className="fp-muted" style={{ marginTop: 12 }}>Los gastos de la agencia se cargan en la pestaña <strong>Costos</strong> (como "Agencia (caja)"). Acá se ven reflejados en el P&L.</p>
@@ -1161,7 +1195,7 @@ export default function FinancePanel() {
       {tab === 'costos' && <CostosTab people={people} clients={clients} month={month} />}
       {tab === 'reparto' && <RepartoTab month={month} clients={clients} />}
       {tab === 'movimientos' && <MovimientosTab people={people} clients={clients} month={month} />}
-      {tab === 'pnl' && <PnlTab month={month} people={people} />}
+      {tab === 'pnl' && <PnlTab month={month} people={people} clients={clients} />}
     </div>
   );
 }
