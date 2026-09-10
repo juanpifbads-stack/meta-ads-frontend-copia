@@ -1057,106 +1057,102 @@ function CostosTab({ people, clients, month }) {
   );
 }
 
-// ─── Acumulado: la foto grande desde el inicio (deuda + caja acumuladas) ───────
-function AcumuladoTab({ clients }) {
+// ─── Acumulado: cuánto le corresponde a cada persona desde el inicio ───────────
+function AcumuladoTab() {
   const [st, setSt] = useState(null);
-  const [caja, setCaja] = useState(null);
   const [cons, setCons] = useState('USD');
-  const [openPerson, setOpenPerson] = useState(null);
-  const cname = (slug) => (clients || []).find((c) => c.slug === slug)?.name || slug;
   useEffect(() => {
-    apiClient.get('/admin/finance/settlement?month=all').then((r) => setSt(r.data)).catch(() => setSt({ people: [], settlement: [], caja: { held: [], owes: [] } }));
-    apiClient.get('/admin/finance/caja-monthly').then((r) => setCaja(r.data)).catch(() => setCaja({ months: [] }));
+    apiClient.get('/admin/finance/settlement?month=all').then((r) => setSt(r.data)).catch(() => setSt({ people: [] }));
   }, []);
   const fx = st?.fx || 0; const eur = st?.eur || 0;
   const disp = (usd) => (cons === 'ARS' ? usd * fx : cons === 'EUR' ? (eur ? usd / eur : 0) : usd);
-  const nodeName = (id, type) => (type === 'cliente' ? cname(id) : id);
-  const fmtMonthYM = (ym) => { if (!ym) return ''; const [y, m] = ym.split('-'); return `${['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][+m - 1]} ${y}`; };
 
   if (!st) return <div className="fp-muted">Cargando…</div>;
-  const people = st.people || [];
-  const settle = st.settlement || [];
-  const cajaHeld = st.caja?.held || [];
-  const cajaOwes = st.caja?.owes || [];
-  const cajaGen = caja?.months?.length ? caja.months[caja.months.length - 1].acumulada : (st.caja?.neta || 0);
+  const people = [...(st.people || [])].sort((a, b) => (b.corresponde || 0) - (a.corresponde || 0));
+  const total = people.reduce((s, p) => s + (p.corresponde || 0), 0);
 
   return (
     <div>
       <div className="fp-card">
-        <div className="fp-card-head"><strong>Balance acumulado (desde el inicio)</strong>
+        <div className="fp-card-head"><strong>Le corresponde a cada uno (acumulado desde el inicio)</strong>
           <span className="fp-inline" style={{ marginLeft: 'auto' }}>Ver en
-            <button className={`fp-btn ${cons === 'USD' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('USD')}>USD</button>
-            <button className={`fp-btn ${cons === 'ARS' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('ARS')}>ARS</button>
-            <button className={`fp-btn ${cons === 'EUR' ? 'fp-btn--primary' : ''}`} onClick={() => setCons('EUR')}>EUR</button>
+            {['USD', 'ARS', 'EUR'].map((c) => <button key={c} className={`fp-btn ${cons === c ? 'fp-btn--primary' : ''}`} onClick={() => setCons(c)}>{c}</button>)}
           </span>
         </div>
         <table className="fp-table">
-          <thead><tr><th>Persona</th><th style={{ textAlign: 'right' }}>Le corresponde</th><th style={{ textAlign: 'right' }}>Le entró</th><th style={{ textAlign: 'right' }}>Saldo ({cons})</th></tr></thead>
+          <thead><tr><th>Persona</th><th style={{ textAlign: 'right' }}>Le corresponde ({cons})</th></tr></thead>
           <tbody>
-            {people.length === 0 && <tr><td colSpan={4} className="fp-muted">Sin datos.</td></tr>}
-            {people.map((p, i) => {
-              const isOpen = openPerson === p.person;
-              const hasPair = p.pair && (p.pair.owes.length || p.pair.owed.length);
-              return (
-                <React.Fragment key={i}>
-                  <tr>
-                    <td style={{ cursor: hasPair ? 'pointer' : 'default' }} onClick={() => hasPair && setOpenPerson(isOpen ? null : p.person)}>{hasPair ? (isOpen ? '▾ ' : '▸ ') : ''}{p.person}</td>
-                    <td style={{ textAlign: 'right' }}>{fmt(disp(p.corresponde))}</td>
-                    <td style={{ textAlign: 'right' }}>{fmt(disp(p.entro))}</td>
-                    <td style={{ textAlign: 'right' }}>{Math.abs(p.net) < 1 ? <span className="fp-muted">a mano</span> : p.net > 0
-                      ? <span style={{ color: '#15803d', fontWeight: 700 }}>le deben {fmt(disp(p.net))}</span>
-                      : <span style={{ color: '#b91c1c', fontWeight: 700 }}>debe {fmt(disp(-p.net))}</span>}</td>
-                  </tr>
-                  {isOpen && hasPair && (
-                    <tr className="fp-src-row"><td colSpan={4}>
-                      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-                        <div style={{ minWidth: 200 }}><div className="fp-sub" style={{ fontWeight: 700, color: '#b91c1c' }}>Le debés a</div>{p.pair.owes.length ? p.pair.owes.map((x, xi) => <div key={xi} style={{ display: 'flex', justifyContent: 'space-between' }}><span>{x.party}</span><strong>{cons} {fmt(disp(x.amount))}</strong></div>) : <div className="fp-muted">—</div>}</div>
-                        <div style={{ minWidth: 200 }}><div className="fp-sub" style={{ fontWeight: 700, color: '#15803d' }}>Te deben</div>{p.pair.owed.length ? p.pair.owed.map((x, xi) => <div key={xi} style={{ display: 'flex', justifyContent: 'space-between' }}><span>{x.party}</span><strong>{cons} {fmt(disp(x.amount))}</strong></div>) : <div className="fp-muted">—</div>}</div>
-                      </div>
-                    </td></tr>
-                  )}
-                </React.Fragment>
-              );
-            })}
+            {people.length === 0 && <tr><td colSpan={2} className="fp-muted">Sin datos.</td></tr>}
+            {people.map((p, i) => (
+              <tr key={i}><td>{p.person}</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(disp(p.corresponde))}</td></tr>
+            ))}
+            {people.length > 0 && <tr className="fp-pnl-strong"><td>Total</td><td style={{ textAlign: 'right' }}>{cons} {fmt(disp(total))}</td></tr>}
           </tbody>
         </table>
-        <div style={{ marginTop: 12 }}>
-          <div className="fp-sub" style={{ fontWeight: 700, marginBottom: 6 }}>Cómo saldar todo (mínimo de transferencias)</div>
-          {settle.length === 0 ? <div className="fp-muted">Todo saldado.</div> : settle.map((s, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
-              <strong>{nodeName(s.from, s.fromType)}</strong>{s.fromType === 'cliente' && <span className="fp-tag">cliente</span>}
-              <span className="fp-muted">→</span><strong>{nodeName(s.to, s.toType)}</strong>{s.toType === 'cliente' && <span className="fp-tag">cliente</span>}
-              <span style={{ marginLeft: 'auto', fontWeight: 700 }}>{cons} {fmt(disp(s.amount))}</span>
-            </div>
-          ))}
+        <p className="fp-muted" style={{ marginTop: 8 }}>Es lo que le corresponde a cada persona por su reparto (honorarios + variables + fijos), acumulado desde el inicio. La <strong>caja</strong> de la agencia está en su propia pestaña.</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Caja: cuánta hay acumulada, quién la tiene, y de dónde viene (qué deals la generan) ──
+function CajaTab({ clients }) {
+  const [st, setSt] = useState(null);      // settlement acumulado (neta + quién la tiene)
+  const [caja, setCaja] = useState(null);  // de dónde viene + evolución
+  const [cons, setCons] = useState('USD');
+  const cname = (slug) => (clients || []).find((c) => c.slug === slug)?.name || slug;
+  useEffect(() => {
+    apiClient.get('/admin/finance/settlement?month=all').then((r) => setSt(r.data)).catch(() => setSt({ caja: { held: [], owes: [], neta: 0 } }));
+    apiClient.get('/admin/finance/caja').then((r) => setCaja(r.data)).catch(() => setCaja({ sources: [], monthly: [], total: 0 }));
+  }, []);
+  if (!st || !caja) return <div className="fp-muted">Cargando…</div>;
+  const fx = st.fx || caja.fx || 0; const eur = st.eur || caja.eur || 0;
+  const disp = (usd) => (cons === 'ARS' ? usd * fx : cons === 'EUR' ? (eur ? usd / eur : 0) : usd);
+  const neta = st.caja?.neta || 0;
+  const sources = caja.sources || [];
+  const fmtMonthYM = (ym) => { if (!ym) return ''; const [y, m] = ym.split('-'); return `${['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][+m - 1]} ${y}`; };
+
+  return (
+    <div>
+      {/* Cuánta hay + quién la tiene */}
+      <div className="fp-card">
+        <div className="fp-card-head"><strong>Caja de la agencia</strong>
+          <span className="fp-inline" style={{ marginLeft: 'auto' }}>Ver en
+            {['USD', 'ARS', 'EUR'].map((c) => <button key={c} className={`fp-btn ${cons === c ? 'fp-btn--primary' : ''}`} onClick={() => setCons(c)}>{c}</button>)}
+          </span>
+        </div>
+        <p className="fp-muted" style={{ marginTop: 0 }}>La caja es la <strong>ganancia de la agencia</strong>: la generan los clientes post-agencia (el fee después de sueldo de socios y OPEX) y se descarga con los costos de agencia.</p>
+        <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', margin: '8px 0 4px' }}>
+          <div><div className="fp-muted">Generada (acumulada)</div><strong style={{ fontSize: 24 }}>{cons} {fmt(disp(caja.total || 0))}</strong></div>
+          <div><div className="fp-muted">Disponible (neta, después de costos)</div><strong style={{ fontSize: 24 }}>{cons} {fmt(disp(neta))}</strong></div>
         </div>
       </div>
 
-      {/* Caja acumulada */}
+      {/* De dónde viene */}
       <div className="fp-card">
-        <div className="fp-card-head"><strong>Caja de la agencia (acumulada)</strong></div>
-        <p className="fp-muted" style={{ marginTop: 0 }}>La caja es la <strong>ganancia de la agencia</strong>: la generan los clientes post-agencia, la tienen físicamente los que cobraron, y se descarga con los costos de agencia.</p>
-        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 10 }}>
-          <div><div className="fp-muted">Generada (acumulada)</div><strong style={{ fontSize: 18 }}>{cons} {fmt(disp(cajaGen))}</strong></div>
-          <div><div className="fp-muted">En manos de todos (hoy)</div><strong style={{ fontSize: 18 }}>{cons} {fmt(disp(st.caja?.neta || 0))}</strong></div>
-        </div>
-        <div className="fp-sub" style={{ fontWeight: 700, marginBottom: 4 }}>La tiene</div>
-        {cajaHeld.length === 0 ? <div className="fp-muted">Nadie tiene plata de la caja.</div> : cajaHeld.map((h, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}><span>{h.person}</span><strong>{cons} {fmt(disp(h.amount))}</strong></div>
-        ))}
-        {cajaOwes.map((o, i) => (
-          <div key={'o' + i} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: '#b91c1c' }}><span>La caja le debe a {o.person} (adelantó un costo)</span><strong>{cons} {fmt(disp(o.amount))}</strong></div>
-        ))}
+        <div className="fp-card-head"><strong>De dónde viene</strong> <span className="fp-muted">· qué deals generan caja (acumulado)</span></div>
+        {sources.length === 0 ? <div className="fp-muted">Ningún deal genera caja todavía (todo pre-agencia o el fee se reparte entero).</div> : (
+          <table className="fp-table">
+            <thead><tr><th>Cliente</th><th>Servicio</th><th style={{ textAlign: 'right' }}>A caja ({cons})</th></tr></thead>
+            <tbody>
+              {sources.map((s, i) => (
+                <tr key={i}><td>{cname(s.client)}</td><td>{servLabel(s.servicio)}</td><td style={{ textAlign: 'right' }}>{fmt(disp(s.usd))}</td></tr>
+              ))}
+              <tr className="fp-pnl-strong"><td>Total generado</td><td></td><td style={{ textAlign: 'right' }}>{cons} {fmt(disp(caja.total || 0))}</td></tr>
+            </tbody>
+          </table>
+        )}
+        <p className="fp-muted" style={{ marginTop: 8 }}>Solo los deals <strong>post-agencia</strong> dejan caja (el fee después de sueldo de socios y OPEX). Los <strong>pre-agencia</strong> se reparten enteros y no dejan nada.</p>
       </div>
 
       {/* Evolución mes a mes */}
-      {caja?.months?.length > 0 && (
+      {caja.monthly?.length > 0 && (
         <div className="fp-card">
-          <div className="fp-card-head"><strong>Evolución de la caja (mes a mes)</strong></div>
+          <div className="fp-card-head"><strong>Evolución (mes a mes)</strong></div>
           <table className="fp-table">
             <thead><tr><th>Mes</th><th style={{ textAlign: 'right' }}>Generada</th><th style={{ textAlign: 'right' }}>Acumulada</th></tr></thead>
             <tbody>
-              {caja.months.map((m, i) => (
+              {caja.monthly.map((m, i) => (
                 <tr key={i}><td>{fmtMonthYM(m.month)}</td><td style={{ textAlign: 'right' }}>{cons} {fmt(disp(m.generada))}</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{cons} {fmt(disp(m.acumulada))}</td></tr>
               ))}
             </tbody>
@@ -1168,7 +1164,7 @@ function AcumuladoTab({ clients }) {
 }
 
 export default function FinancePanel() {
-  const [tab, setTab] = useState('movimientos');
+  const [tab, setTab] = useState('caja');
   const [clients, setClients] = useState([]);
   const [people, setPeople] = useState([]);
   const [month, setMonth] = useState(currentYM());
@@ -1182,20 +1178,18 @@ export default function FinancePanel() {
     <div className="ad-section">
       <h3 className="ad-section-title">Finanzas de la agencia</h3>
       <div className="fp-tabs">
-        <button className={`fp-tab ${tab === 'movimientos' ? 'on' : ''}`} onClick={() => setTab('movimientos')}>Movimientos</button>
+        <button className={`fp-tab ${tab === 'caja' ? 'on' : ''}`} onClick={() => setTab('caja')}>Caja</button>
         <button className={`fp-tab ${tab === 'acumulado' ? 'on' : ''}`} onClick={() => setTab('acumulado')}>Acumulado</button>
         <button className={`fp-tab ${tab === 'reparto' ? 'on' : ''}`} onClick={() => setTab('reparto')}>Reparto del mes</button>
         <button className={`fp-tab ${tab === 'costos' ? 'on' : ''}`} onClick={() => setTab('costos')}>Costos</button>
-        <button className={`fp-tab ${tab === 'pnl' ? 'on' : ''}`} onClick={() => setTab('pnl')}>P&amp;L</button>
         <label className="fp-inline" style={{ marginLeft: 'auto' }}>Mes
           <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
         </label>
       </div>
+      {tab === 'caja' && <CajaTab clients={clients} />}
       {tab === 'acumulado' && <AcumuladoTab clients={clients} />}
       {tab === 'costos' && <CostosTab people={people} clients={clients} month={month} />}
       {tab === 'reparto' && <RepartoTab month={month} clients={clients} />}
-      {tab === 'movimientos' && <MovimientosTab people={people} clients={clients} month={month} />}
-      {tab === 'pnl' && <PnlTab month={month} people={people} clients={clients} />}
     </div>
   );
 }
