@@ -127,7 +127,7 @@ export function ConfigTab({ slug, clientName, people, month, setMonth, onBack })
   }, [month]);
 
   const saveFx = () => apiClient.put('/admin/finance/fx', { month, arsPorUsd: parseFloat(fx) || 0 })
-    .then(() => { setMsg('✓ Tipo de cambio guardado'); setTimeout(() => setMsg(''), 2000); }).catch(() => setMsg('Error'));
+    .then(() => { setMsg({ i: null, text: '✓ Tipo de cambio guardado' }); setTimeout(() => setMsg(null), 2000); }).catch(() => setMsg({ i: null, text: 'Error' }));
 
   const setLine = (i, patch) => setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
   const setVar = (i, patch) => setLine(i, { variable: { ...lines[i].variable, ...patch } });
@@ -172,7 +172,7 @@ export function ConfigTab({ slug, clientName, people, month, setMonth, onBack })
   const saveLine = (i) => {
     const l = lines[i];
     const err = validateLine(l);
-    if (err) { setMsg(err); return; }
+    if (err) { setMsg({ i, text: err }); return; }
     // Post: mantenemos las columnas legacy (opex_operador/modo/pct/monto) en sync con el
     // primer operador, así no quedan desactualizadas para quien las lea sin la lista.
     const payload = { client_slug: slug, ...l, effective_month: month };
@@ -188,8 +188,8 @@ export function ConfigTab({ slug, clientName, people, month, setMonth, onBack })
     }
     // effective_month ata la versión al 1° del mes elegido → cada mes conserva su fee.
     apiClient.post('/admin/finance/services', payload)
-      .then(() => { setMsg(`✓ ${servLabel(l.servicio)} guardado para ${month}`); setTimeout(() => setMsg(''), 2500); loadLines(slug); })
-      .catch((e) => setMsg(e?.response?.data?.message || 'Error al guardar'));
+      .then(() => { setMsg({ i, text: `✓ ${servLabel(l.servicio)} guardado para ${month}` }); setTimeout(() => setMsg(null), 2500); loadLines(slug); })
+      .catch((e) => setMsg({ i, text: e?.response?.data?.message || 'Error al guardar' }));
   };
   const delLine = (l) => {
     if (!l.id) { setLines((ls) => ls.filter((x) => x !== l)); return; }
@@ -306,7 +306,7 @@ export function ConfigTab({ slug, clientName, people, month, setMonth, onBack })
         </label>
       </div>
       <p className="fp-muted" style={{ margin: '0 0 10px' }}>Guardar registra el fee desde el 1° de <strong>{month}</strong> (los meses anteriores no cambian).</p>
-      {msg && <div className="fp-msg">{msg}</div>}
+      {msg && msg.i == null && <div className="fp-msg">{msg.text}</div>}
 
       {/* Cobro + financiado: condición de pago del cliente (a nivel cliente, no por servicio) */}
       <div className="fp-grid" style={{ marginBottom: 12 }}>
@@ -328,7 +328,7 @@ export function ConfigTab({ slug, clientName, people, month, setMonth, onBack })
             <button className="fp-btn fp-btn--danger" style={{ marginLeft: 'auto' }} onClick={() => delLine(l)}>Quitar</button>
           </div>
           {renderEditor(l, i)}
-          <div className="fp-card-foot"><button className="fp-btn fp-btn--primary" onClick={() => saveLine(i)}>Guardar {servLabel(l.servicio)}</button></div>
+          <div className="fp-card-foot">{msg && msg.i === i && <span className="fp-msg" style={{ marginRight: 'auto' }}>{msg.text}</span>}<button className="fp-btn fp-btn--primary" onClick={() => saveLine(i)}>Guardar {servLabel(l.servicio)}</button></div>
         </div>
       ))}
 
@@ -340,14 +340,14 @@ export function ConfigTab({ slug, clientName, people, month, setMonth, onBack })
             <div className="fp-sub" style={{ fontWeight: 700 }}>Implementación (one-shot)</div>
             {autoImpl ? (<>
               {renderEditor(autoImpl.l, autoImpl.i)}
-              <div className="fp-card-foot"><button className="fp-btn" onClick={() => delLine(autoImpl.l)}>Quitar</button> <button className="fp-btn fp-btn--primary" onClick={() => saveLine(autoImpl.i)}>Guardar implementación</button></div>
+              <div className="fp-card-foot">{msg && msg.i === autoImpl.i && <span className="fp-msg" style={{ marginRight: 'auto' }}>{msg.text}</span>}<button className="fp-btn" onClick={() => delLine(autoImpl.l)}>Quitar</button> <button className="fp-btn fp-btn--primary" onClick={() => saveLine(autoImpl.i)}>Guardar implementación</button></div>
             </>) : <button className="fp-btn" onClick={() => addAutoPart('automatizacion_impl')}>+ Configurar implementación</button>}
           </div>
           <div style={{ borderTop: '1px solid var(--color-gray-light,#eee)', paddingTop: 10, marginTop: 10 }}>
             <div className="fp-sub" style={{ fontWeight: 700 }}>Mantenimiento (mensual)</div>
             {autoMant ? (<>
               {renderEditor(autoMant.l, autoMant.i)}
-              <div className="fp-card-foot"><button className="fp-btn" onClick={() => delLine(autoMant.l)}>Quitar</button> <button className="fp-btn fp-btn--primary" onClick={() => saveLine(autoMant.i)}>Guardar mantenimiento</button></div>
+              <div className="fp-card-foot">{msg && msg.i === autoMant.i && <span className="fp-msg" style={{ marginRight: 'auto' }}>{msg.text}</span>}<button className="fp-btn" onClick={() => delLine(autoMant.l)}>Quitar</button> <button className="fp-btn fp-btn--primary" onClick={() => saveLine(autoMant.i)}>Guardar mantenimiento</button></div>
             </>) : <button className="fp-btn" onClick={() => addAutoPart('automatizacion')}>+ Configurar mantenimiento</button>}
           </div>
         </div>
