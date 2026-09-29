@@ -1105,18 +1105,15 @@ function AcumuladoTab() {
 
 // ─── Caja: cuánta hay acumulada, quién la tiene, y de dónde viene (qué deals la generan) ──
 function CajaTab({ clients }) {
-  const [st, setSt] = useState(null);      // settlement acumulado (neta + quién la tiene)
-  const [caja, setCaja] = useState(null);  // de dónde viene + evolución
+  const [caja, setCaja] = useState(null);  // generada + de dónde viene + evolución
   const [cons, setCons] = useState('USD');
   const cname = (slug) => (clients || []).find((c) => c.slug === slug)?.name || slug;
   useEffect(() => {
-    apiClient.get('/admin/finance/settlement?month=all').then((r) => setSt(r.data)).catch(() => setSt({ caja: { held: [], owes: [], neta: 0 } }));
     apiClient.get('/admin/finance/caja').then((r) => setCaja(r.data)).catch(() => setCaja({ sources: [], monthly: [], total: 0 }));
   }, []);
-  if (!st || !caja) return <div className="fp-muted">Cargando…</div>;
-  const fx = st.fx || caja.fx || 0; const eur = st.eur || caja.eur || 0;
+  if (!caja) return <div className="fp-muted">Cargando…</div>;
+  const fx = caja.fx || 0; const eur = caja.eur || 0;
   const disp = (usd) => (cons === 'ARS' ? usd * fx : cons === 'EUR' ? (eur ? usd / eur : 0) : usd);
-  const neta = st.caja?.neta || 0;
   const sources = caja.sources || [];
   const fmtMonthYM = (ym) => { if (!ym) return ''; const [y, m] = ym.split('-'); return `${['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][+m - 1]} ${y}`; };
 
@@ -1129,10 +1126,9 @@ function CajaTab({ clients }) {
             {['USD', 'ARS', 'EUR'].map((c) => <button key={c} className={`fp-btn ${cons === c ? 'fp-btn--primary' : ''}`} onClick={() => setCons(c)}>{c}</button>)}
           </span>
         </div>
-        <p className="fp-muted" style={{ marginTop: 0 }}>La caja es la <strong>ganancia de la agencia</strong>: la generan los clientes post-agencia (el fee después de sueldo de socios y OPEX) y se descarga con los costos de agencia.</p>
-        <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', margin: '8px 0 4px' }}>
-          <div><div className="fp-muted">Generada (acumulada)</div><strong style={{ fontSize: 24 }}>{cons} {fmt(disp(caja.total || 0))}</strong></div>
-          <div><div className="fp-muted">Disponible (neta, después de costos)</div><strong style={{ fontSize: 24 }}>{cons} {fmt(disp(neta))}</strong></div>
+        <p className="fp-muted" style={{ marginTop: 0 }}>La caja es la <strong>ganancia de la agencia</strong>: la generan los clientes post-agencia (el fee después de sueldo de socios y OPEX). Los costos de agencia se ven en la pestaña <strong>Costos</strong>.</p>
+        <div style={{ margin: '8px 0 4px' }}>
+          <div className="fp-muted">Generada (acumulada, desde el inicio)</div><strong style={{ fontSize: 28 }}>{cons} {fmt(disp(caja.total || 0))}</strong>
         </div>
       </div>
 
