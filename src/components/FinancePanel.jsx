@@ -1107,6 +1107,7 @@ function AcumuladoTab() {
 function CajaTab({ clients }) {
   const [caja, setCaja] = useState(null);  // generada + de dónde viene + evolución
   const [cons, setCons] = useState('USD');
+  const [openMonth, setOpenMonth] = useState(null); // mes expandido en Evolución
   const cname = (slug) => (clients || []).find((c) => c.slug === slug)?.name || slug;
   useEffect(() => {
     apiClient.get('/admin/finance/caja').then((r) => setCaja(r.data)).catch(() => setCaja({ sources: [], monthly: [], total: 0 }));
@@ -1156,9 +1157,31 @@ function CajaTab({ clients }) {
           <table className="fp-table">
             <thead><tr><th>Mes</th><th style={{ textAlign: 'right' }}>Generada</th><th style={{ textAlign: 'right' }}>Acumulada</th></tr></thead>
             <tbody>
-              {caja.monthly.map((m, i) => (
-                <tr key={i}><td>{fmtMonthYM(m.month)}</td><td style={{ textAlign: 'right' }}>{cons} {fmt(disp(m.generada))}</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{cons} {fmt(disp(m.acumulada))}</td></tr>
-              ))}
+              {caja.monthly.map((m, i) => {
+                const src = m.sources || [];
+                const isOpen = openMonth === m.month;
+                return (
+                  <React.Fragment key={i}>
+                    <tr onClick={() => src.length && setOpenMonth(isOpen ? null : m.month)} style={{ cursor: src.length ? 'pointer' : 'default' }} title={src.length ? 'Ver desglose del mes' : ''}>
+                      <td>{src.length ? (isOpen ? '▾ ' : '▸ ') : ''}{fmtMonthYM(m.month)}</td>
+                      <td style={{ textAlign: 'right' }}>{cons} {fmt(disp(m.generada))}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>{cons} {fmt(disp(m.acumulada))}</td>
+                    </tr>
+                    {isOpen && (
+                      <tr className="fp-src-row"><td colSpan={3}>
+                        <table className="fp-subtable">
+                          <thead><tr><th>Cliente</th><th>Servicio</th><th style={{ textAlign: 'right' }}>A caja ({cons})</th></tr></thead>
+                          <tbody>
+                            {src.map((s, si) => (
+                              <tr key={si}><td>{cname(s.client)}</td><td>{servLabel(s.servicio)}</td><td style={{ textAlign: 'right' }}>{fmt(disp(s.usd))}</td></tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </td></tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
