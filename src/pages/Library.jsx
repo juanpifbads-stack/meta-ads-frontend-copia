@@ -60,73 +60,78 @@ const FIELDS = {
 const LIST_KEY = { formats: 'formats', competitors: 'competitors', ideas: 'ideas' };
 
 const label = (s) => (s ? String(s).replace(/_/g, ' ') : '');
-function LinkOut({ href }) {
-  if (!href) return null;
-  return <a className="lib-link" href={href} target="_blank" rel="noopener noreferrer">Link ↗</a>;
-}
-
-function CardActions({ href, onEdit }) {
-  return (
-    <div className="lib-card-actions">
-      <LinkOut href={href} />
-      <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onEdit}>Editar</button>
-    </div>
-  );
-}
-
 function Chips({ items }) {
   const list = items.filter(Boolean);
   if (!list.length) return null;
   return <div className="lib-chips">{list.map((c) => <span key={c} className="lib-chip">{c}</span>)}</div>;
 }
 
-function FormatCard({ f, onEdit }) {
+// En referencias (sin marca) ganador=false es el default, no un resultado: el badge va solo en anuncios de una marca.
+const winBadge = (f) => f.client_slug && (f.ganador
+  ? <span className="lib-win">ganador</span>
+  : <span className="lib-win lib-lose">perdedor</span>);
+
+// Qué muestra cada pestaña en la tarjeta chica: título (abre el detalle), una línea y el link.
+const CARD = {
+  formats: (f) => ({ title: f.nombre, desc: f.concepto || f.formato, link: f.link, linkLabel: 'Link al video', badge: winBadge(f) }),
+  competitors: (c) => ({ title: c.marca, desc: c.que_tomar || c.angulo, link: c.link, linkLabel: 'Ver anuncios' }),
+  ideas: (i) => ({ title: i.idea, desc: [i.client_slug, label(i.estado)].filter(Boolean).join(' · ') }),
+};
+
+function SmallCard({ tab, item, onOpen }) {
+  const c = CARD[tab](item);
   return (
     <div className="lib-card">
-      <div className="lib-card-top">
-        <div className="lib-card-title">
-          {f.nombre}
-          {/* En referencias (sin marca) ganador=false es el default, no un resultado: el badge va solo en anuncios de una marca. */}
-          {f.client_slug && (f.ganador
-            ? <span className="lib-win">ganador</span>
-            : <span className="lib-win lib-lose">perdedor</span>)}
+      <button className="lib-card-title-btn" onClick={onOpen}>{c.title}{c.badge}</button>
+      {c.desc && <div className="lib-card-desc">{c.desc}</div>}
+      {c.link && <a className="lib-link-btn" href={c.link} target="_blank" rel="noopener noreferrer">{c.linkLabel} ↗</a>}
+    </div>
+  );
+}
+
+// Todo el detalle de un ítem, en un pop-up.
+function DetailBody({ tab, x }) {
+  if (tab === 'formats') return <>
+    <Chips items={[x.client_slug || 'referencia', x.industria, x.formato, x.etapa_embudo && x.etapa_embudo.toUpperCase(),
+      x.requiere_cara === true ? 'con cara' : x.requiere_cara === false ? 'sin cara' : null,
+      x.nivel_produccion && `producción ${x.nivel_produccion}`, label(x.nivel_consciencia)]} />
+    {x.hook && <div className="lib-text"><b>Hook:</b> {x.hook}</div>}
+    {x.persona && <div className="lib-text"><b>Persona:</b> {x.persona}</div>}
+    {(x.concepto || x.angulo) && <div className="lib-text"><b>Concepto:</b> {[x.concepto, x.angulo].filter(Boolean).join(' · ')}</div>}
+    {x.notas && <div className="lib-text lib-muted">{x.notas}</div>}
+  </>;
+  if (tab === 'competitors') return <>
+    <Chips items={[x.industria, x.formato, ...(x.marcas_aplica || []).map((m) => `→ ${m}`)]} />
+    {x.que_tomar && <div className="lib-text"><b>Qué tomar:</b> {x.que_tomar}</div>}
+    {x.angulo && <div className="lib-text"><b>Ángulo:</b> {x.angulo}</div>}
+    {x.notas && <div className="lib-text lib-muted">{x.notas}</div>}
+  </>;
+  return <>
+    <Chips items={[x.client_slug, label(x.estado), x.formato, x.persona, x.publico_nuevo ? 'público nuevo' : null, x.origen]} />
+    {x.concepto && <div className="lib-text"><b>Concepto:</b> {x.concepto}</div>}
+  </>;
+}
+
+function DetailModal({ tab, item, onClose, onEdit }) {
+  const c = CARD[tab](item);
+  useEffect(() => {
+    const k = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, [onClose]);
+  return (
+    <div className="lib-modal-bg" onClick={onClose}>
+      <div className="lib-modal lib-detail" onClick={(e) => e.stopPropagation()}>
+        <div className="lib-detail-top">
+          <div className="lib-modal-title">{c.title}{c.badge}</div>
+          <button className="lib-close" onClick={onClose} aria-label="Cerrar">×</button>
         </div>
-        <CardActions href={f.link} onEdit={onEdit} />
+        <div className="lib-detail-body"><DetailBody tab={tab} x={item} /></div>
+        <div className="lib-modal-actions">
+          {c.link && <a className="lib-link-btn" href={c.link} target="_blank" rel="noopener noreferrer">{c.linkLabel} ↗</a>}
+          <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onEdit}>Editar</button>
+        </div>
       </div>
-      <Chips items={[f.client_slug || 'referencia', f.industria, f.formato, f.etapa_embudo && f.etapa_embudo.toUpperCase(),
-        f.requiere_cara === true ? 'con cara' : f.requiere_cara === false ? 'sin cara' : null,
-        f.nivel_produccion && `producción ${f.nivel_produccion}`, label(f.nivel_consciencia)]} />
-      {f.hook && <div className="lib-text"><b>Hook:</b> {f.hook}</div>}
-      {(f.concepto || f.angulo) && <div className="lib-text">{[f.concepto, f.angulo].filter(Boolean).join(' · ')}</div>}
-      {f.notas && <div className="lib-text lib-muted">{f.notas}</div>}
-    </div>
-  );
-}
-
-function CompetitorCard({ c, onEdit }) {
-  return (
-    <div className="lib-card">
-      <div className="lib-card-top">
-        <div className="lib-card-title">{c.marca}</div>
-        <CardActions href={c.link} onEdit={onEdit} />
-      </div>
-      <Chips items={[c.industria, c.formato, ...(c.marcas_aplica || []).map((m) => `→ ${m}`)]} />
-      {c.que_tomar && <div className="lib-text"><b>Qué tomar:</b> {c.que_tomar}</div>}
-      {c.angulo && <div className="lib-text">{c.angulo}</div>}
-      {c.notas && <div className="lib-text lib-muted">{c.notas}</div>}
-    </div>
-  );
-}
-
-function IdeaCard({ i, onEdit }) {
-  return (
-    <div className="lib-card">
-      <div className="lib-card-top">
-        <div className="lib-card-title">{i.client_slug}</div>
-        <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onEdit}>Editar</button>
-      </div>
-      <div className="lib-text">{i.idea}</div>
-      <Chips items={[label(i.estado), i.formato, i.persona, i.publico_nuevo ? 'público nuevo' : null, i.origen]} />
     </div>
   );
 }
@@ -211,6 +216,7 @@ export default function Library({ onBack }) {
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [editing, setEditing] = useState(null); // null | {} (nuevo) | item
+  const [viewing, setViewing] = useState(null); // ítem abierto en el pop-up de detalle
   const setF = (k, v) => setFilters((f) => ({ ...f, [k]: v }));
 
   useEffect(() => {
@@ -299,12 +305,15 @@ export default function Library({ onBack }) {
           <div className="lib-count">{items.length} {items.length === 1 ? 'resultado' : 'resultados'}</div>
           <div className="lib-grid">
             {items.map((x) => (
-              tab === 'formats' ? <FormatCard key={x.id} f={x} onEdit={() => setEditing(x)} />
-                : tab === 'competitors' ? <CompetitorCard key={x.id} c={x} onEdit={() => setEditing(x)} />
-                  : <IdeaCard key={x.id} i={x} onEdit={() => setEditing(x)} />
+              <SmallCard key={x.id} tab={tab} item={x} onOpen={() => setViewing(x)} />
             ))}
           </div>
         </>
+      )}
+
+      {viewing && (
+        <DetailModal tab={tab} item={viewing} onClose={() => setViewing(null)}
+          onEdit={() => { setEditing(viewing); setViewing(null); }} />
       )}
 
       {editing && (
