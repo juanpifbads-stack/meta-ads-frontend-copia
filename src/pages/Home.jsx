@@ -156,7 +156,7 @@ function ClientCard({ c, onOpen }) {
   );
 }
 
-export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin }) {
+export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin, onLibrary }) {
   const { logout, user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.legacy;
   const [clients, setClients] = useState([]);
@@ -219,6 +219,7 @@ export default function Home({ onOpenClient, onOptimize, onNewClient, onAdmin })
             <div className="ctrl-brand ctrl-brand--lg">alquimia.</div>
           </div>
           <div className="ctrl-header-actions">
+            <button className="ctrl-btn ctrl-btn--ghost" onClick={onLibrary}>Biblioteca creativa</button>
             {isAdmin && <button className="ctrl-btn ctrl-btn--ghost" onClick={onAdmin}>⚙ Administración</button>}
             <button className="ctrl-btn ctrl-btn--ghost" onClick={onNewClient}>+ Nuevo cliente</button>
             <button className="ctrl-btn ctrl-btn--ghost" onClick={logout}>Cerrar sesión</button>
