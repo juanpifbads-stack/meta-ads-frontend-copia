@@ -45,3 +45,7 @@
 .lib-detail .lib-modal-actions { justify-content: space-between; align-items: center; margin-top: 6px; }
 .lib-detail .lib-modal-actions button { margin-left: auto; }
 .lib-grid { align-items: start; }
+.lib-detail-row { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--color-gray-light); }
+.lib-format-line { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; }
+.lib-format-line .lib-link-btn { margin-top: 0; flex-shrink: 0; }
+.lib-mini { align-self: flex-start; background: none; border: none; padding: 0; font-size: 12px; color: var(--color-brand-blue); cursor: pointer; }

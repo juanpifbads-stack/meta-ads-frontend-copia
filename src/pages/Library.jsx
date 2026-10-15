@@ -13,6 +13,8 @@ const TABS = [
 ];
 const ETAPAS = ['tofu', 'mofu', 'bofu'];
 const PRODUCCION = ['bajo', 'medio', 'alto'];
+// Industrias fijas por ahora (se filtra por coincidencia exacta).
+const INDUSTRIAS = ['indumentaria', 'indumentaria Avellaneda', 'joyas', 'beauty'];
 const CONSCIENCIA = ['inconsciente', 'problema', 'solucion', 'producto', 'decision'];
 const ESTADOS = ['nueva', 'aprobada', 'en_produccion', 'publicada', 'descartada'];
 
@@ -21,7 +23,7 @@ const FIELDS = {
   formats: [
     ['nombre', 'Nombre *', 'text'],
     ['link', 'Link (video / anuncio)', 'url'],
-    ['industria', 'Industria', 'text'],
+    ['industria', 'Industria', 'select', INDUSTRIAS],
     ['client_slug', 'Marca (vacío = referencia de industria)', 'client'],
     ['formato', 'Formato (UGC, fotopiso, hablado…)', 'text'],
     ['etapa_embudo', 'Etapa', 'select', ETAPAS],
@@ -37,7 +39,7 @@ const FIELDS = {
   ],
   competitors: [
     ['marca', 'Marca *', 'text'],
-    ['industria', 'Industria *', 'text'],
+    ['industria', 'Industria *', 'select', INDUSTRIAS],
     ['link', 'Link (IG, Ads Library, web)', 'url'],
     ['que_tomar', 'Qué tomar', 'textarea'],
     ['marcas_aplica', 'Aplica a (slugs separados por coma)', 'text'],
@@ -71,10 +73,38 @@ const winBadge = (f) => f.client_slug && (f.ganador
   ? <span className="lib-win">ganador</span>
   : <span className="lib-win lib-lose">perdedor</span>);
 
+// Marca normalizada (sin tildes, mayúsculas ni espacios de más): "Notre Succès" = "notre succes".
+const normMarca = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+// Una tarjeta por marca referencia, aunque haya varias filas cargadas con la misma marca.
+function groupCompetitors(rows, clientName) {
+  const groups = new Map();
+  for (const r of rows) {
+    const k = normMarca(r.marca);
+    if (!groups.has(k)) groups.set(k, { id: k, marca: r.marca, rows: [] });
+    groups.get(k).rows.push(r);
+  }
+  return [...groups.values()].map((g) => {
+    const aplica = [...new Set(g.rows.flatMap((r) => r.marcas_aplica || []))];
+    return {
+      ...g,
+      aplica,
+      refDe: aplica.length ? `Referencia de: ${aplica.map(clientName).join(', ')}` : 'Referencia de industria',
+      link: g.rows.find((r) => r.link)?.link,
+    };
+  });
+}
+
+// Formatos cargados de una marca referencia: los que la nombran en el nombre o las notas.
+const formatsOf = (marca, formats) => {
+  const m = normMarca(marca);
+  return m ? formats.filter((f) => normMarca(`${f.nombre} ${f.notas}`).includes(m)) : [];
+};
+
 // Qué muestra cada pestaña en la tarjeta chica: título (abre el detalle), una línea y el link.
 const CARD = {
   formats: (f) => ({ title: f.nombre, desc: f.concepto || f.formato, link: f.link, linkLabel: 'Link al video', badge: winBadge(f) }),
-  competitors: (c) => ({ title: c.marca, desc: c.que_tomar || c.angulo, link: c.link, linkLabel: 'Ver anuncios' }),
+  competitors: (g) => ({ title: g.marca, desc: g.refDe, link: g.link, linkLabel: 'Ver anuncios' }),
   ideas: (i) => ({ title: i.idea, desc: [i.client_slug, label(i.estado)].filter(Boolean).join(' · ') }),
 };
 
@@ -90,7 +120,7 @@ function SmallCard({ tab, item, onOpen }) {
 }
 
 // Todo el detalle de un ítem, en un pop-up.
-function DetailBody({ tab, x }) {
+function DetailBody({ tab, x, formats = [], onEditRow }) {
   if (tab === 'formats') return <>
     <Chips items={[x.client_slug || 'referencia', x.industria, x.formato, x.etapa_embudo && x.etapa_embudo.toUpperCase(),
       x.requiere_cara === true ? 'con cara' : x.requiere_cara === false ? 'sin cara' : null,
@@ -100,19 +130,40 @@ function DetailBody({ tab, x }) {
     {(x.concepto || x.angulo) && <div className="lib-text"><b>Concepto:</b> {[x.concepto, x.angulo].filter(Boolean).join(' · ')}</div>}
     {x.notas && <div className="lib-text lib-muted">{x.notas}</div>}
   </>;
-  if (tab === 'competitors') return <>
-    <Chips items={[x.industria, x.formato, ...(x.marcas_aplica || []).map((m) => `→ ${m}`)]} />
-    {x.que_tomar && <div className="lib-text"><b>Qué tomar:</b> {x.que_tomar}</div>}
-    {x.angulo && <div className="lib-text"><b>Ángulo:</b> {x.angulo}</div>}
-    {x.notas && <div className="lib-text lib-muted">{x.notas}</div>}
-  </>;
+  if (tab === 'competitors') {
+    const fs = formatsOf(x.marca, formats);
+    return <>
+      <div className="lib-text lib-muted">{x.refDe}</div>
+      {x.rows.map((r) => (
+        <div key={r.id} className="lib-detail-row">
+          <Chips items={[r.industria, r.formato, r.angulo]} />
+          {r.que_tomar && <div className="lib-text"><b>Qué tomar:</b> {r.que_tomar}</div>}
+          {r.notas && <div className="lib-text lib-muted">{r.notas}</div>}
+          {x.rows.length > 1 && <button className="lib-mini" onClick={() => onEditRow(r)}>Editar esta ficha</button>}
+        </div>
+      ))}
+      {!!fs.length && (
+        <div className="lib-detail-row">
+          <div className="lib-text"><b>Formatos de esta marca</b></div>
+          {fs.map((f) => (
+            <div key={f.id} className="lib-format-line">
+              <span>{f.nombre}{f.etapa_embudo ? ` · ${f.etapa_embudo.toUpperCase()}` : ''}</span>
+              {f.link && <a className="lib-link-btn" href={f.link} target="_blank" rel="noopener noreferrer">Link al video ↗</a>}
+            </div>
+          ))}
+        </div>
+      )}
+    </>;
+  }
   return <>
     <Chips items={[x.client_slug, label(x.estado), x.formato, x.persona, x.publico_nuevo ? 'público nuevo' : null, x.origen]} />
     {x.concepto && <div className="lib-text"><b>Concepto:</b> {x.concepto}</div>}
   </>;
 }
 
-function DetailModal({ tab, item, onClose, onEdit }) {
+function DetailModal({ tab, item, formats, onClose, onEdit }) {
+  // En marcas referencia el ítem es un grupo: se edita la ficha (fila) que corresponda.
+  const editTarget = tab === 'competitors' ? item.rows[0] : item;
   const c = CARD[tab](item);
   useEffect(() => {
     const k = (e) => e.key === 'Escape' && onClose();
@@ -126,10 +177,10 @@ function DetailModal({ tab, item, onClose, onEdit }) {
           <div className="lib-modal-title">{c.title}{c.badge}</div>
           <button className="lib-close" onClick={onClose} aria-label="Cerrar">×</button>
         </div>
-        <div className="lib-detail-body"><DetailBody tab={tab} x={item} /></div>
+        <div className="lib-detail-body"><DetailBody tab={tab} x={item} formats={formats} onEditRow={onEdit} /></div>
         <div className="lib-modal-actions">
           {c.link && <a className="lib-link-btn" href={c.link} target="_blank" rel="noopener noreferrer">{c.linkLabel} ↗</a>}
-          <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onEdit}>Editar</button>
+          <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => onEdit(editTarget)}>Editar</button>
         </div>
       </div>
     </div>
@@ -172,6 +223,7 @@ function EditForm({ tab, item, clients, onClose, onSaved }) {
               <select value={v} onChange={(e) => set(k, e.target.value)}>
                 <option value="">—</option>
                 {opts.map((o) => <option key={o} value={o}>{label(o)}</option>)}
+                {v && !opts.includes(v) && <option value={v}>{label(v)}</option>}
               </select>
             );
             else if (type === 'bool') input = (
@@ -211,6 +263,7 @@ const EMPTY_FILTERS = { industria: '', etapa_embudo: '', formato: '', requiere_c
 export default function Library({ onBack }) {
   const [tab, setTab] = useState('formats');
   const [items, setItems] = useState([]);
+  const [refFormats, setRefFormats] = useState([]); // formatos, para mostrarlos dentro de cada marca referencia
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -236,7 +289,13 @@ export default function Library({ onBack }) {
       else params = { client_slug: filters.client_slug, estado: filters.estado };
       params = Object.fromEntries(Object.entries(params).filter(([, v]) => v));
       const res = await apiClient.get(`/library/${tab}`, { params });
-      setItems(res.data[LIST_KEY[tab]] || []);
+      let rows = res.data[LIST_KEY[tab]] || [];
+      // El backend busca industria por coincidencia parcial ("indumentaria" traería "indumentaria Avellaneda").
+      if (filters.industria) rows = rows.filter((r) => normMarca(r.industria) === normMarca(filters.industria));
+      setItems(rows);
+      if (tab === 'competitors') {
+        apiClient.get('/library/formats').then((r) => setRefFormats(r.data.formats || [])).catch(() => {});
+      }
     } catch (err) {
       setError(err.message || 'No se pudo cargar.');
     } finally { setLoading(false); }
@@ -246,6 +305,8 @@ export default function Library({ onBack }) {
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [load]);
 
   const changeTab = (k) => { setTab(k); setFilters(EMPTY_FILTERS); setItems([]); };
+  const clientName = useCallback((slug) => clients.find((c) => c.slug === slug)?.name || slug, [clients]);
+  const shown = useMemo(() => (tab === 'competitors' ? groupCompetitors(items, clientName) : items), [tab, items, clientName]);
   const clientOpts = useMemo(() => clients.map((c) => <option key={c.slug} value={c.slug}>{c.name || c.slug}</option>), [clients]);
 
   return (
@@ -268,7 +329,11 @@ export default function Library({ onBack }) {
         </div>
 
         <div className="lib-filters">
-          {tab !== 'ideas' && <input placeholder="Industria" value={filters.industria} onChange={(e) => setF('industria', e.target.value)} />}
+          {tab !== 'ideas' && (
+            <select value={filters.industria} onChange={(e) => setF('industria', e.target.value)}>
+              <option value="">Todas las industrias</option>{INDUSTRIAS.map((x) => <option key={x} value={x}>{x}</option>)}
+            </select>
+          )}
           {tab === 'formats' && <>
             <input placeholder="Formato" value={filters.formato} onChange={(e) => setF('formato', e.target.value)} />
             <select value={filters.etapa_embudo} onChange={(e) => setF('etapa_embudo', e.target.value)}>
@@ -282,7 +347,7 @@ export default function Library({ onBack }) {
             </select>
           </>}
           <select value={filters.client_slug} onChange={(e) => setF('client_slug', e.target.value)}>
-            <option value="">{tab === 'competitors' ? 'Aplica a: todas' : 'Todas las marcas'}</option>
+            <option value="">{tab === 'competitors' ? 'Referencia de: todas' : 'Todas las marcas'}</option>
             {tab === 'formats' && <option value="__ref">Solo referencias</option>}
             {clientOpts}
           </select>
@@ -298,13 +363,13 @@ export default function Library({ onBack }) {
       {error && <div className="lib-error">{error}</div>}
       {loading ? (
         <div className="loading-center"><span className="spinner" /><span>Cargando…</span></div>
-      ) : !items.length ? (
+      ) : !shown.length ? (
         <div className="lib-empty">No hay nada cargado con estos filtros.</div>
       ) : (
         <>
-          <div className="lib-count">{items.length} {items.length === 1 ? 'resultado' : 'resultados'}</div>
+          <div className="lib-count">{shown.length} {shown.length === 1 ? 'resultado' : 'resultados'}</div>
           <div className="lib-grid">
-            {items.map((x) => (
+            {shown.map((x) => (
               <SmallCard key={x.id} tab={tab} item={x} onOpen={() => setViewing(x)} />
             ))}
           </div>
@@ -312,8 +377,8 @@ export default function Library({ onBack }) {
       )}
 
       {viewing && (
-        <DetailModal tab={tab} item={viewing} onClose={() => setViewing(null)}
-          onEdit={() => { setEditing(viewing); setViewing(null); }} />
+        <DetailModal tab={tab} item={viewing} formats={refFormats} onClose={() => setViewing(null)}
+          onEdit={(target) => { setEditing(target); setViewing(null); }} />
       )}
 
       {editing && (
