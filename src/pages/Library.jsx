@@ -77,7 +77,13 @@ function FormatCard({ f, onEdit }) {
   return (
     <div className="lib-card">
       <div className="lib-card-top">
-        <div className="lib-card-title">{f.nombre}{f.ganador && <span className="lib-win">ganador</span>}</div>
+        <div className="lib-card-title">
+          {f.nombre}
+          {/* En referencias (sin marca) ganador=false es el default, no un resultado: el badge va solo en anuncios de una marca. */}
+          {f.client_slug && (f.ganador
+            ? <span className="lib-win">ganador</span>
+            : <span className="lib-win lib-lose">perdedor</span>)}
+        </div>
         <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onEdit}>Editar</button>
       </div>
       <LinkOut href={f.link} />
@@ -148,7 +154,7 @@ function EditForm({ tab, item, clients, onClose, onSaved }) {
       <form className="lib-modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <div className="lib-modal-title">{item?.id ? 'Editar' : 'Agregar'} · {TABS.find((t) => t.k === tab).l}</div>
         <div className="lib-form-grid">
-          {FIELDS[tab].map(([k, l, type, opts]) => {
+          {FIELDS[tab].filter(([k]) => !(tab === 'formats' && k === 'ganador' && !form.client_slug)).map(([k, l, type, opts]) => {
             const v = form[k] ?? '';
             let input;
             if (type === 'textarea') input = <textarea rows={3} value={v} onChange={(e) => set(k, e.target.value)} />;
