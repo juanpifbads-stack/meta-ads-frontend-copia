@@ -9,8 +9,8 @@ import './Library.css';
 const TABS = [
   { k: 'formats', l: 'Formatos' },
   { k: 'competitors', l: 'Marcas referencia' },
-  { k: 'ideas', l: 'Ideas' },
 ];
+// La pestaña Ideas se sacó de la pantalla (las ideas siguen en la base y en el MCP).
 const ETAPAS = ['tofu', 'mofu', 'bofu'];
 const PRODUCCION = ['bajo', 'medio', 'alto'];
 // Industrias fijas por ahora (se filtra por coincidencia exacta).
@@ -25,6 +25,7 @@ const FIELDS = {
     ['link', 'Link (video / anuncio)', 'url'],
     ['industria', 'Industria', 'select', INDUSTRIAS],
     ['client_slug', 'Marca (vacío = referencia de industria)', 'client'],
+    ['competitor_ref_id', 'Marca referencia (de quién es el anuncio)', 'ref'],
     ['formato', 'Formato (UGC, fotopiso, hablado…)', 'text'],
     ['etapa_embudo', 'Etapa', 'select', ETAPAS],
     ['requiere_cara', 'Requiere cara', 'bool'],
@@ -95,10 +96,10 @@ function groupCompetitors(rows, clientName) {
   });
 }
 
-// Formatos cargados de una marca referencia: los que la nombran en el nombre o las notas.
-const formatsOf = (marca, formats) => {
-  const m = normMarca(marca);
-  return m ? formats.filter((f) => normMarca(`${f.nombre} ${f.notas}`).includes(m)) : [];
+// Formatos de una marca referencia: los que apuntan a alguna de sus fichas (competitor_ref_id).
+const formatsOf = (group, formats) => {
+  const ids = new Set(group.rows.map((r) => r.id));
+  return formats.filter((f) => f.competitor_ref_id && ids.has(f.competitor_ref_id));
 };
 
 // Qué muestra cada pestaña en la tarjeta chica: título (abre el detalle), una línea y el link.
@@ -131,7 +132,7 @@ function DetailBody({ tab, x, formats = [], onEditRow }) {
     {x.notas && <div className="lib-text lib-muted">{x.notas}</div>}
   </>;
   if (tab === 'competitors') {
-    const fs = formatsOf(x.marca, formats);
+    const fs = formatsOf(x, formats);
     return <>
       <div className="lib-text lib-muted">{x.refDe}</div>
       {x.rows.map((r) => (
@@ -187,7 +188,7 @@ function DetailModal({ tab, item, formats, onClose, onEdit }) {
   );
 }
 
-function EditForm({ tab, item, clients, onClose, onSaved }) {
+function EditForm({ tab, item, clients, refs = [], onClose, onSaved }) {
   const [form, setForm] = useState(() => {
     const f = { ...(item || {}) };
     if (tab === 'competitors' && Array.isArray(f.marcas_aplica)) f.marcas_aplica = f.marcas_aplica.join(', ');
@@ -240,6 +241,12 @@ function EditForm({ tab, item, clients, onClose, onSaved }) {
                 {v && !clients.some((c) => c.slug === v) && <option value={v}>{v}</option>}
               </select>
             );
+            else if (type === 'ref') input = (
+              <select value={v} onChange={(e) => set(k, e.target.value)}>
+                <option value="">—</option>
+                {[...refs].sort((a, b) => a.marca.localeCompare(b.marca, 'es')).map((r) => <option key={r.id} value={r.id}>{r.marca}</option>)}
+              </select>
+            );
             else input = <input type={type} value={v} onChange={(e) => set(k, e.target.value)} />;
             return (
               <label key={k} className={`lib-field${type === 'textarea' || k === 'link' ? ' lib-field--wide' : ''}`}>
@@ -263,7 +270,8 @@ const EMPTY_FILTERS = { industria: '', etapa_embudo: '', formato: '', requiere_c
 export default function Library({ onBack }) {
   const [tab, setTab] = useState('formats');
   const [items, setItems] = useState([]);
-  const [refFormats, setRefFormats] = useState([]); // formatos, para mostrarlos dentro de cada marca referencia
+  const [refFormats, setRefFormats] = useState([]);
+  const [refs, setRefs] = useState([]); // marcas referencia, para el selector del formulario de formatos // formatos, para mostrarlos dentro de cada marca referencia
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -274,6 +282,7 @@ export default function Library({ onBack }) {
 
   useEffect(() => {
     apiClient.get('/admin/clients').then((r) => setClients(r.data.clients || [])).catch(() => {});
+    apiClient.get('/library/competitors').then((r) => setRefs(r.data.competitors || [])).catch(() => {});
   }, []);
 
   const load = useCallback(async () => {
@@ -382,8 +391,11 @@ export default function Library({ onBack }) {
       )}
 
       {editing && (
-        <EditForm tab={tab} item={editing} clients={clients}
-          onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
+        <EditForm tab={tab} item={editing} clients={clients} refs={refs}
+          onClose={() => setEditing(null)} onSaved={() => {
+            setEditing(null); load();
+            if (tab === 'competitors') apiClient.get('/library/competitors').then((r) => setRefs(r.data.competitors || [])).catch(() => {});
+          }} />
       )}
     </div>
   );
