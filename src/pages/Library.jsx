@@ -60,11 +60,18 @@ const FIELDS = {
 const LIST_KEY = { formats: 'formats', competitors: 'competitors', ideas: 'ideas' };
 
 const label = (s) => (s ? String(s).replace(/_/g, ' ') : '');
-const shortLink = (u) => { try { const x = new URL(u); return x.hostname.replace(/^www\./, '') + x.pathname.slice(0, 28); } catch { return u; } };
-
 function LinkOut({ href }) {
-  if (!href) return <span className="lib-nolink">Sin link</span>;
-  return <a className="lib-link" href={href} target="_blank" rel="noopener noreferrer">▶ {shortLink(href)}</a>;
+  if (!href) return null;
+  return <a className="lib-link" href={href} target="_blank" rel="noopener noreferrer">Link ↗</a>;
+}
+
+function CardActions({ href, onEdit }) {
+  return (
+    <div className="lib-card-actions">
+      <LinkOut href={href} />
+      <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onEdit}>Editar</button>
+    </div>
+  );
 }
 
 function Chips({ items }) {
@@ -84,9 +91,8 @@ function FormatCard({ f, onEdit }) {
             ? <span className="lib-win">ganador</span>
             : <span className="lib-win lib-lose">perdedor</span>)}
         </div>
-        <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onEdit}>Editar</button>
+        <CardActions href={f.link} onEdit={onEdit} />
       </div>
-      <LinkOut href={f.link} />
       <Chips items={[f.client_slug || 'referencia', f.industria, f.formato, f.etapa_embudo && f.etapa_embudo.toUpperCase(),
         f.requiere_cara === true ? 'con cara' : f.requiere_cara === false ? 'sin cara' : null,
         f.nivel_produccion && `producción ${f.nivel_produccion}`, label(f.nivel_consciencia)]} />
@@ -102,9 +108,8 @@ function CompetitorCard({ c, onEdit }) {
     <div className="lib-card">
       <div className="lib-card-top">
         <div className="lib-card-title">{c.marca}</div>
-        <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={onEdit}>Editar</button>
+        <CardActions href={c.link} onEdit={onEdit} />
       </div>
-      <LinkOut href={c.link} />
       <Chips items={[c.industria, c.formato, ...(c.marcas_aplica || []).map((m) => `→ ${m}`)]} />
       {c.que_tomar && <div className="lib-text"><b>Qué tomar:</b> {c.que_tomar}</div>}
       {c.angulo && <div className="lib-text">{c.angulo}</div>}

@@ -9,9 +9,9 @@
 .lib-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .lib-card-title { font-weight: 600; font-size: 15px; color: var(--color-text-primary); }
 .lib-win { margin-left: 8px; font-size: 11px; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 999px; font-weight: 500; }
-.lib-link { display: block; font-size: 13px; font-weight: 600; color: var(--color-brand-blue); background: var(--color-brand-blue-light); padding: 8px 10px; border-radius: 8px; text-decoration: none; word-break: break-all; }
-.lib-link:hover { background: var(--color-brand-blue-mid); }
-.lib-nolink { font-size: 12px; color: var(--color-text-muted); }
+.lib-card-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.lib-link { font-size: 12px; color: var(--color-brand-blue); text-decoration: none; }
+.lib-link:hover { text-decoration: underline; }
 .lib-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .lib-chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--color-gray-light); color: var(--color-text-secondary); }
 .lib-text { font-size: 13px; color: var(--color-text-primary); line-height: 1.4; white-space: pre-wrap; }
