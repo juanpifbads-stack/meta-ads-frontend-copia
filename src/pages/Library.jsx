@@ -29,7 +29,7 @@ const ESTADOS = ['nueva', 'aprobada', 'en_produccion', 'publicada', 'descartada'
 const FIELDS = {
   formats: [
     ['nombre', 'Nombre *', 'text'],
-    ['link', 'Link (video / anuncio)', 'url'],
+    ['link', 'Link al video o la pieza *', 'url'],
     ['industria', 'Industria', 'select', INDUSTRIAS],
     ['client_slug', 'Marca (vacío = referencia de industria)', 'client'],
     ['competitor_ref_id', 'Marca referencia (de quién es el anuncio)', 'ref'],
@@ -287,7 +287,7 @@ function EditForm({ tab, item, clients, refs = [], onClose, onSaved }) {
                 {[...refs].sort((a, b) => a.marca.localeCompare(b.marca, 'es')).map((r) => <option key={r.id} value={r.id}>{r.marca}</option>)}
               </select>
             );
-            else input = <input type={type} value={v} onChange={(e) => set(k, e.target.value)} />;
+            else input = <input type={type} value={v} required={tab === 'formats' && k === 'link'} onChange={(e) => set(k, e.target.value)} />;
             return (
               <label key={k} className={`lib-field${type === 'textarea' || k === 'link' ? ' lib-field--wide' : ''}`}>
                 <span>{l}</span>{input}
