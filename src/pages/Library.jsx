@@ -15,6 +15,13 @@ const ETAPAS = ['tofu', 'mofu', 'bofu'];
 const PRODUCCION = ['bajo', 'medio', 'alto'];
 // Industrias fijas por ahora (se filtra por coincidencia exacta).
 const INDUSTRIAS = ['indumentaria', 'indumentaria Avellaneda', 'joyas', 'beauty'];
+// Lista fija de formatos: cómo se ve la pieza (de qué trata va en concepto / ángulo). Igual que en el backend.
+const FORMATOS = [
+  'Foto · Fotopiso', 'Foto · Modelo / estudio', 'Foto · Placa', 'Foto · Carrusel', 'Foto · Catálogo dinámico',
+  'Video · Producto (sin cara)', 'Video · Modelo / lookbook', 'Video · Hablado a cámara', 'Video · UGC / creador',
+  'Video · Detrás de escena / local', 'Video · Animado / GIF',
+];
+const ETAPA_CLASS = { tofu: 'lib-etapa--tofu', mofu: 'lib-etapa--mofu', bofu: 'lib-etapa--bofu' };
 const CONSCIENCIA = ['inconsciente', 'problema', 'solucion', 'producto', 'decision'];
 const ESTADOS = ['nueva', 'aprobada', 'en_produccion', 'publicada', 'descartada'];
 
@@ -26,7 +33,7 @@ const FIELDS = {
     ['industria', 'Industria', 'select', INDUSTRIAS],
     ['client_slug', 'Marca (vacío = referencia de industria)', 'client'],
     ['competitor_ref_id', 'Marca referencia (de quién es el anuncio)', 'ref'],
-    ['formato', 'Formato (UGC, fotopiso, hablado…)', 'text'],
+    ['formato', 'Formato', 'select', FORMATOS],
     ['etapa_embudo', 'Etapa', 'select', ETAPAS],
     ['requiere_cara', 'Requiere cara', 'bool'],
     ['nivel_produccion', 'Producción', 'select', PRODUCCION],
@@ -102,20 +109,36 @@ const formatsOf = (group, formats) => {
   return formats.filter((f) => f.competitor_ref_id && ids.has(f.competitor_ref_id));
 };
 
-// Qué muestra cada pestaña en la tarjeta chica: título (abre el detalle), una línea y el link.
+const caraProd = (f) => [
+  f.requiere_cara === true ? 'Con cara' : f.requiere_cara === false ? 'Sin cara' : 'Cara opcional',
+  f.nivel_produccion && `prod. ${{ bajo: 'baja', medio: 'media', alto: 'alta' }[f.nivel_produccion] || f.nivel_produccion}`,
+].filter(Boolean).join(' · ');
+
+// Tarjeta en tres partes: arriba tipo + etapa, en el medio título (abre el detalle) y una línea, abajo datos y link.
 const CARD = {
-  formats: (f) => ({ title: f.nombre, desc: f.concepto || f.formato, link: f.link, linkLabel: 'Link al video', badge: winBadge(f) }),
-  competitors: (g) => ({ title: g.marca, desc: g.refDe, link: g.link, linkLabel: 'Ver anuncios' }),
+  formats: (f) => ({ head: f.formato, etapa: f.etapa_embudo, title: f.nombre, badge: winBadge(f), desc: f.concepto,
+    foot: caraProd(f), link: f.link, linkLabel: f.formato?.startsWith('Foto') ? 'Ver pieza' : 'Ver video' }),
+  competitors: (g) => ({ head: g.rows[0]?.industria, title: g.marca, desc: g.refDe, link: g.link, linkLabel: 'Ver anuncios' }),
   ideas: (i) => ({ title: i.idea, desc: [i.client_slug, label(i.estado)].filter(Boolean).join(' · ') }),
 };
+
+const EtapaPill = ({ etapa }) => (etapa ? <span className={`lib-etapa ${ETAPA_CLASS[etapa] || ''}`}>{etapa.toUpperCase()}</span> : null);
 
 function SmallCard({ tab, item, onOpen }) {
   const c = CARD[tab](item);
   return (
     <div className="lib-card">
+      {(c.head || c.etapa) && (
+        <div className="lib-card-head"><span>{c.head || 'Sin formato'}</span><EtapaPill etapa={c.etapa} /></div>
+      )}
       <button className="lib-card-title-btn" onClick={onOpen}>{c.title}{c.badge}</button>
       {c.desc && <div className="lib-card-desc">{c.desc}</div>}
-      {c.link && <a className="lib-link-btn" href={c.link} target="_blank" rel="noopener noreferrer">{c.linkLabel} ↗</a>}
+      {(c.foot || c.link) && (
+        <div className="lib-card-foot">
+          <span>{c.foot}</span>
+          {c.link && <a className="lib-link-btn" href={c.link} target="_blank" rel="noopener noreferrer">{c.linkLabel} ↗</a>}
+        </div>
+      )}
     </div>
   );
 }
@@ -123,7 +146,8 @@ function SmallCard({ tab, item, onOpen }) {
 // Todo el detalle de un ítem, en un pop-up.
 function DetailBody({ tab, x, formats = [], onEditRow }) {
   if (tab === 'formats') return <>
-    <Chips items={[x.client_slug || 'referencia', x.industria, x.formato, x.etapa_embudo && x.etapa_embudo.toUpperCase(),
+    <div className="lib-card-head"><span>{x.formato || 'Sin formato'}</span><EtapaPill etapa={x.etapa_embudo} /></div>
+    <Chips items={[x.client_slug || 'referencia', x.industria,
       x.requiere_cara === true ? 'con cara' : x.requiere_cara === false ? 'sin cara' : null,
       x.nivel_produccion && `producción ${x.nivel_produccion}`, label(x.nivel_consciencia)]} />
     {x.hook && <div className="lib-text"><b>Hook:</b> {x.hook}</div>}
@@ -162,7 +186,18 @@ function DetailBody({ tab, x, formats = [], onEditRow }) {
   </>;
 }
 
-function DetailModal({ tab, item, formats, onClose, onEdit }) {
+function DetailModal({ tab, item, formats, onClose, onEdit, onDeleted }) {
+  const [deleting, setDeleting] = useState(false);
+  const borrarMarca = async () => {
+    if (!window.confirm(`¿Borrar la marca referencia "${item.marca}"? Sus formatos quedan en la biblioteca, sin marca.`)) return;
+    setDeleting(true);
+    try {
+      for (const r of item.rows) await apiClient.delete(`/library/competitors/${r.id}`);
+      onDeleted();
+    } catch (err) {
+      window.alert(err.message || 'No se pudo borrar.'); setDeleting(false);
+    }
+  };
   // En marcas referencia el ítem es un grupo: se edita la ficha (fila) que corresponda.
   const editTarget = tab === 'competitors' ? item.rows[0] : item;
   const c = CARD[tab](item);
@@ -181,7 +216,12 @@ function DetailModal({ tab, item, formats, onClose, onEdit }) {
         <div className="lib-detail-body"><DetailBody tab={tab} x={item} formats={formats} onEditRow={onEdit} /></div>
         <div className="lib-modal-actions">
           {c.link && <a className="lib-link-btn" href={c.link} target="_blank" rel="noopener noreferrer">{c.linkLabel} ↗</a>}
-          <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => onEdit(editTarget)}>Editar</button>
+          <div className="lib-detail-btns">
+            {tab === 'competitors' && (
+              <button className="lib-danger" onClick={borrarMarca} disabled={deleting}>{deleting ? 'Borrando…' : 'Borrar marca'}</button>
+            )}
+            <button className="ctrl-btn ctrl-btn--ghost ctrl-btn--sm" onClick={() => onEdit(editTarget)}>Editar</button>
+          </div>
         </div>
       </div>
     </div>
@@ -265,7 +305,7 @@ function EditForm({ tab, item, clients, refs = [], onClose, onSaved }) {
   );
 }
 
-const EMPTY_FILTERS = { industria: '', etapa_embudo: '', formato: '', requiere_cara: '', nivel_produccion: '', client_slug: '', estado: '', text: '' };
+const EMPTY_FILTERS = { medio: '', industria: '', etapa_embudo: '', formato: '', requiere_cara: '', nivel_produccion: '', client_slug: '', estado: '', text: '' };
 
 export default function Library({ onBack }) {
   const [tab, setTab] = useState('formats');
@@ -290,7 +330,7 @@ export default function Library({ onBack }) {
     try {
       let params = {};
       if (tab === 'formats') {
-        params = { industria: filters.industria, etapa_embudo: filters.etapa_embudo, formato: filters.formato,
+        params = { medio: filters.medio, industria: filters.industria, etapa_embudo: filters.etapa_embudo, formato: filters.formato,
           requiere_cara: filters.requiere_cara, nivel_produccion: filters.nivel_produccion, text: filters.text };
         if (filters.client_slug === '__ref') params.solo_referencias = 'true';
         else params.client_slug = filters.client_slug;
@@ -338,13 +378,26 @@ export default function Library({ onBack }) {
         </div>
 
         <div className="lib-filters">
+          {tab === 'formats' && (
+            <div className="lib-seg" role="group" aria-label="Foto o video">
+              {['', 'Foto', 'Video'].map((m) => (
+                <button key={m || 'todo'} className={filters.medio === m ? 'lib-seg--on' : ''}
+                  onClick={() => setFilters((f) => ({ ...f, medio: m, formato: m && f.formato && !f.formato.startsWith(m) ? '' : f.formato }))}>
+                  {m || 'Todo'}
+                </button>
+              ))}
+            </div>
+          )}
           {tab !== 'ideas' && (
             <select value={filters.industria} onChange={(e) => setF('industria', e.target.value)}>
               <option value="">Todas las industrias</option>{INDUSTRIAS.map((x) => <option key={x} value={x}>{x}</option>)}
             </select>
           )}
           {tab === 'formats' && <>
-            <input placeholder="Formato" value={filters.formato} onChange={(e) => setF('formato', e.target.value)} />
+            <select value={filters.formato} onChange={(e) => setF('formato', e.target.value)}>
+              <option value="">Formato</option>
+              {FORMATOS.filter((x) => !filters.medio || x.startsWith(filters.medio)).map((x) => <option key={x} value={x}>{x}</option>)}
+            </select>
             <select value={filters.etapa_embudo} onChange={(e) => setF('etapa_embudo', e.target.value)}>
               <option value="">Etapa</option>{ETAPAS.map((x) => <option key={x} value={x}>{x.toUpperCase()}</option>)}
             </select>
@@ -366,6 +419,9 @@ export default function Library({ onBack }) {
             </select>
           )}
           {tab === 'formats' && <input placeholder="Buscar (hook, concepto…)" value={filters.text} onChange={(e) => setF('text', e.target.value)} />}
+          {Object.values(filters).some(Boolean) && (
+            <button className="lib-clear" onClick={() => setFilters(EMPTY_FILTERS)}>Borrar filtros</button>
+          )}
         </div>
       </div>
 
@@ -387,7 +443,11 @@ export default function Library({ onBack }) {
 
       {viewing && (
         <DetailModal tab={tab} item={viewing} formats={refFormats} onClose={() => setViewing(null)}
-          onEdit={(target) => { setEditing(target); setViewing(null); }} />
+          onEdit={(target) => { setEditing(target); setViewing(null); }}
+          onDeleted={() => {
+            setViewing(null); load();
+            apiClient.get('/library/competitors').then((r) => setRefs(r.data.competitors || [])).catch(() => {});
+          }} />
       )}
 
       {editing && (
