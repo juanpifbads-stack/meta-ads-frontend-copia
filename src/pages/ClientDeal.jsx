@@ -4,15 +4,8 @@ import { ConfigTab, servLabel } from '../components/FinancePanel.jsx';
 
 const currentYM = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; };
 
-// Estilo de cada opción de alcance (todo el cliente / algunos servicios). Resalta la elegida.
-const optCard = (on) => ({
-  display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', cursor: 'pointer',
-  border: `1.5px solid ${on ? '#b91c1c' : '#e5e6ea'}`, borderRadius: 12,
-  background: on ? '#fff5f5' : '#fff',
-});
-
-// Página de Configuración del cliente (admin): el DEAL (servicios/fees) + dar de baja/alta.
-// El deal es una característica del cliente, por eso vive acá y no en Finanzas.
+// Página de Configuración del cliente (admin): el DEAL (servicios/fees).
+// El estado del cliente (activo / de baja) vive en el encabezado; la baja se hace en un modal.
 export default function ClientDeal({ slug, onBack }) {
   const [people, setPeople] = useState([]);
   const [month, setMonth] = useState(currentYM());
@@ -36,93 +29,112 @@ export default function ClientDeal({ slug, onBack }) {
 
   return (
     <div className="ad-section" style={{ maxWidth: 960, margin: '0 auto' }}>
-      <ConfigTab slug={slug} clientName={name} people={people} month={month} setMonth={setMonth} onBack={onBack} />
-      <BajaAlta slug={slug} name={name} active={client?.active !== false} servicios={servicios} onChange={loadClient} />
+      <ConfigTab
+        slug={slug} clientName={name} people={people} month={month} setMonth={setMonth} onBack={onBack}
+        headerExtra={<EstadoCliente slug={slug} name={name} active={client?.active !== false} servicios={servicios} onChange={loadClient} />}
+      />
     </div>
   );
 }
 
-// Bloque de baja / alta. Un solo botón que alterna según el estado del cliente.
-function BajaAlta({ slug, name, active, servicios, onChange }) {
+// Estado del cliente en el encabezado: etiqueta + acción (Dar de baja / Dar de alta).
+function EstadoCliente({ slug, name, active, servicios, onChange }) {
   const [open, setOpen] = useState(false);
-  const [alcance, setAlcance] = useState('cliente'); // 'cliente' | 'servicios'
-  const [sel, setSel] = useState([]);                // servicios elegidos si alcance='servicios'
-  const [motivo, setMotivo] = useState('');
-  const [ultimoMes, setUltimoMes] = useState(currentYM());
-  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
 
-  const toggleServ = (s) => setSel((xs) => xs.includes(s) ? xs.filter((x) => x !== s) : [...xs, s]);
-
-  const darBaja = () => {
-    if (alcance === 'servicios' && sel.length === 0) { setMsg('Elegí al menos un servicio.'); return; }
-    const body = { motivo, ultimoMes, servicios: alcance === 'servicios' ? sel : [] };
-    const label = alcance === 'servicios' ? `los servicios (${sel.map(servLabel).join(', ')})` : `TODO el cliente ${name}`;
-    if (!window.confirm(`¿Dar de baja ${label}? El fee deja de contar después de ${ultimoMes}.`)) return;
-    apiClient.post(`/admin/${slug}/churn`, body).then(() => { setOpen(false); setMsg(''); setSel([]); setMotivo(''); onChange && onChange(); })
-      .catch((e) => setMsg(e?.response?.data?.message || 'Error al dar de baja'));
-  };
   const darAlta = () => {
     if (!window.confirm(`¿Dar de alta a ${name}? Vuelve a estar activo.`)) return;
-    apiClient.post(`/admin/${slug}/reactivate`, {}).then(() => onChange && onChange()).catch((e) => setMsg(e?.response?.data?.message || 'Error'));
+    apiClient.post(`/admin/${slug}/reactivate`, {}).then(() => onChange && onChange()).catch((e) => setErr(e?.response?.data?.message || 'No se pudo dar de alta'));
   };
 
   return (
-    <div className="fp-card" style={{ marginTop: 18, borderColor: '#f0c9c9' }}>
-      <div style={{ textAlign: 'center', padding: '4px 0 2px' }}>
-        <div className="fp-sub" style={{ fontWeight: 700, marginBottom: 8 }}>Estado del cliente</div>
-        <span style={{ display: 'inline-block', fontSize: 14, fontWeight: 700, padding: '5px 18px', borderRadius: 999, background: active ? '#dcfce7' : '#fee2e2', color: active ? '#15803d' : '#b91c1c' }}>{active ? 'Activo' : 'De baja'}</span>
-        <div style={{ marginTop: 12 }}>
-          {active
-            ? <button className="fp-btn fp-btn--danger" style={{ fontSize: 15, padding: '10px 24px' }} onClick={() => setOpen((o) => !o)}>Dar de baja</button>
-            : <button className="fp-btn fp-btn--primary" style={{ fontSize: 15, padding: '10px 24px' }} onClick={darAlta}>Dar de alta</button>}
+    <>
+      <span className={`fp-status-pill ${active ? 'fp-status-pill--on' : 'fp-status-pill--off'}`}>{active ? 'Activo' : 'De baja'}</span>
+      {active
+        ? <button className="fp-btn fp-btn--danger" onClick={() => setOpen(true)}>Dar de baja</button>
+        : <button className="fp-btn" onClick={darAlta}>Dar de alta</button>}
+      {err && <span className="fp-status--error" style={{ fontSize: 13 }}>{err}</span>}
+      {open && <BajaModal slug={slug} name={name} servicios={servicios} onClose={() => setOpen(false)} onDone={() => { setOpen(false); onChange && onChange(); }} />}
+    </>
+  );
+}
+
+// Estilo de cada opción de alcance (todo el cliente / algunos servicios). Resalta la elegida.
+const optCard = (on) => ({
+  display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', cursor: 'pointer',
+  border: `1.5px solid ${on ? '#b91c1c' : '#e5e6ea'}`, borderRadius: 12,
+  background: on ? '#fff5f5' : '#fff',
+});
+
+function BajaModal({ slug, name, servicios, onClose, onDone }) {
+  const [alcance, setAlcance] = useState('cliente'); // 'cliente' | 'servicios'
+  const [sel, setSel] = useState([]);
+  const [motivo, setMotivo] = useState('');
+  const [ultimoMes, setUltimoMes] = useState(currentYM());
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const toggleServ = (s) => setSel((xs) => (xs.includes(s) ? xs.filter((x) => x !== s) : [...xs, s]));
+
+  const confirmar = () => {
+    if (alcance === 'servicios' && sel.length === 0) { setErr('Elegí al menos un servicio.'); return; }
+    setBusy(true); setErr('');
+    apiClient.post(`/admin/${slug}/churn`, { motivo, ultimoMes, servicios: alcance === 'servicios' ? sel : [] })
+      .then(onDone)
+      .catch((e) => { setBusy(false); setErr(e?.response?.data?.message || 'No se pudo dar de baja'); });
+  };
+
+  return (
+    <div className="fp-modal-overlay" onClick={onClose}>
+      <div className="fp-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="fp-modal-head">
+          <strong>Dar de baja — {name}</strong>
+          <button className="fp-modal-x" onClick={onClose} aria-label="Cerrar">×</button>
+        </div>
+
+        <div className="fp-sub" style={{ fontWeight: 700, marginBottom: 8 }}>¿Qué querés dar de baja?</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+          <label style={optCard(alcance === 'cliente')}>
+            <input type="radio" name="alcance-baja" checked={alcance === 'cliente'} onChange={() => setAlcance('cliente')} style={{ marginTop: 3 }} />
+            <div>
+              <div style={{ fontWeight: 600 }}>Todo el cliente</div>
+              <div className="fp-muted" style={{ fontSize: 12, padding: 0 }}>Deja de ser cliente: sale de Finanzas y del semáforo.</div>
+            </div>
+          </label>
+          <label style={optCard(alcance === 'servicios')}>
+            <input type="radio" name="alcance-baja" checked={alcance === 'servicios'} onChange={() => setAlcance('servicios')} style={{ marginTop: 3 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600 }}>Solo algunos servicios</div>
+              <div className="fp-muted" style={{ fontSize: 12, padding: 0 }}>El cliente sigue activo; se dan de baja únicamente los servicios que tildes.</div>
+              {alcance === 'servicios' && (
+                <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #eee' }}>
+                  {servicios.length === 0
+                    ? <div className="fp-muted">Este cliente no tiene servicios cargados.</div>
+                    : servicios.map((s) => (
+                      <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '3px 0', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={sel.includes(s)} onChange={() => toggleServ(s)} /> {servLabel(s)}
+                      </label>
+                    ))}
+                </div>
+              )}
+            </div>
+          </label>
+        </div>
+
+        <div className="fp-grid">
+          <label>Último mes que cobra<input type="month" value={ultimoMes} onChange={(e) => setUltimoMes(e.target.value)} /></label>
+          <label>Motivo<input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="ej. se pausó, se fue…" /></label>
+        </div>
+
+        {err && <div className="fp-alert fp-alert--error">⚠ {err}</div>}
+
+        <div className="fp-modal-foot">
+          <button className="fp-btn" onClick={onClose}>Cancelar</button>
+          <button className="fp-btn fp-btn--danger fp-btn--danger-solid" disabled={busy} onClick={confirmar}>
+            {busy ? 'Dando de baja…' : alcance === 'servicios' ? 'Dar de baja los servicios elegidos' : 'Dar de baja todo el cliente'}
+          </button>
         </div>
       </div>
-      {active && open && (
-        <div style={{ marginTop: 14, textAlign: 'left', maxWidth: 640, margin: '14px auto 0' }}>
-          <div className="fp-sub" style={{ fontWeight: 700, marginBottom: 8 }}>¿Qué querés dar de baja?</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-            {/* Opción 1: todo el cliente */}
-            <label style={optCard(alcance === 'cliente')}>
-              <input type="radio" name="alcance-baja" checked={alcance === 'cliente'} onChange={() => setAlcance('cliente')} style={{ marginTop: 3 }} />
-              <div>
-                <div style={{ fontWeight: 600 }}>Todo el cliente</div>
-                <div className="fp-muted" style={{ fontSize: 12 }}>Deja de ser cliente: sale de Finanzas y del semáforo.</div>
-              </div>
-            </label>
-            {/* Opción 2: solo algunos servicios (checkboxes adentro) */}
-            <label style={optCard(alcance === 'servicios')}>
-              <input type="radio" name="alcance-baja" checked={alcance === 'servicios'} onChange={() => setAlcance('servicios')} style={{ marginTop: 3 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600 }}>Solo algunos servicios</div>
-                <div className="fp-muted" style={{ fontSize: 12 }}>El cliente sigue activo; se dan de baja únicamente los servicios que tildes.</div>
-                {alcance === 'servicios' && (
-                  <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #eee' }}>
-                    {servicios.length === 0
-                      ? <div className="fp-muted">Este cliente no tiene servicios cargados.</div>
-                      : servicios.map((s) => (
-                        <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '3px 0', cursor: 'pointer' }}>
-                          <input type="checkbox" checked={sel.includes(s)} onChange={() => toggleServ(s)} /> {servLabel(s)}
-                        </label>
-                      ))}
-                  </div>
-                )}
-              </div>
-            </label>
-          </div>
-          <div className="fp-grid">
-            <label>Último mes que cobra<input type="month" value={ultimoMes} onChange={(e) => setUltimoMes(e.target.value)} /></label>
-            <label>Motivo<input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="ej. se pausó, se fue…" /></label>
-          </div>
-          {msg && <div className="fp-msg" style={{ color: '#b91c1c' }}>{msg}</div>}
-          <div className="fp-card-foot">
-            <button className="fp-btn" style={{ marginRight: 8 }} onClick={() => setOpen(false)}>Cancelar</button>
-            <button className="fp-btn fp-btn--danger" onClick={darBaja}>
-              {alcance === 'servicios' ? 'Dar de baja los servicios elegidos' : `Dar de baja todo el cliente`}
-            </button>
-          </div>
-        </div>
-      )}
-      {!active && <p className="fp-muted" style={{ marginTop: 6 }}>El cliente está de baja: no aparece en Finanzas ni en el semáforo. Podés darlo de alta cuando vuelva.</p>}
     </div>
   );
 }
