@@ -125,7 +125,7 @@ export default function AnalyticsPanel({ slug, name, onBack }) {
               {shown.map((m, i) => <Line key={m.k} yAxisId={i} type="monotone" dataKey={m.k} name={m.l} stroke={COLORS[i]} strokeWidth={2.5} dot={{ r: 3 }} />)}
             </LineChart>
           </ResponsiveContainer>
-          <div className="an-muted">* Mes en curso, todavía incompleto. Los montos de cuentas de Meta en USD se pasan a ARS con el TC de cada mes.</div>
+          <div className="an-muted">* Mes en curso, todavía incompleto. {data?.salesOnly ? 'Los datos de Meta incluyen solo campañas de ventas. ' : ''}Los montos de cuentas de Meta en USD se pasan a ARS con el TC de cada mes.</div>
         </div>
       )}
 
