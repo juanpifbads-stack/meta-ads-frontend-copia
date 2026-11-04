@@ -5,6 +5,7 @@ import Analyze from './Analyze.jsx';
 import MediaPlan, { buildTrendSvg } from './MediaPlan.jsx';
 import Admin from './Admin.jsx';
 import Dashboard from './Dashboard.jsx';
+import AnalyticsPanel from '../components/AnalyticsPanel.jsx';
 import './Control.css';
 import './ClientHub.css';
 
@@ -204,6 +205,7 @@ export default function ClientHub({ slug, onBack }) {
   };
 
   // Procesos a pantalla completa (con su propio header + volver al resumen)
+  if (tab === 'analitica') return <AnalyticsPanel slug={slug} name={cfg?.name || slug} onBack={() => setTab('resumen')} />;
   if (tab === 'analizar') return <Analyze lockedAccount={accountId} onBack={() => setTab('resumen')} />;
   if (tab === 'media') return <MediaPlanHub slug={slug} onBack={() => setTab('resumen')} />;
   if (tab === 'config') return <Admin lockedSlug={slug} onBack={() => setTab('resumen')} />;
@@ -285,6 +287,7 @@ export default function ClientHub({ slug, onBack }) {
           </div>
 
           <div className="hub-quick">
+            <button className="hub-op-btn" onClick={() => setTab('analitica')}>📈 Analítica</button>
             <button className="hub-op-btn" onClick={() => setTab('media')}>📄 Plan de medios</button>
             <button className="hub-op-btn" onClick={() => setTab('analizar')}>🔎 Analizar cuenta</button>
             <button className="hub-op-btn" onClick={() => setTab('optimizar')}>⚡ Optimizar cuenta</button>
