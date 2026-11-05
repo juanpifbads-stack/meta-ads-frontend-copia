@@ -34,19 +34,18 @@ export default function AnalyticsPanel({ slug, name, onBack }) {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true); setErr('');
-    // Tienda Nube se trae por tandas: repetimos solo mientras falten meses y haya avances.
+    setLoading(true); setErr(''); setData(null);
+    // El server trae lo que falta de fondo; acá solo releemos lo ya guardado (no consulta a Meta
+    // en cada lectura) hasta que termine. Con tope, y se corta al salir de la pantalla.
     (async () => {
-      let prev = -1;
-      for (let i = 0; i < 20; i += 1) {
-        const r = await apiClient.get(`/admin/${slug}/analytics`, { params: { months }, timeout: 90000 });
+      for (let i = 0; i < 150 && !cancelled; i += 1) {
+        const r = await apiClient.get(`/admin/${slug}/analytics`, { params: { months } });
         if (cancelled) return;
         setData(r.data);
-        const loaded = (r.data.months || []).filter((m) => m.facturacion != null).length;
-        if (r.data.complete || loaded === prev) break;
-        prev = loaded;
+        if (r.data.complete) break;
+        await new Promise((res) => setTimeout(res, 4000));
       }
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     })().catch((e) => { if (!cancelled) { setErr(e?.response?.data?.message || 'No se pudo cargar la analítica.'); setLoading(false); } });
     return () => { cancelled = true; };
   }, [slug, months]);
@@ -70,6 +69,7 @@ export default function AnalyticsPanel({ slug, name, onBack }) {
     return out;
   }, [rows]);
 
+  const progress = rows.filter((r) => !r.partial && (data?.tnConnected ? r.facturacion != null : r.gasto != null)).length;
   const available = METRICAS.filter((m) => rows.some((r) => r[m.k] != null));
   const toggle = (k) => setSel((s) => {
     if (s.includes(k)) return s.length > 1 ? s.filter((x) => x !== k) : s;
@@ -85,7 +85,7 @@ export default function AnalyticsPanel({ slug, name, onBack }) {
       </div>
 
       <div className="an-toolbar">
-        <span className="an-muted">{loading ? 'Trayendo meses… la primera vez puede tardar; después queda guardado.' : `Totales de los últimos ${months} meses cerrados`}</span>
+        <span className="an-muted">{loading ? `Trayendo datos de fondo: ${progress} de ${months} meses listos. Podés salir y volver, sigue solo.` : `Totales de los últimos ${months} meses cerrados`}</span>
         <label className="an-window">Ventana
           <select value={months} onChange={(e) => setMonths(Number(e.target.value))}>
             {VENTANAS.map((v) => <option key={v} value={v}>Últimos {v} meses</option>)}
